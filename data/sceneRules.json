@@ -1,0 +1,42 @@
+{
+  "animals": {
+    "햄스터": {
+      "subject": "Hamster",
+      "type": "animal"
+    },
+    "사마귀새우": {
+      "subject": "Peacock Mantis Shrimp",
+      "type": "animal"
+    },
+    "골든리트리버": {
+      "subject": "Golden Retriever",
+      "type": "animal"
+    },
+    "시바견": {
+      "subject": "Shiba Inu",
+      "type": "animal"
+    },
+    "보더콜리": {
+      "subject": "Border Collie",
+      "type": "animal"
+    }
+  },
+
+  "vehicles": {
+    "BMW M3": {
+      "subject": "BMW M3",
+      "type": "vehicle"
+    },
+    "테슬라 모델Y": {
+      "subject": "Tesla Model Y",
+      "type": "vehicle"
+    }
+  },
+
+  "foods": {
+    "피자": {
+      "subject": "Pepperoni Pizza",
+      "type": "food"
+    }
+  }
+}

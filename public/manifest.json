@@ -1,0 +1,23 @@
+{
+  "name": "ShortsAI Studio",
+  "short_name": "ShortsAI",
+  "description": "AI 쇼핑 쇼츠 자동 생성 및 YouTube 업로드 시스템",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#00e5ff",
+  "orientation": "portrait",
+
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

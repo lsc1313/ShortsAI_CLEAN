@@ -1,0 +1,142 @@
+# =========================================================
+# ShortsAI CLEAN
+# Git Ignore
+# =========================================================
+
+
+# ---------------------------------------------------------
+# SECRETS
+# ---------------------------------------------------------
+
+.env
+.env.*
+!.env.example
+.evn
+
+# OAuth / Token generation utilities
+getRefreshToken.js
+getBloggerRefreshToken.mjs
+
+
+# ---------------------------------------------------------
+# NODE
+# ---------------------------------------------------------
+
+node_modules/
+
+
+# ---------------------------------------------------------
+# RUNTIME / TEMP
+# ---------------------------------------------------------
+
+.runtime/
+.audit_tmp/
+
+*.log
+
+
+# ---------------------------------------------------------
+# GENERATED MEDIA
+# ---------------------------------------------------------
+
+media/images/
+media/cache/
+media/audio/
+media/video/
+media/subtitle/
+media/products/
+
+
+# ---------------------------------------------------------
+# BACKUPS
+# ---------------------------------------------------------
+
+backup*/
+*backup*/
+*BACKUP*/
+
+*.bak
+*.backup
+*.BACKUP_*
+*.BEFORE_*
+*.before_*
+*.FINAL_LOCK_*
+
+
+# ---------------------------------------------------------
+# ARCHIVES
+# ---------------------------------------------------------
+
+*.zip
+*.tar
+*.tar.gz
+
+
+# ---------------------------------------------------------
+# RUNTIME DATABASES
+# ---------------------------------------------------------
+
+data/blog/records.json
+data/coupang/products.json
+
+data/db/*.db
+
+data/link/records.json
+data/link/records.json.*
+
+database/
+
+
+# ---------------------------------------------------------
+# KEEP STATIC CONFIG DATA
+# ---------------------------------------------------------
+
+!data/sceneRules.json
+
+
+# ---------------------------------------------------------
+# SHOP PAGE
+#
+# 중요:
+# 실제 외부 공개 Link Page이므로 Git에 포함한다.
+# ---------------------------------------------------------
+
+!public/shop/
+!public/shop/index.html
+
+
+# ---------------------------------------------------------
+# CHANNEL PRIVATE CONFIG
+# ---------------------------------------------------------
+
+modules/channels/channels.json
+
+
+# =========================================================
+# ShortsAI local / runtime / backup files
+# =========================================================
+
+# Channel credentials / private channel configuration
+modules/channels/channels.json
+
+# Runtime state
+brain/storage/channel-blocks.json
+media/queue/queue.json
+
+# Development backups
+*.backup*
+*.BACKUP*
+*.bak
+*.BEFORE_*
+*.before_*
+*.FINAL_LOCK*
+
+# Generated recovery backups
+public/shop/*.BACKUP*
+data/**/*.BACKUP*
+
+
+# Accidental / generated files
+public/app.jsxx
+modules/video/directory.js.
+media/thumbnail/

@@ -1,0 +1,35 @@
+ShortsAI Studio - STABLE
+
+기준일: 2026-08-03
+
+상태:
+- QUICK 생성 연결 완료
+- Brain AUTO 생성 연결 완료
+- UI 카테고리 선택 연결 완료
+- UI 제작 개수 연결 완료
+- 채널 후보 생성 정상
+- Planner 후보 Pool 정상
+- Manager 제작 제어 정상
+- AI 생성 정상
+- Script 생성 정상
+- Image 처리 정상
+- TTS 정상
+- Subtitle 정상
+- Video Render 정상
+- Thumbnail 정상
+- Metadata 정상
+- YouTube Upload 정상
+- Upload Cleanup 정상
+- Brain 진행상황 UI 정상
+- 정지 정상
+- 재개 정상
+- 취소 정상
+
+현재 실사용 폴더:
+~/ShortsAI_CLEAN
+
+현재 복구 백업:
+~/ShortsAI_CLEAN_STABLE_20260802.tar.gz
+
+주의:
+이 파일이 존재하는 상태를 현재 정상 기준본으로 사용한다.
