@@ -5,10 +5,11 @@ import { execSync } from "child_process";
 import {
     VIDEO_DIR
 } from "./directory.js";
-
 import {
     getGlobalEffect,
-    getRankingEffect
+    getRankingEffect,
+    getShoppingEffect,
+    getDirectorEffect
 } from "./effects.js";
 
 
@@ -54,15 +55,27 @@ function normalizeType(type){
         .toLowerCase()
         .trim();
 
-    if(value === "ranking"){
-        return "ranking";
-    }
+const allowed = [
 
-    if(value === "ending"){
-        return "ending";
-    }
+"ranking",
+"ending",
 
-    return "global";
+"hook",
+"usage",
+"lifestyle",
+"detail",
+"result",
+"cta",
+
+"global"
+
+];
+
+if(allowed.includes(value)){
+    return value;
+}
+
+return "global";
 
 }
 
@@ -120,17 +133,78 @@ function makeMotionScene(
     image,
     time,
     output,
-    sceneType
+    sceneType,
+    options = {}
 ){
 
     const frames =
         getFrameCount(time);
 
 
-    const effect =
-        sceneType === "ranking"
-            ? getRankingEffect(frames)
-            : getGlobalEffect(frames);
+let effect;
+
+if(
+    options?.shot ||
+    options?.cameraMove ||
+    options?.motion
+){
+
+    effect =
+        getDirectorEffect(
+            frames,
+            {
+                shot:
+                    options.shot,
+
+                cameraMove:
+                    options.cameraMove,
+
+                motion:
+                    options.motion
+            }
+        );
+
+}
+else{
+
+    switch(sceneType){
+
+        case "ranking":
+
+            effect =
+                getRankingEffect(
+                    frames
+                );
+
+            break;
+
+
+        case "hook":
+        case "usage":
+        case "lifestyle":
+        case "detail":
+        case "result":
+        case "cta":
+
+            effect =
+                getShoppingEffect(
+                    sceneType,
+                    frames
+                );
+
+            break;
+
+
+        default:
+
+            effect =
+                getGlobalEffect(
+                    frames
+                );
+
+    }
+
+}
 
 
     /*
@@ -227,12 +301,13 @@ export function makeScene(
         }
         else{
 
-            makeMotionScene(
-                images[0],
-                time,
-                output,
-                sceneType
-            );
+makeMotionScene(
+    images[0],
+    time,
+    output,
+    sceneType,
+    options
+);
 
         }
 
@@ -294,12 +369,13 @@ export function makeScene(
         }
         else{
 
-            makeMotionScene(
-                images[i],
-                part,
-                tempOutput,
-                sceneType
-            );
+makeMotionScene(
+    images[i],
+    part,
+    tempOutput,
+    sceneType,
+    options
+);
 
         }
 

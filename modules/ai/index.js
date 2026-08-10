@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import { callGemini } from "./gemini.js";
 import { callOpenRouter } from "./openrouter.js";
 import { callGroq } from "./groq.js";

@@ -92,7 +92,8 @@ export async function publishBlog({
     title,
     html,
     tags = [],
-    publish = false
+    publish = false,
+    blogType = "shopping"
 }) {
 
     if (!title) {
@@ -113,9 +114,14 @@ export async function publishBlog({
     }
 
 
+    const blogEnvName =
+        blogType === "science"
+            ? "BLOGGER_SCIENCE_BLOG_ID"
+            : "BLOGGER_BLOG_ID";
+
     const blogId =
         getRequiredEnv(
-            "BLOGGER_BLOG_ID"
+            blogEnvName
         );
 
 

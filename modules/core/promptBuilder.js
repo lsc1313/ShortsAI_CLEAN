@@ -693,58 +693,79 @@ Hook에 자연스럽게 활용할 수 있다.
 SCENE RULE
 =========================
 
-Scene은 5~7개 작성한다.
+Scene은 반드시 6~7개 작성한다.
 
 Hook은 scenes에 포함하지 않는다.
 
-각 Scene은 새로운 내용을 말한다.
+각 Scene은 서로 다른 목적을 가진다.
+
+반드시 아래 순서를 따른다.
+
+1. Curiosity
+2. Usage
+3. Lifestyle
+4. Detail
+5. Result
+6. CTA
 
 같은 내용을 반복하지 않는다.
 
 voice와 subtitle은 동일하다.
 
-각 Scene은 짧고
-쇼츠 음성에 자연스럽게 작성한다.
+상품 설명을 계속 반복하지 않는다.
 
-가능하면 다음 흐름을 사용한다.
+확인되지 않은 특징은
+절대 만들어내지 않는다.
 
-1. 상품 소개
-2. 확인된 핵심 특징
-3. 사용 상황
-4. 생활 속 활용
-5. 선택 시 참고할 정보
-6. 자연스러운 마무리
+=========================
+SHOPPING SHORTS RULE
+=========================
 
-확인되지 않은 특징을
-Scene을 채우기 위해 만들어내지 않는다.
+이 영상의 목표는
+상품 설명이 아니라
+
+시청자가
+
+'왜 사람들이 이걸 찾지?'
+
+라는 궁금증을 느끼게 만드는 것이다.
+
+첫 Scene에서는
+
+제품명을 반복하지 않는다.
+
+가격을 말하지 않는다.
+
+스펙을 나열하지 않는다.
+
+호기심을 먼저 만든다.
 
 =========================
 VERIFIED DATA USAGE
 =========================
 
-가격이 제공된 경우에만
-가격을 말할 수 있다.
+가격
 
-할인율이 제공된 경우에만
-할인을 말할 수 있다.
+정상가
 
-평점이 제공된 경우에만
-평점을 말할 수 있다.
+할인율
 
-리뷰 수가 제공된 경우에만
-리뷰 수를 말할 수 있다.
+단위가격
 
-배송 정보가 제공된 경우에만
-배송을 말할 수 있다.
+은 대본에서 사용하지 않는다.
 
-로켓배송 정보가 제공된 경우에만
-로켓배송 여부를 말할 수 있다.
+평점
 
-브랜드가 제공된 경우에만
-브랜드를 말할 수 있다.
+리뷰 수
 
-상품 속성이 제공된 경우에만
-해당 속성을 상품 사실로 사용할 수 있다.
+배송
+
+브랜드
+
+속성은
+
+VERIFIED PRODUCT DATA에
+존재하는 경우에만 사용할 수 있다.
 
 품절 상태라면
 구매를 강하게 유도하지 않는다.
@@ -753,19 +774,15 @@ VERIFIED DATA USAGE
 VIDEO TYPE
 =========================
 
-videoType은 반드시
+videoType은
 
 single
 
-이다.
-
-sceneStrategy는 반드시
+sceneStrategy는
 
 global
 
-이다.
-
-globalSubject는 반드시
+globalSubject는
 
 ${productName}
 
@@ -775,46 +792,115 @@ ${productName}
 IMAGE RULE
 =========================
 
-실제 영상 이미지는
-사용자가 등록한 상품 이미지를 사용한다.
+실제 영상은
 
-AI가 생성하는 images 값은
-영상 제작에 사용되지 않는다.
+사용자 상품 이미지와
 
-기존 JSON 구조 호환성을 위해
-images는 배열 형태로 유지한다.
+무료 이미지를 함께 사용한다.
 
-각 Scene의 대상은
-동일 상품
+images는
 
-${productName}
+무료 이미지 검색을 위한
 
-을 유지한다.
+영문 검색어이다.
+
+각 Scene마다
+
+2~4개의
+
+검색 가능한
+
+영문 키워드를 작성한다.
+
+반드시 아래 유형을 섞는다.
+
+- Product Close Up
+- Product Detail
+- Person Using Product
+- Lifestyle
+- Environment
+- Result
+
+같은 키워드를 반복하지 않는다.
+
+제품 사진만 반복하지 않는다.
+
+사용 장면과
+생활 장면을 반드시 포함한다.
 
 =========================
 ENDING RULE
 =========================
 
-ending은 자연스럽게 마무리한다.
+답을 모두 말하지 않는다.
 
-구독 또는 좋아요 문구를
-짧게 포함할 수 있다.
+상품을 궁금하게 만든다.
 
 구매 링크를 AI가 생성하지 않는다.
 
 URL을 출력하지 않는다.
 
-쿠팡 파트너스 고지문을
+쿠팡 파트너스 고지문은
 AI가 생성하지 않는다.
 
 링크와 고지문은
-시스템 metadata 단계에서 처리한다.
+metadata 단계에서 처리한다.
+
 
 =========================
 OUTPUT
 =========================
 
 반드시 JSON만 출력한다.
+
+=========================
+SHOPPING OUTPUT RULE
+=========================
+
+모든 Scene은 반드시
+
+role
+
+sceneType
+
+sceneGoal
+
+을 가진다.
+
+sceneType은 아래 중 하나만 사용한다.
+
+hook
+usage
+lifestyle
+detail
+result
+cta
+
+role과 sceneType은 동일하게 작성한다.
+
+imageLimit은 3이다.
+
+images는
+
+실제 이미지 사이트에서 검색 가능한
+
+영문 검색어 4개를 작성한다.
+
+같은 검색어를 반복하지 않는다.
+
+제품 사진만 작성하지 않는다.
+
+사용 장면
+
+생활 장면
+
+디테일
+
+결과
+
+를 반드시 포함한다.
+
+JSON 외에는 아무것도 출력하지 않는다.
 
 {
   "title":"",
@@ -823,19 +909,27 @@ OUTPUT
   "sceneStrategy":"global",
   "hook":"",
   "scenes":[
-    {
-      "role":"",
-      "sceneSubject":"${productName}",
-      "searchName":"${productName}",
-      "searchSubject":"${productName}",
-      "category":"shopping",
-      "focus":"",
-      "action":"",
-      "title":"",
-      "voice":"",
-      "subtitle":"",
-      "images":[]
-    }
+{
+  "role":"hook|usage|lifestyle|detail|result|cta",
+  "sceneType":"hook|usage|lifestyle|detail|result|cta",
+  "sceneGoal":"",
+  "sceneSubject":"${productName}",
+  "searchName":"${productName}",
+  "searchSubject":"${productName}",
+  "category":"shopping",
+  "focus":"",
+  "action":"",
+  "title":"",
+  "voice":"",
+  "subtitle":"",
+  "imageLimit":3,
+  "images":[
+    "",
+    "",
+    "",
+    ""
+  ]
+}
   ],
   "ending":""
 }

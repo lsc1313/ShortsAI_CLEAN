@@ -88,11 +88,12 @@ function normalizeSceneType(item){
         return "ending";
     }
 
-    const type =
-        String(
-            item?.sceneType ||
-            "global"
-        )
+const type =
+    String(
+        item?.sceneType ||
+        item?.scene_type ||
+        "global"
+    )
         .toLowerCase()
         .trim();
 
@@ -106,13 +107,15 @@ function normalizeSceneType(item){
 
 
 export async function createVideo(
-    script,
+    director,
     images,
     voices
 ){
 
     mkdir();
 
+const script =
+    director.scenes;
 
     success(
         "VIDEO START"
@@ -202,15 +205,15 @@ export async function createVideo(
     =====================================================
     */
 
-    const scriptVoiceItems =
-        buildScriptVoiceItems(
-            script
-        );
+const scriptVoiceItems =
+    script;
 
 
-    const scenes = [];
+const scenes = [];
 
-    let lastImage = null;
+const transitions = [];
+
+let lastImage = null;
 
 
     for(
@@ -270,25 +273,41 @@ export async function createVideo(
                 `last image / ${totalTime.toFixed(2)} sec`
             );
 
+scenes.push(
 
-            scenes.push(
+    makeScene(
+        lastImage,
+        totalTime,
+        scenes.length,
+        {
+            sceneType: "ending",
 
-                makeScene(
-                    lastImage,
-                    totalTime,
-                    scenes.length,
-                    {
-                        sceneType:
-                            "ending"
-                    }
-                )
+            shot:
+                item?.shot,
 
-            );
+            cameraMove:
+                item?.cameraMove,
 
+            motion:
+                item?.motion,
 
-            continue;
+            transition:
+                item?.transition,
 
+            duration:
+                item?.duration
         }
+    )
+
+);
+
+transitions.push(
+    item?.transition || "cut"
+);
+
+continue;
+
+}
 
 
         /*
@@ -324,30 +343,37 @@ export async function createVideo(
 
                 scenes.push(
 
-                    makeScene(
-                        lastImage,
-                        totalTime,
-                        scenes.length,
-                        {
-                            /*
-                            본문 이미지 fallback.
+makeScene(
+    lastImage,
+    totalTime,
+    scenes.length,
+    {
+        sceneType,
 
-                            이전 이미지는 재사용하지만
-                            ENDING 장면으로 바꾸지 않는다.
+        shot:
+            item?.shot,
 
-                            GLOBAL → GLOBAL 모션 유지
-                            RANKING → RANKING 모션 유지
+        cameraMove:
+            item?.cameraMove,
 
-                            실제 CTA ENDING만
-                            sceneType "ending"을 사용한다.
-                            */
-                            sceneType
-                        }
-                    )
+        motion:
+            item?.motion,
+
+        transition:
+            item?.transition,
+
+        duration:
+            item?.duration
+    }
+)
 
                 );
 
-            }
+transitions.push(
+    item?.transition || "cut"
+); 
+
+           }
 
             continue;
 
@@ -384,18 +410,37 @@ export async function createVideo(
         );
 
 
-        scenes.push(
+scenes.push(
 
-            makeScene(
-                imageList,
-                totalTime,
-                scenes.length,
-                {
-                    sceneType
-                }
-            )
+    makeScene(
+        imageList,
+        totalTime,
+        scenes.length,
+        {
+            sceneType,
 
-        );
+            shot:
+                item?.shot,
+
+            cameraMove:
+                item?.cameraMove,
+
+            motion:
+                item?.motion,
+
+            transition:
+                item?.transition,
+
+            duration:
+                item?.duration
+        }
+    )
+
+);
+
+transitions.push(
+    item?.transition || "cut"
+);
 
 
         /*
@@ -428,10 +473,10 @@ export async function createVideo(
     =====================================================
     */
 
-    const merged =
-        concatVideo(
-            scenes
-        );
+const merged =
+    concatVideo(
+        scenes,
+    );
 
 
     /*

@@ -5,8 +5,6 @@ import cors from "cors";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
-import { createAI } from "./modules/ai.js";
-import { createScript } from "./modules/script.js";
 import { createImage } from "./modules/image.js";
 import { createTTS } from "./modules/tts.js";
 import { createSubtitle } from "./modules/subtitle.js";
@@ -20,8 +18,6 @@ import {section,success,debug,step} from "./modules/logger.js";
 import * as BrainQueue from "./brain/brain.js";
 import * as Brain from "./brain/brain.js";
 import { createShort } from "./modules/createShort.js";
-
-
 import * as CoupangProductStore from "./modules/coupang/productStore.js";
 import { resolveCoupangProduct } from "./modules/coupang/productResolver.js";
 
@@ -1009,28 +1005,49 @@ async (req,res)=>{
             =========================================================
         */
 
-        const resolvedProduct =
-            await resolveCoupangProduct(
-                product
-            );
+let resolvedProduct =
+    product;
 
+try{
 
-        if(
-            !resolvedProduct ||
-            resolvedProduct.resolved !== true
-        ){
+    const result =
+        await resolveCoupangProduct(
+            product
+        );
 
-            res.status(422).json({
+    if(
+        result &&
+        result.resolved === true
+    ){
 
-                success:false,
+        resolvedProduct =
+            result;
 
-                error:
-                    "쿠팡 실제 상품 확인에 실패했습니다."
+        console.log(
+            "[COUPANG] Resolver 성공"
+        );
 
-            });
+    }
+    else{
 
-            return;
-        }
+        console.log(
+            "[COUPANG] Resolver 실패 - DB 상품정보 사용"
+        );
+
+    }
+
+}
+catch(e){
+
+    console.log(
+        "[COUPANG] Resolver 오류 - DB 상품정보 사용"
+    );
+
+    console.log(
+        e.message
+    );
+
+}
 
 
         /*

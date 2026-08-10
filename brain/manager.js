@@ -6,6 +6,10 @@ import {
 } from "../modules/blog/blogFactory.js";
 
 import {
+    createScienceBlog
+} from "../modules/blog/scienceBlogFactory.js";
+
+import {
     createLinkPage
 } from "../modules/link/index.js";
 
@@ -796,7 +800,99 @@ export class Manager {
                 }
 
 
-                /*
+                
+                  /*
+                  =============================================
+                  SCIENCE BLOG FACTORY
+                  =============================================
+
+                  Science 채널은 상품과 관계없이
+                  order.topic 기반으로 생활과학 블로그를 만든다.
+
+                  - 기존 Shopping Blog와 완전히 분리
+                  - product 불필요
+                  - Science Blog 실패가 Shorts 성공을 취소하지 않는다.
+                  - 기본은 DRAFT
+                  =============================================
+                  */
+
+
+if (
+    String(
+        channel?.name ||
+        channel?.category ||
+        ""
+    )
+        .trim()
+        .toLowerCase() === "science"
+) {
+
+                      this.logger.log(
+                          `[Manager] Science Blog Factory 시작 : ${order.topic}`
+                      );
+
+                      try {
+
+                          const scienceBlogResult =
+                              await createScienceBlog(
+                                  order.topic
+                              );
+
+                          if (
+                              scienceBlogResult?.success === true
+                          ) {
+
+                              this.logger.log(
+                                  `[Manager] Science Blog Factory 완료 : ${scienceBlogResult?.content?.title || order.topic}`
+                              );
+
+                              this.logger.log(
+                                  `[Manager] Science Blog Mode : ${scienceBlogResult?.publish?.mode || "UNKNOWN"}`
+                              );
+
+                              if (
+                                  scienceBlogResult?.publish?.postId
+                              ) {
+
+                                  this.logger.log(
+                                      `[Manager] Science Blog Post ID : ${scienceBlogResult.publish.postId}`
+                                  );
+
+                              }
+
+                              if (
+                                  scienceBlogResult?.publish?.url
+                              ) {
+
+                                  this.logger.log(
+                                      `[Manager] Science Blog URL : ${scienceBlogResult.publish.url}`
+                                  );
+
+                              }
+
+                          }
+                          else {
+
+                              this.logger.log(
+                                  `[Manager] Science Blog Factory 결과 없음 : ${order.topic}`
+                              );
+
+                          }
+
+                      }
+                      catch (scienceBlogError) {
+
+                          console.error(
+                              `[Manager] Science Blog Factory 실패 : ${order.topic}`,
+                              scienceBlogError?.message ||
+                              scienceBlogError
+                          );
+
+                      }
+
+                  }
+
+/*
                 =============================================
                 LINK FACTORY
 

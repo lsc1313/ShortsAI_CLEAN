@@ -161,7 +161,7 @@ function createVoice(text,file){
 }
 
 
-export async function createTTS(script){
+export async function createTTS(director){
 
     ensureDir();
 
@@ -189,17 +189,25 @@ export async function createTTS(script){
     */
 
 
-    const voiceItems =
-        script.filter(item=>
+const voiceItems =
+    director.scenes
+        .map((scene,index)=>({
 
-            cleanText(
+            scene:index+1,
 
-                item?.voice ||
-                item?.text ||
+            voice:
+                scene.tts ||
+                scene.script ||
+                "",
+
+            text:
+                scene.tts ||
+                scene.script ||
                 ""
 
-            )
-
+        }))
+        .filter(item=>
+            cleanText(item.text)
         );
 
 

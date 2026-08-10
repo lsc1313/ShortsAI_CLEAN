@@ -26,18 +26,86 @@ dotenv.config();
 const IMAGE_DIR = "media/images";
 const CACHE_DIR = "media/cache";
 
-export async function createImage(script){
+export async function createImage(director){
 
     ensureDir();
 
-    const images = [];
+const script =
+    director.scenes;
+
+const images = [];
     const usedUrls = new Set();
 
     let sceneNo = 1;
 
     for(const item of script){
 
+const useProductImage =
+    item.visualType === "product";
+
 const keywords = [];
+
+if (
+    useProductImage &&
+    item.product?.images?.length
+){
+
+const index =
+    (sceneNo - 1) %
+    item.product.images.length;
+
+let file =
+    String(
+        item.product.images[index] || ""
+    ).trim();
+
+    if(file.startsWith("/media/")){
+        file =
+            process.cwd() + file;
+    }
+    else if(file.startsWith("media/")){
+        file =
+            process.cwd() + "/" + file;
+    }
+
+    if(
+        !file ||
+        !fs.existsSync(file)
+    ){
+        debug(
+            `상품 이미지 없음 : ${file}`
+        );
+
+        sceneNo++;
+
+        continue;
+    }
+
+    images.push({
+
+        scene:sceneNo,
+
+        sceneType:item.sceneType,
+
+        keyword:"PRODUCT",
+
+        subject:item.subject,
+
+        searchSubject:item.searchSubject,
+
+        searchHint:item.searchHint,
+
+        file,
+
+        provider:"PRODUCT"
+
+    });
+
+    sceneNo++;
+
+    continue;
+}
+
 
 const keywordScore = text=>{
 

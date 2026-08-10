@@ -775,12 +775,14 @@ function getVoiceScriptItems(script){
 
 
 export async function createSubtitle(
-    script,
+    director,
     voices
 ){
 
     ensureDir();
 
+const script =
+    director.scenes;
 
     const output =
         `${SUBTITLE_DIR}/shorts.ass`;

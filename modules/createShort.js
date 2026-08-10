@@ -1,6 +1,4 @@
 import fs from "fs";
-import { createAI } from "./ai.js";
-import { createScript } from "./script.js";
 import { createImage } from "./image.js";
 import { createTTS } from "./tts.js";
 import { createSubtitle } from "./subtitle.js";
@@ -8,6 +6,12 @@ import { createVideo } from "./video.js";
 import { createThumbnail } from "./thumbnail.js";
 import { createMetadata } from "./metadata.js";
 import { uploadVideo } from "./upload.js";
+import { uploadInstagramReel } from "./instagram/instagramUploader.js";
+import { createShoppingDirector } from "./shopping/director.js";
+import { createHistoryDirector } from "./history/director.js";
+import { createAnimalDirector } from "./animal/director.js";
+import { createAIDirector } from "./ai/director.js";
+import { createScienceDirector } from "./science/director.js";
 import { enqueueShort } from "./queue.js";
 import {
     cleanBeforeJob,
@@ -66,78 +70,82 @@ if(channel){
 1 AI 분석
 */
 
-step("AI");
-
-cleanBeforeJob();
-
-
-/*
-=========================================================
-COUPANG PRODUCT CONTEXT
-=========================================================
-
-상품 QUICK 제작일 경우
-AI 단계부터 동일한 product 객체를 사용한다.
-
-일반 쇼츠는 null이므로
-기존 AI 흐름을 그대로 사용한다.
-=========================================================
-*/
-
 const product =
     options?.product || null;
 
-let aiData;
+step("DIRECTOR");
 
-for(let i=0;i<3;i++){
+let director;
 
-    try{
+const channelName =
+    String(channel?.name || "")
+        .trim()
+        .toLowerCase();
 
-        aiData = await createAI(
-            topic,
-            0,
-            {
-                product
-            }
+if (channelName === "shopping") {
+
+    director =
+        await createShoppingDirector(
+            product
         );
 
-        break;
-
-    }catch(e){
-
-        console.log(
-            `AI 재시도 ${i+1}/3`
-        );
-
-        if(i===2)
-            throw e;
-
+    for (const scene of director.scenes) {
+        scene.product = product;
     }
 
 }
+else if (channelName === "history") {
 
+    director =
+        await createHistoryDirector(
+            topic
+        );
 
+}
+else if (channelName === "animal") {
+
+    director =
+        await createAnimalDirector(
+            topic
+        );
+
+}
+else if (channelName === "science") {
+    director =
+        await createScienceDirector(
+            topic
+        );
+}
+else if (channelName === "ai") {
+
+    director =
+        await createAIDirector(
+            topic
+        );
+
+}
+else {
+
+    throw new Error(
+        `지원하지 않는 채널입니다: ${channel?.name || "UNKNOWN"}`
+    );
+
+}
+
+for (const scene of director.scenes) {
+    scene.product = product;
+}
 
 success(
-    "AI 완료"
+    "DIRECTOR 완료"
 );
 
 
             /*
             2 쇼츠 대본
             */
-step("SCRIPT");
-
-            const script =
-            await createScript(
-                aiData
-            );
 
 
-
-success(
-    "SCRIPT 완료"
-);
 
 
 /*
@@ -177,7 +185,7 @@ DIRECT IMAGE FLOW
 일반 쇼츠
     script
         ↓
-    createImage(script)
+createImage(director)
 
 쿠팡 쇼츠
     등록된 PRODUCT IMAGE 사용
@@ -187,243 +195,48 @@ Engine / Search Planner를 다시 호출하지 않는다.
 =========================================================
 */
 
-let images = [];
 
 
 /*
 =========================================================
-GENERAL SHORTS IMAGE
+GENERAL / SHOPPING IMAGE
 =========================================================
 
-쿠팡 상품이 없는 일반 쇼츠만
-기존 image.js를 직접 호출한다.
+Director가 결정한 scenes를
+기존 IMAGE ENGINE에 그대로 전달한다.
+
+이미지 엔진은 기존 Shopping에서 사용하던
+Pixabay / Pexels / Pollinations 공급망을 사용한다.
+
+Director 이후 IMAGE는 반드시 1회만 실행한다.
 =========================================================
 */
 
-if(!product){
+step("IMAGE");
 
-    images =
-        await createImage(
-            script
-        );
+let images = [];
 
-}
-
-
-
-
-if(
-    product &&
-    Array.isArray(product.images) &&
-    product.images.length
-){
-
-    const productFiles =
-        product.images
-        .map(imagePath=>{
-
-            const value =
-                String(
-                    imagePath || ""
-                ).trim();
-
-            if(!value){
-                return "";
-            }
-
-
-            /*
-                /media/... 형태는
-                프로젝트 실제 로컬 경로로 변환한다.
-            */
-
-            if(
-                value.startsWith(
-                    "/media/"
-                )
-            ){
-
-                return (
-                    process.cwd() +
-                    value
-                );
-
-            }
-
-
-            /*
-                media/... 형태도 지원한다.
-            */
-
-            if(
-                value.startsWith(
-                    "media/"
-                )
-            ){
-
-                return (
-                    process.cwd() +
-                    "/" +
-                    value
-                );
-
-            }
-
-
-            /*
-                이미 절대경로라면 그대로 사용한다.
-            */
-
-            return value;
-
-        })
-        .filter(file=>
-            file &&
-            fs.existsSync(file)
-        );
-
-
-    if(productFiles.length){
-
-        /*
-            createTTS()가 실제 음성을 만드는 항목과
-            동일한 기준으로 이미지 scene 수를 계산한다.
-
-            Hook + 본문은 각각 scene을 가진다.
-
-            Ending은 별도 이미지를 만들지 않는다.
-            video.js가 마지막 이미지를 유지한다.
-        */
-
-        const visualItems =
-            script.filter(item=>{
-
-                if(!item){
-                    return false;
-                }
-
-
-                if(
-                    item.type === "ending"
-                ){
-                    return false;
-                }
-
-
-                const text =
-                    String(
-                        item.text ||
-                        item.voice ||
-                        item.subtitle ||
-                        ""
-                    ).trim();
-
-
-                return Boolean(text);
-
-            });
-
-
-        const productImages = [];
-
-
-        for(
-            let i=0;
-            i<visualItems.length;
-            i++
-        ){
-
-            const file =
-                productFiles[
-                    i % productFiles.length
-                ];
-
-
-            productImages.push({
-
-                scene:
-                    i + 1,
-
-                sceneType:
-                    "global",
-
-                file,
-
-                provider:
-                    "COUPANG",
-
-                subject:
-                    product.name || topic,
-
-                searchSubject:
-                    product.keyword ||
-                    product.name ||
-                    topic,
-
-                productId:
-                    product.id || null
-
-            });
-
-        }
-
-
-        images =
-            productImages;
-
-
-        /*
-            script도 GLOBAL로 통일한다.
-
-            영상 효과 판단은 script의 sceneType을
-            사용하므로 쿠팡은 ranking 등으로 가지 않는다.
-        */
-
-        for(const item of script){
-
-            if(
-                item &&
-                item.type !== "ending"
-            ){
-
-                item.sceneType =
-                    "global";
-
-            }
-
-        }
-
-
-        success(
-            `COUPANG GLOBAL IMAGE ${productFiles.length}장 / SCENE ${images.length}개`
-        );
-
-    }
-    else{
-
-        console.log(
-            "[COUPANG IMAGE] 등록 이미지 파일을 찾을 수 없어 기존 AI 이미지를 사용합니다."
-        );
-
-    }
-
-}
-
+images =
+    await createImage(
+        director
+    );
 
 success(
     `IMAGE ${images.length}장`
 );
+
+
+
 
             /*
             4 음성 생성
             */
 step("TTS");
 
-            const voices =
-            await createTTS(
-                script
-            );
-
+const voices =
+    await createTTS(
+        director
+    );
 
 success(
     "TTS 완료"
@@ -435,12 +248,11 @@ success(
             */
 step("SUBTITLE");
 
-            const subtitle =
-            await createSubtitle(
-                script,
-                voices
-            );
-
+const subtitle =
+    await createSubtitle(
+        director,
+        voices
+    );
 
 success(
     "SUBTITLE 완료"
@@ -451,11 +263,12 @@ success(
             */
 step("VIDEO");
 
-const video = await createVideo(
-    script,
-    images,
-    voices
-);
+const video =
+    await createVideo(
+        director,
+        images,
+        voices
+    );
 
 debug(video);
 
@@ -474,12 +287,11 @@ debug(video.file);
             */
 step("THUMBNAIL");
 
-            const thumbnail =
-            await createThumbnail(
-                aiData,
-                images
-            );
-
+const thumbnail =
+    await createThumbnail(
+        director,
+        images
+    );
 
 success(
     "THUMBNAIL 완료"
@@ -510,12 +322,11 @@ step("METADATA");
 
 const metadata =
     await createMetadata(
-        aiData,
+        director,
         {
             product
         }
     );
-
 
 success(
     "METADATA 완료"
@@ -610,10 +421,179 @@ success(
 
 debug(uploadResult);
 
+
 /*
-    실제 YouTube 업로드 성공시에만 정리한다.
+    =========================================================
+    INSTAGRAM REELS
+
+    YouTube 업로드가 정상 완료된 뒤 실행한다.
+
+    channel.instagram.enabled === true 인 채널만 게시한다.
+
+    Instagram 게시 실패는 이미 성공한 YouTube 업로드를
+    실패 처리하지 않는다.
+
+    AI처럼 Instagram 설정이 없는 채널은 SKIP 한다.
+    =========================================================
+*/
+
+let instagramResult = null;
+
+if (
+    channel?.instagram?.enabled === true
+) {
+
+    section("INSTAGRAM REELS");
+
+    const instagram =
+        channel.instagram;
+
+    console.log(
+        `[INSTAGRAM] 대상 : ${instagram.username || channel.name}`
+    );
+
+    try {
+
+        const captionParts = [];
+
+        if (metadata?.title) {
+
+            captionParts.push(
+                String(metadata.title).trim()
+            );
+
+        }
+
+        if (metadata?.description) {
+
+            const description =
+                String(metadata.description).trim();
+
+            if (
+                description &&
+                description !==
+                    String(metadata?.title || "").trim()
+            ) {
+
+                captionParts.push(
+                    description
+                );
+
+            }
+
+        }
+
+        if (
+            Array.isArray(metadata?.tags) &&
+            metadata.tags.length
+        ) {
+
+            const hashtags =
+                metadata.tags
+                    .map(tag =>
+                        String(tag || "")
+                            .trim()
+                            .replace(/^#/, "")
+                            .replace(/\\s+/g, "")
+                    )
+                    .filter(Boolean)
+                    .map(tag => `#${tag}`)
+                    .join(" ");
+
+            if (hashtags) {
+
+                captionParts.push(
+                    hashtags
+                );
+
+            }
+
+        }
+
+        const caption =
+            captionParts
+                .filter(Boolean)
+                .join("\\n\\n")
+                .slice(0, 2200);
+
+        instagramResult =
+            await uploadInstagramReel(
+                video.file,
+                {
+                    instagramUserId:
+                        instagram.instagramUserId,
+
+                    accessToken:
+                        instagram.accessToken,
+
+                    username:
+                        instagram.username,
+
+                    caption
+                }
+            );
+
+        success(
+            "INSTAGRAM REELS 완료"
+        );
+
+        debug(
+            instagramResult
+        );
+
+    }
+    catch (instagramError) {
+
+        /*
+            YouTube는 이미 게시 완료된 상태다.
+
+            Instagram 장애 때문에 createShort 전체를
+            실패 처리하면 Manager가 같은 주제를 다시
+            제작하거나 중복 처리할 위험이 있다.
+
+            따라서 Instagram 실패는 결과에 기록하되
+            YouTube 성공 상태는 유지한다.
+        */
+
+        console.error(
+            "[INSTAGRAM] 게시 실패:",
+            instagramError?.message ||
+            instagramError
+        );
+
+        instagramResult = {
+
+            success: false,
+
+            platform:
+                "instagram",
+
+            username:
+                instagram.username || "",
+
+            error:
+                instagramError?.message ||
+                String(instagramError)
+
+        };
+
+    }
+
+}
+else {
+
+    console.log(
+        `[INSTAGRAM] ${channel?.name || "UNKNOWN"} : SKIP`
+    );
+
+}
+
+
+/*
+    플랫폼 업로드 처리 이후 작업파일을 정리한다.
 */
 cleanAfterUpload();
+
 
             /*
             최종 반환
@@ -630,7 +610,9 @@ return {
 
     thumbnail: thumbnail.file,
 
-    youtube: uploadResult
+    youtube: uploadResult,
+
+    instagram: instagramResult
 
 };
 

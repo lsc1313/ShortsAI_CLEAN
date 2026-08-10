@@ -1,3 +1,4 @@
+
 /*
 =========================================================
 ShortsAI
@@ -1533,6 +1534,7 @@ async function fetchMlpPage(
     redirectWebUrl,
     partnerUrl
 ){
+console.log("[MLP URL]", redirectWebUrl);
 
     const response =
         await fetch(
@@ -1660,70 +1662,68 @@ export async function resolveCoupangProduct(
 
     }
 
+/*
+=====================================================
+STEP 4
+MLP PAGE
+=====================================================
+*/
 
-    /*
-    =====================================================
-    STEP 4
-    MLP PAGE
-    =====================================================
-    */
-
-    const mlpHtml =
-        await fetchMlpPage(
-            redirectWebUrl,
-            partnerUrl
-        );
+const mlpHtml =
+    await fetchMlpPage(
+        redirectWebUrl,
+        partnerUrl
+    );
 
 
-    /*
-    =====================================================
-    STEP 5
-    EXACT mainProduct
-    =====================================================
-    */
+/*
+=====================================================
+STEP 5
+EXACT mainProduct
+=====================================================
+*/
 
-    let mainResult =
-        findMainProduct(
+let mainResult =
+    findMainProduct(
+        mlpHtml,
+        productId,
+        itemId
+    );
+
+
+/*
+mainProduct가 없는 최신 MLP 구조에서는
+동일 productId/itemId를 가진 JSON 객체를 탐색한다.
+*/
+if(
+    !mainResult.product
+){
+
+    mainResult =
+        findTargetProductObject(
             mlpHtml,
             productId,
             itemId
         );
 
-
-    /*
-    mainProduct가 없는 최신 MLP 구조에서는
-    동일 productId/itemId를 가진 JSON 객체를 탐색한다.
-    */
-    if(
-        !mainResult.product
-    ){
-
-        mainResult =
-            findTargetProductObject(
-                mlpHtml,
-                productId,
-                itemId
-            );
-
-    }
+}
 
 
-    if(
-        !mainResult.product
-    ){
+if(
+    !mainResult.product
+){
 
-        throw new Error(
-            `COUPANG 상품 객체 추출 실패 : ${productId}/${itemId} (${mainResult.sourceType})`
-        );
+    throw new Error(
+        `COUPANG 상품 객체 추출 실패 : ${productId}/${itemId} (${mainResult.sourceType})`
+    );
 
-    }
+}
 
 
-    const main =
-        normalizeResolvedMain(
-            mainResult.product
-        );
-
+const main =
+    normalizeResolvedMain(
+        mainResult.product
+    );
 
     /*
     =====================================================
@@ -1832,13 +1832,12 @@ export async function resolveCoupangProduct(
             .trim();
 
 
-    const actualReviewCount =
-        extractActualReviewCount(
-            mlpHtml,
-            resolvedProductId,
-            resolvedItemId
-        );
-
+const actualReviewCount =
+    extractActualReviewCount(
+        mlpHtml,
+        resolvedProductId,
+        resolvedItemId
+    );
 
     const attributes =
         Array.isArray(

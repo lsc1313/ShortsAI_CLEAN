@@ -48,6 +48,10 @@ import {
     prepareBlogProductImages
 } from "../blog/blogImageHost.js";
 
+import {
+    deployPages
+} from "../cloudflare/pagesDeploy.js";
+
 
 const OUTPUT_DIR =
     path.resolve(
@@ -60,6 +64,139 @@ const OUTPUT_FILE =
         OUTPUT_DIR,
         "index.html"
     );
+
+const CLOUDFLARE_TOKEN_FILE =
+    path.resolve(
+        ".runtime/cloudflare/api_token"
+    );
+
+
+const CLOUDFLARE_ACCOUNT_ID =
+    "077453530769859915f71686765e42ef";
+
+
+const CLOUDFLARE_PROJECT =
+    "shortsai-shop";
+
+
+async function deployShopPage() {
+
+    /*
+    =====================================================
+    CLOUDFLARE DEPLOY
+
+    Link Page 생성과 Cloudflare 배포는 분리한다.
+
+    배포 실패가 발생해도
+    LinkFactory 자체 성공이나
+    쇼츠 제작 성공을 취소하지 않는다.
+    =====================================================
+    */
+
+    try {
+
+        if (
+            !fs.existsSync(
+                CLOUDFLARE_TOKEN_FILE
+            )
+        ) {
+
+            console.error(
+                "[LinkFactory] Cloudflare Token 없음 - 배포 생략"
+            );
+
+            return {
+                success: false,
+                skipped: true,
+                reason: "TOKEN_NOT_FOUND"
+            };
+
+        }
+
+
+        const apiToken =
+            fs.readFileSync(
+                CLOUDFLARE_TOKEN_FILE,
+                "utf8"
+            )
+            .trim();
+
+
+        if (!apiToken) {
+
+            console.error(
+                "[LinkFactory] Cloudflare Token 비어 있음 - 배포 생략"
+            );
+
+            return {
+                success: false,
+                skipped: true,
+                reason: "TOKEN_EMPTY"
+            };
+
+        }
+
+
+        console.log(
+            "[LinkFactory] CLOUDFLARE DEPLOY START"
+        );
+
+
+        const result =
+            await deployPages({
+
+                directory:
+                    OUTPUT_DIR,
+
+                accountId:
+                    CLOUDFLARE_ACCOUNT_ID,
+
+                apiToken,
+
+                project:
+                    CLOUDFLARE_PROJECT,
+
+                branch:
+                    "main"
+
+            });
+
+
+        console.log(
+            "[LinkFactory] CLOUDFLARE DEPLOY COMPLETE"
+        );
+
+        console.log(
+            `[LinkFactory] LIVE : ${result.productionUrl}`
+        );
+
+
+        return result;
+
+    }
+    catch (error) {
+
+        console.error(
+            "[LinkFactory] CLOUDFLARE DEPLOY FAILED:",
+            error?.message || error
+        );
+
+
+        return {
+
+            success:
+                false,
+
+            error:
+                error?.message ||
+                String(error)
+
+        };
+
+    }
+
+}
+
 
 
 function ensureOutput() {
@@ -197,6 +334,17 @@ export async function createLinkPage(
     );
 
 
+    /*
+    =====================================================
+    STEP 5
+    CLOUDFLARE AUTO DEPLOY
+    =====================================================
+    */
+
+    const deployment =
+        await deployShopPage();
+
+
     console.log(
         `[LinkFactory] RECORDS : ${records.length}`
     );
@@ -238,6 +386,8 @@ export async function createLinkPage(
 
         output:
             OUTPUT_FILE,
+
+        deployment,
 
         localPath:
             "/shop/"

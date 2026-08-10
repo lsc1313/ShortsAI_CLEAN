@@ -15,7 +15,7 @@
 
 <meta
     name="description"
-    content="영상에서 소개한 상품을 한곳에서 확인하세요."
+    content="영상에서 소개한 상품을 빠르게 확인하세요."
 >
 
 <style>
@@ -24,10 +24,15 @@
     box-sizing:border-box;
 }
 
+html {
+    -webkit-text-size-adjust:100%;
+}
+
 body {
     margin:0;
-    background:#f6f6f6;
+    background:#f7f7f7;
     color:#181818;
+
     font-family:
         -apple-system,
         BlinkMacSystemFont,
@@ -41,128 +46,275 @@ body {
     width:100%;
     max-width:640px;
     margin:0 auto;
-    padding:24px 16px 50px;
+    padding:26px 16px 44px;
 }
+
+
+/* =====================================================
+HEADER
+===================================================== */
 
 .header {
     text-align:center;
-    margin-bottom:26px;
+    margin-bottom:24px;
 }
 
 .header h1 {
-    margin:0 0 10px;
+    margin:0 0 8px;
     font-size:26px;
     line-height:1.35;
+    font-weight:800;
+    letter-spacing:-0.7px;
 }
 
 .header p {
     margin:0;
-    color:#666;
-    font-size:15px;
-    line-height:1.6;
+    color:#777;
+    font-size:14px;
+    line-height:1.5;
 }
 
+
+/* =====================================================
+COUPANG NOTICE
+===================================================== */
+
 .notice {
-    margin:0 0 22px;
-    padding:13px 14px;
+    margin:0 0 24px;
+    padding:12px 13px;
+
     background:#fff;
-    border:1px solid #e5e5e5;
+
+    border:
+        1px solid #e4e4e4;
+
     border-radius:12px;
-    font-size:12px;
-    line-height:1.6;
+
     color:#666;
+
+    font-size:11px;
+    line-height:1.55;
 }
+
+
+/* =====================================================
+PRODUCT GRID
+===================================================== */
+
+.product-grid {
+    display:grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0,1fr));
+
+    gap:14px;
+}
+
+
+/* =====================================================
+PRODUCT CARD
+===================================================== */
 
 .product-card {
     position:relative;
+
+    display:block;
+
     overflow:hidden;
-    margin:0 0 22px;
+
+    min-width:0;
+
     background:#fff;
-    border:1px solid #e8e8e8;
-    border-radius:18px;
+
+    border:
+        1px solid #e7e7e7;
+
+    border-radius:15px;
+
+    color:#181818;
+
+    text-decoration:none;
+
     box-shadow:
-        0 3px 12px
-        rgba(0,0,0,0.05);
+        0 2px 8px rgba(0,0,0,0.035);
+
+    -webkit-tap-highlight-color:
+        transparent;
 }
+
+.product-card:active {
+    transform:scale(0.985);
+}
+
+
+/* =====================================================
+LATEST
+===================================================== */
 
 .latest-badge {
     position:absolute;
+
     z-index:2;
-    top:12px;
-    left:12px;
-    padding:7px 10px;
-    border-radius:999px;
-    background:#111;
+
+    top:8px;
+    left:8px;
+
+    padding:5px 7px;
+
+    background:#292929;
+
+    border-radius:6px;
+
     color:#fff;
-    font-size:12px;
+
+    font-size:10px;
+    line-height:1;
+
     font-weight:700;
 }
 
-.image-link {
-    display:block;
-    text-decoration:none;
+
+/* =====================================================
+IMAGE
+===================================================== */
+
+.product-image {
+    display:flex;
+
+    align-items:center;
+    justify-content:center;
+
+    width:100%;
+
+    aspect-ratio:1 / 1;
+
+    overflow:hidden;
+
+    background:#fff;
 }
 
-.product-card img {
+.product-image img {
     display:block;
+
     width:100%;
-    max-height:430px;
+    height:100%;
+
     object-fit:contain;
-    background:#fff;
+
+    padding:6px;
 }
 
 .no-image {
     display:flex;
+
     align-items:center;
     justify-content:center;
+
     width:100%;
-    height:240px;
+    height:100%;
+
     background:#eee;
-    color:#888;
+
+    color:#999;
+
+    font-size:12px;
 }
 
-.product-body {
-    padding:18px;
-}
 
-.product-body h2 {
-    margin:0 0 16px;
-    font-size:18px;
-    line-height:1.55;
-}
+/* =====================================================
+NAME
+===================================================== */
 
-.product-button {
-    display:block;
-    width:100%;
-    padding:15px 16px;
-    border-radius:12px;
-    background:#111;
-    color:#fff;
-    text-align:center;
-    text-decoration:none;
-    font-size:16px;
+.product-name {
+    min-height:56px;
+
+    padding:
+        9px 8px 10px;
+
+    border-top:
+        1px solid #f1f1f1;
+
+    font-size:13px;
+    line-height:1.4;
+
     font-weight:700;
+
+    word-break:keep-all;
+
+    overflow-wrap:break-word;
+
+    display:-webkit-box;
+
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+
+    overflow:hidden;
 }
+
+
+/* =====================================================
+EMPTY
+===================================================== */
 
 .empty {
     padding:50px 20px;
+
     background:#fff;
-    border-radius:16px;
+
+    border:
+        1px solid #e8e8e8;
+
+    border-radius:15px;
+
     text-align:center;
+
     color:#777;
+
+    font-size:14px;
 }
+
+
+/* =====================================================
+FOOTER
+===================================================== */
 
 .footer {
     margin-top:30px;
-    color:#888;
+
+    color:#999;
+
     text-align:center;
-    font-size:12px;
-    line-height:1.7;
+
+    font-size:11px;
+    line-height:1.6;
+}
+
+
+/* =====================================================
+SMALL PHONE
+===================================================== */
+
+@media (max-width:360px) {
+
+    .page {
+        padding-left:12px;
+        padding-right:12px;
+    }
+
+    .product-grid {
+        gap:10px;
+    }
+
+    .product-name {
+        font-size:14px;
+    }
+
 }
 
 </style>
 
 </head>
+
 
 <body>
 
@@ -175,7 +327,7 @@ body {
         </h1>
 
         <p>
-            최근 영상에서 소개한 상품부터 확인할 수 있습니다.
+            영상에서 소개한 상품을 빠르게 확인하세요.
         </p>
 
     </header>
@@ -187,88 +339,421 @@ body {
     </div>
 
 
-    <article class="product-card">
-
     
-        <div class="latest-badge">
-            최근 영상 상품
+            <section
+                class="product-grid"
+                aria-label="영상 속 상품"
+            >
+                <a
+        class="product-card"
+        href="https://link.coupang.com/a/f6msOdtFsq"
+        rel="nofollow sponsored"
+        aria-label="캠프파이어 오로라 불멍가루 상품 확인하기"
+    >
+
+        
+                <span class="latest-badge">
+                    최근 영상
+                </span>
+                
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786361134/shortsai/blog/products/product_528d9d5d-e07a-477d-a313-920256500f97_bca99e528534b7d3.jpg"
+                alt="캠프파이어 오로라 불멍가루"
+                loading="lazy"
+            >
+            
         </div>
+
+        <div class="product-name">
+            캠프파이어 오로라 불멍가루
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f6mkD0pFhQ"
+        rel="nofollow sponsored"
+        aria-label="쿨 귀걸이 멀티스카프 상품 확인하기"
+    >
+
         
 
-    <a
-        class="image-link"
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786360755/shortsai/blog/products/product_95a161dc-6220-4871-a16d-9e0ad0e3c8bf_e9c11e1290d7bc5e.jpg"
+                alt="쿨 귀걸이 멀티스카프"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            쿨 귀걸이 멀티스카프
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f6lsXsFXzM"
+        rel="nofollow sponsored"
+        aria-label="크래용 신짱 매트 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786360554/shortsai/blog/products/product_0f488e83-237e-4500-a733-b9ed11b5a8aa_2b42ac2874ef88d7.jpg"
+                alt="크래용 신짱 매트"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            크래용 신짱 매트
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f34xjtgFO0"
+        rel="nofollow sponsored"
+        aria-label="파라솔 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786242869/shortsai/blog/products/product_63d2a95e-2870-4adc-9606-30f82ec15fec_22d2ea5fcf3a2387.jpg"
+                alt="파라솔"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            파라솔
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f34fb1exMG"
+        rel="nofollow sponsored"
+        aria-label="스노클링 셋트 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786241593/shortsai/blog/products/product_a320e2bc-4d5d-43a9-83ca-1ce9e8838797_eb6532f2548690ef.jpg"
+                alt="스노클링 셋트"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            스노클링 셋트
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f3j2JWkXh6"
+        rel="nofollow sponsored"
+        aria-label="유아 물놀이 썬크림 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786202632/shortsai/blog/products/product_b9ef1fa7-7ec3-4eae-8a06-c5f16d0d4353_6c132b532ea4c08d.jpg"
+                alt="유아 물놀이 썬크림"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            유아 물놀이 썬크림
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f3jLha7MMS"
+        rel="nofollow sponsored"
+        aria-label="페트병 샤워 헤드 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786202464/shortsai/blog/products/product_c25bac3c-f3fa-43eb-ad48-d11ae119fbf9_8225db39ad034404.jpg"
+                alt="페트병 샤워 헤드"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            페트병 샤워 헤드
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f3jtHAT8BU"
+        rel="nofollow sponsored"
+        aria-label="회오리 물총 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786202269/shortsai/blog/products/product_70ceb539-2738-48db-a2cd-fc6882943d3a_39485305f06569e6.jpg"
+                alt="회오리 물총"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            회오리 물총
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f2oK27GtKm"
+        rel="nofollow sponsored"
+        aria-label="차량용 머리 흔드는 캐릭터 사진 거치대 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786154405/shortsai/blog/products/product_d51aafbb-b2f7-4579-be41-da3571e23b67_dc3945105494d611.jpg"
+                alt="차량용 머리 흔드는 캐릭터 사진 거치대"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            차량용 머리 흔드는 캐릭터 사진 거치대
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f2jkNjbWkS"
+        rel="nofollow sponsored"
+        aria-label="스노클링 마스크 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786149792/shortsai/blog/products/product_80939688-6f83-4f20-8ca9-64223454cba9_59284ef9ed07d5cc.jpg"
+                alt="스노클링 마스크"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            스노클링 마스크
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f2iyBaJImi"
+        rel="nofollow sponsored"
+        aria-label="물에 뜨는 IPX8등급 휴대폰 방수팩 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786149290/shortsai/blog/products/product_1ea0a2a4-67b4-40b2-b82c-25ce2059e9dc_fb04248af908fe57.jpg"
+                alt="물에 뜨는 IPX8등급 휴대폰 방수팩"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            물에 뜨는 IPX8등급 휴대폰 방수팩
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f2hrw1yCC4"
+        rel="nofollow sponsored"
+        aria-label="썬리즈 자외선차단 쿨 스포츠 골프 마스크 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786148133/shortsai/blog/products/product_c2e56e9e-6dd1-4330-9e85-d57f6f8597fa_3be843cafd8dc16f.jpg"
+                alt="썬리즈 자외선차단 쿨 스포츠 골프 마스크"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            썬리즈 자외선차단 쿨 스포츠 골프 마스크
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/f1iHoq82ZU"
+        rel="nofollow sponsored"
+        aria-label="웨이브원더즈 남성 여성 커플 아쿠아슈즈 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1786104414/shortsai/blog/products/product_e9d4a530-a179-466d-b047-4fc5e050c800_54e6b46dee0304e1.jpg"
+                alt="웨이브원더즈 남성 여성 커플 아쿠아슈즈"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            웨이브원더즈 남성 여성 커플 아쿠아슈즈
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/fYnICv73DM"
+        rel="nofollow sponsored"
+        aria-label="최신형 비브르 무선 스틱 청소기 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1785945281/shortsai/blog/products/product_0e7458ff-ea93-4633-aa15-f1b056d9084d_4a144d2d6bb121ba.jpg"
+                alt="최신형 비브르 무선 스틱 청소기"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            최신형 비브르 무선 스틱 청소기
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
         href="https://link.coupang.com/a/fX6ZO59oU8"
         rel="nofollow sponsored"
+        aria-label="알프레미오 유아 수유시트 VER.2 상품 확인하기"
     >
+
         
-<img
-    src="https://res.cloudinary.com/b25wctyv/image/upload/v1785931140/shortsai/blog/products/product_6bb551c3-ccbd-4619-a62a-5132a1ae0457_03224c312bfabb31.jpg"
-    alt="알프레미오 유아 수유시트 VER.2"
-    loading="lazy"
->
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1785931140/shortsai/blog/products/product_6bb551c3-ccbd-4619-a62a-5132a1ae0457_03224c312bfabb31.jpg"
+                alt="알프레미오 유아 수유시트 VER.2"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            알프레미오 유아 수유시트 VER.2
+        </div>
 
     </a>
 
-    <div class="product-body">
-
-        <h2>
-            알프레미오 유아 수유시트 VER.2
-        </h2>
-
-        <a
-            class="product-button"
-            href="https://link.coupang.com/a/fX6ZO59oU8"
-            rel="nofollow sponsored"
-        >
-            상품 정보 확인하기
-        </a>
-
-    </div>
-
-</article>
-
-<article class="product-card">
-
-    
-
-    <a
-        class="image-link"
+<a
+        class="product-card"
         href="https://link.coupang.com/a/fX4PpiqzMi"
         rel="nofollow sponsored"
+        aria-label="디프락스 유아용 젖병 상품 확인하기"
     >
+
         
-<img
-    src="https://res.cloudinary.com/b25wctyv/image/upload/v1785929309/shortsai/blog/products/product_de393a10-8304-4715-97e0-c3310e4d41f0_3382476fddd1a553.jpg"
-    alt="디프락스 유아용 젖병"
-    loading="lazy"
->
+
+        <div class="product-image">
+            
+            <img
+                src="https://res.cloudinary.com/b25wctyv/image/upload/v1785929309/shortsai/blog/products/product_de393a10-8304-4715-97e0-c3310e4d41f0_3382476fddd1a553.jpg"
+                alt="디프락스 유아용 젖병"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            디프락스 유아용 젖병
+        </div>
 
     </a>
-
-    <div class="product-body">
-
-        <h2>
-            디프락스 유아용 젖병
-        </h2>
-
-        <a
-            class="product-button"
-            href="https://link.coupang.com/a/fX4PpiqzMi"
-            rel="nofollow sponsored"
-        >
-            상품 정보 확인하기
-        </a>
-
-    </div>
-
-</article>
+            </section>
+            
 
 
     <footer class="footer">
-
         상품의 가격, 옵션, 구성, 재고, 할인 및 배송 정보는
-        판매 페이지와 시점에 따라 달라질 수 있습니다.
-
+        판매 페이지에서 확인할 수 있습니다.
     </footer>
 
 </main>

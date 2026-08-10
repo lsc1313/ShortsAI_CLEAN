@@ -1,7 +1,10 @@
 export function createMetadata(
-    aiData,
+    director,
     options = {}
 ){
+
+const aiData =
+    director;
 
     const product =
         options?.product || null;
@@ -121,175 +124,27 @@ ${aiData.description || ""}
 
 
     /*
-        상품 정보
-    */
+        =====================================================
+        PROFILE SHOP CTA
+        =====================================================
 
-    const info = [];
+        쇼핑 쇼츠 설명란 정책
 
+        - 가격 미노출
+        - 정상가 미노출
+        - 할인율 미노출
+        - 단위가격 미노출
+        - 직접 쿠팡 URL 미노출
 
-    if (
-        product.price !== undefined &&
-        product.price !== null &&
-        String(product.price).trim() !== ""
-    ) {
-
-        info.push(
-            `💰 판매가: ${formatPrice(product.price)}`
-        );
-
-    }
-
-
-    if (
-        product.originalPrice !== undefined &&
-        product.originalPrice !== null &&
-        String(product.originalPrice).trim() !== ""
-    ) {
-
-        info.push(
-            `🏷️ 정상가: ${formatPrice(product.originalPrice)}`
-        );
-
-    }
-
-
-    if (
-        product.discountRate !== undefined &&
-        product.discountRate !== null &&
-        String(product.discountRate).trim() !== ""
-    ) {
-
-        info.push(
-            `🔥 할인: ${formatPercent(product.discountRate)}`
-        );
-
-    }
-
-
-    if (
-        product.unitPrice !== undefined &&
-        product.unitPrice !== null &&
-        String(product.unitPrice).trim() !== ""
-    ) {
-
-        info.push(
-            `📦 단위가격: ${product.unitPrice}`
-        );
-
-    }
-
-
-    if (
-        product.rating !== undefined &&
-        product.rating !== null &&
-        String(product.rating).trim() !== ""
-    ) {
-
-        info.push(
-            `⭐ 평점: ${product.rating}`
-        );
-
-    }
-
-
-    const reviewCount =
-        product.actualReviewCount ??
-        product.reviewCount;
-
-
-    if (
-        reviewCount !== undefined &&
-        reviewCount !== null &&
-        String(reviewCount).trim() !== ""
-    ) {
-
-        info.push(
-            `💬 리뷰: ${formatNumber(reviewCount)}개`
-        );
-
-    }
-
-
-    const delivery =
-        product.delivery ||
-        product.rocketDelivery;
-
-
-    if (
-        delivery !== undefined &&
-        delivery !== null &&
-        String(delivery).trim() !== ""
-    ) {
-
-        info.push(
-            `🚚 배송: ${formatDelivery(delivery)}`
-        );
-
-    }
-
-
-    if (
-        product.attributes
-    ) {
-
-        const attributes =
-            formatAttributes(
-                product.attributes
-            );
-
-
-        if (attributes) {
-
-            info.push(
-                `📋 구성/규격: ${attributes}`
-            );
-
-        }
-
-    }
-
-
-    if (info.length > 0) {
-
-        lines.push("");
-
-        lines.push(
-            "📌 상품 정보"
-        );
-
-        lines.push(
-            ...info
-        );
-
-    }
-
-
-    /*
-        구매 링크
-
-        partnerUrl은 저장된 값을
-        어떠한 가공도 하지 않고 그대로 출력한다.
+        시청자는 채널 프로필의
+        상품 모아보기 페이지를 통해 상품을 확인한다.
+        =====================================================
     */
 
     lines.push("");
 
     lines.push(
-        "👇 상품 자세히 보기 / 구매하기"
-    );
-
-    lines.push(
-        String(product.partnerUrl).trim()
-    );
-
-
-    /*
-        가격 변동 안내
-    */
-
-    lines.push("");
-
-    lines.push(
-        "※ 가격·할인·배송 정보는 판매처 상황에 따라 변경될 수 있습니다."
+        "👇 영상 속 상품은 프로필 링크에서 확인하세요."
     );
 
 
