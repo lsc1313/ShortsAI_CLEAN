@@ -707,7 +707,19 @@ export class Manager {
                     channel,
                     {
                         product:
-                            order.product || null
+                            order.product || null,
+
+                        hotdeal:
+                            order.type === "HOTDEAL",
+
+                        ...(order.type === "HOTDEAL"
+                            ? {
+                                products:
+                                    Array.isArray(planner.job?.products)
+                                        ? planner.job.products
+                                        : []
+                            }
+                            : {})
                     }
                 );
 

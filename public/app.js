@@ -1160,3 +1160,497 @@ async function deleteCoupangProduct(
 
 }
 
+
+/* =========================================================
+   HOTDEAL UI START
+   ① 상품 추가
+   ② 상품 제거
+   ③ 완전삭제
+   ④ 상품목록 — 활성/비활성
+   ⑤ 상품정보 갱신
+   ⑥ 쇼츠제작
+========================================================= */
+(function initHotdealUI() {
+  const addBtn = document.getElementById("hotdealAddBtn");
+  const removeBtn = document.getElementById("hotdealRemoveBtn");
+  const deleteBtn = document.getElementById("hotdealDeleteBtn");
+  const listBtn = document.getElementById("hotdealListBtn");
+  const searchBtn = document.getElementById("hotdealSearchBtn");
+  const createBtn = document.getElementById("hotdealCreateBtn");
+
+  const status = document.getElementById("hotdealStatus");
+  const list = document.getElementById("hotdealProductList");
+  const select = document.getElementById("hotdealProductSelect");
+  const searchResult = document.getElementById("hotdealSearchResult");
+
+  if (
+    !addBtn ||
+    !removeBtn ||
+    !deleteBtn ||
+    !listBtn ||
+    !searchBtn ||
+    !createBtn ||
+    !list ||
+    !select
+  ) {
+    return;
+  }
+
+  function setStatus(message) {
+    if (status) {
+      status.textContent = message;
+    }
+  }
+
+  async function loadList() {
+    setStatus("상품목록 불러오는 중...");
+
+    try {
+      const response = await fetch("/hotdeal/products");
+      const data = await response.json();
+
+      if (!response.ok || data.success === false) {
+        throw new Error(data.error || "상품목록 조회 실패");
+      }
+
+      const products = Array.isArray(data.products)
+        ? data.products
+        : [];
+
+      select.innerHTML =
+        '<option value="">상품을 선택하세요</option>';
+
+      list.innerHTML = "";
+
+      if (products.length === 0) {
+        list.textContent = "등록된 상품이 없습니다.";
+        setStatus("상품목록 조회 완료");
+        return;
+      }
+
+      const activeCount =
+        products.filter(product => product.enabled === true).length;
+
+      const inactiveCount =
+        products.length - activeCount;
+
+      const summary = document.createElement("div");
+      summary.style.cssText =
+        "font-size:14px;margin-bottom:8px;color:#aaa;";
+      summary.textContent =
+        `총 ${products.length}개 · 활성 ${activeCount} / 비활성 ${inactiveCount}`;
+
+      list.appendChild(summary);
+
+      const table = document.createElement("div");
+
+      table.style.cssText =
+        "border:1px solid #333;border-radius:10px;overflow:hidden;";
+
+      const header = document.createElement("div");
+
+      header.style.cssText =
+        "display:grid;grid-template-columns:1fr 90px 90px;align-items:center;padding:7px 10px;background:#1d1d1d;font-size:13px;color:#aaa;";
+
+      header.innerHTML =
+        "<div>상품명</div><div style='text-align:center'>활성화</div><div style='text-align:center'>비활성화</div>";
+
+      table.appendChild(header);
+
+      for (const product of products) {
+        const row = document.createElement("div");
+
+        row.style.cssText =
+          "display:grid;grid-template-columns:1fr 90px 90px;align-items:center;min-height:42px;padding:3px 10px;border-top:1px solid #292929;";
+
+        const name = document.createElement("div");
+
+        name.textContent = product.name;
+        name.style.cssText =
+          "font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+
+        const activeCell = document.createElement("div");
+
+        activeCell.style.cssText =
+          "display:flex;justify-content:center;";
+
+        const active = document.createElement("input");
+
+        active.type = "checkbox";
+        active.checked = product.enabled === true;
+        active.style.cssText =
+          "width:20px;height:20px;accent-color:#00d9f5;";
+
+        const inactiveCell = document.createElement("div");
+
+        inactiveCell.style.cssText =
+          "display:flex;justify-content:center;";
+
+        const inactive = document.createElement("input");
+
+        inactive.type = "checkbox";
+        inactive.checked = product.enabled !== true;
+        inactive.style.cssText =
+          "width:20px;height:20px;accent-color:#00d9f5;";
+
+        active.addEventListener("change", async () => {
+          if (!active.checked) {
+            active.checked = true;
+            return;
+          }
+
+          active.disabled = true;
+          inactive.disabled = true;
+
+          try {
+            const response = await fetch(
+              `/hotdeal/products/${encodeURIComponent(product.name)}/enabled`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  enabled: true
+                })
+              }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok || result.success === false) {
+              throw new Error(
+                result.error || "활성화 변경 실패"
+              );
+            }
+
+            await loadList();
+
+          } catch (error) {
+            setStatus(error.message);
+            active.checked = product.enabled === true;
+            inactive.checked = product.enabled !== true;
+            active.disabled = false;
+            inactive.disabled = false;
+          }
+        });
+
+        inactive.addEventListener("change", async () => {
+          if (!inactive.checked) {
+            inactive.checked = true;
+            return;
+          }
+
+          active.disabled = true;
+          inactive.disabled = true;
+
+          try {
+            const response = await fetch(
+              `/hotdeal/products/${encodeURIComponent(product.name)}/enabled`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  enabled: false
+                })
+              }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok || result.success === false) {
+              throw new Error(
+                result.error || "비활성화 변경 실패"
+              );
+            }
+
+            await loadList();
+
+          } catch (error) {
+            setStatus(error.message);
+            active.checked = product.enabled === true;
+            inactive.checked = product.enabled !== true;
+            active.disabled = false;
+            inactive.disabled = false;
+          }
+        });
+
+        activeCell.appendChild(active);
+        inactiveCell.appendChild(inactive);
+
+        row.appendChild(name);
+        row.appendChild(activeCell);
+        row.appendChild(inactiveCell);
+
+        table.appendChild(row);
+
+        const option = document.createElement("option");
+
+        option.value = product.name;
+        option.textContent =
+          `${product.name} (${product.enabled ? "활성" : "비활성"})`;
+
+        select.appendChild(option);
+      }
+
+      list.appendChild(table);
+
+      setStatus("상품목록 조회 완료");
+
+    } catch (error) {
+      setStatus(error.message);
+    }
+  }
+
+  /* ① 상품 추가 */
+  addBtn.addEventListener("click", async () => {
+    const nameInput =
+      document.getElementById("hotdealProductName");
+
+    const keywordInput =
+      document.getElementById("hotdealProductKeyword");
+
+    const name =
+      String(nameInput?.value || "").trim();
+
+    const keyword =
+      String(keywordInput?.value || name).trim();
+
+    if (!name) {
+      setStatus("상품명을 입력하세요.");
+      return;
+    }
+
+    if (!keyword) {
+      setStatus("검색어를 입력하세요.");
+      return;
+    }
+
+    addBtn.disabled = true;
+    setStatus("상품 추가 중...");
+
+    try {
+      const response = await fetch(
+        "/hotdeal/products",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            name,
+            keyword
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.error || "상품 추가 실패"
+        );
+      }
+
+      if (nameInput) nameInput.value = "";
+      if (keywordInput) keywordInput.value = "";
+
+      await loadList();
+      setStatus("상품 추가 완료");
+
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      addBtn.disabled = false;
+    }
+  });
+
+  /* ② 상품 제거 — 선택 상품 비활성화 */
+  removeBtn.addEventListener("click", async () => {
+    const name = select.value;
+
+    if (!name) {
+      setStatus("제거할 상품을 선택하세요.");
+      return;
+    }
+
+    if (!window.confirm(
+      `"${name}" 상품을 제거할까요?\n\n상품은 비활성 상태로 유지됩니다.`
+    )) {
+      return;
+    }
+
+    removeBtn.disabled = true;
+    setStatus("상품 제거 중...");
+
+    try {
+      const response = await fetch(
+        `/hotdeal/products/${encodeURIComponent(name)}`,
+        {
+          method: "DELETE"
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.error || "상품 제거 실패"
+        );
+      }
+
+      await loadList();
+      setStatus("상품 제거 완료");
+
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      removeBtn.disabled = false;
+    }
+  });
+
+  /* ③ 완전삭제 — 선택 상품 삭제 */
+  deleteBtn.addEventListener("click", async () => {
+    const name = select.value;
+
+    if (!name) {
+      setStatus("완전삭제할 상품을 선택하세요.");
+      return;
+    }
+
+    if (!window.confirm(
+      `"${name}" 상품을 완전삭제할까요?\n\n상품 설정이 완전히 삭제됩니다.`
+    )) {
+      return;
+    }
+
+    deleteBtn.disabled = true;
+    setStatus("완전삭제 중...");
+
+    try {
+      const response = await fetch(
+        `/hotdeal/products/${encodeURIComponent(name)}/purge`,
+        {
+          method: "DELETE"
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.error || "완전삭제 실패"
+        );
+      }
+
+      await loadList();
+      setStatus("완전삭제 완료");
+
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      deleteBtn.disabled = false;
+    }
+  });
+
+  /* ④ 상품목록 */
+  listBtn.addEventListener("click", loadList);
+
+  /* ⑤ 활성 상품군 상품정보 갱신 */
+  searchBtn.addEventListener("click", async () => {
+    searchBtn.disabled = true;
+
+    if (searchResult) {
+      searchResult.textContent = "갱신 중...";
+    }
+
+    setStatus("활성 상품군 상품정보 갱신 중...");
+
+    try {
+      const response = await fetch(
+        "/hotdeal/refresh",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({})
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.error || "상품정보 갱신 실패"
+        );
+      }
+
+      const count =
+        Number(data.count || 0);
+
+      const total =
+        Number(data.total || count);
+
+      if (searchResult) {
+        searchResult.textContent =
+          `${count}/${total} 갱신완료`;
+      }
+
+      setStatus("상품정보 갱신 완료");
+
+    } catch (error) {
+      if (searchResult) {
+        searchResult.textContent =
+          error.message;
+      }
+
+      setStatus(error.message);
+
+    } finally {
+      searchBtn.disabled = false;
+    }
+  });
+
+  /* ⑥ 쇼츠제작 */
+  createBtn.addEventListener("click", async () => {
+    createBtn.disabled = true;
+    setStatus("쇼츠 제작 준비 중...");
+
+    try {
+      const response = await fetch(
+        "/hotdeal/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({})
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.error || "쇼츠 제작 요청 실패"
+        );
+      }
+
+      setStatus("쇼츠 제작 요청 완료");
+
+    } catch (error) {
+      setStatus(error.message);
+
+    } finally {
+      createBtn.disabled = false;
+    }
+  });
+
+  loadList();
+})();
+
+/* HOTDEAL UI END */
+

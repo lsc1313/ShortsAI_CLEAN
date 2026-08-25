@@ -46,7 +46,8 @@
 
     </div>
 
-	    <!-- Brain -->
+	
+    <!-- Brain -->
 
     <!-- COUPANG PRODUCT MANAGEMENT -->
 
@@ -263,8 +264,292 @@
 
 </div>
 
-<script src="/app.js"></script>
 
+
+
+<!-- HOTDEAL MANAGEMENT UI -->
+<section id="hotdealPanel" style="
+  margin:20px 0;
+  padding:0;
+  color:#fff;
+">
+
+  <h2 style="
+    margin:0 0 18px;
+    font-size:30px;
+    font-weight:800;
+  ">HOTDEAL</h2>
+
+  <!-- ① 상품 추가 -->
+  <div style="
+    margin-bottom:14px;
+    padding:18px;
+    border-radius:16px;
+    background:#1a1a1a;
+  ">
+    <div style="font-size:22px;font-weight:800;margin-bottom:14px;">
+      ① 상품 추가
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input
+        id="hotdealProductName"
+        type="text"
+        placeholder="상품명"
+        style="
+          flex:1;
+          min-width:120px;
+          padding:11px;
+          border-radius:9px;
+          border:1px solid #555;
+          background:#222;
+          color:#fff;
+          font-size:16px;
+          box-sizing:border-box;
+        "
+      >
+
+      <input
+        id="hotdealProductKeyword"
+        type="text"
+        placeholder="검색어 (선택)"
+        style="
+          flex:1;
+          min-width:120px;
+          padding:11px;
+          border-radius:9px;
+          border:1px solid #555;
+          background:#222;
+          color:#fff;
+          font-size:16px;
+          box-sizing:border-box;
+        "
+      >
+
+      <button
+        type="button"
+        id="hotdealAddBtn"
+        style="
+          padding:10px 18px;
+          border:0;
+          border-radius:9px;
+          font-size:16px;
+          font-weight:700;
+        "
+      >추가</button>
+    </div>
+  </div>
+
+  <!-- ② 상품 제거 -->
+  <div style="
+    margin-bottom:14px;
+    padding:18px;
+    border-radius:16px;
+    background:#1a1a1a;
+  ">
+    <div style="font-size:22px;font-weight:800;margin-bottom:14px;">
+      ② 상품 제거
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center;">
+      <select
+        id="hotdealProductSelect"
+        style="
+          flex:1;
+          min-width:0;
+          padding:12px;
+          border-radius:9px;
+          background:#222;
+          color:#fff;
+          border:1px solid #555;
+          font-size:16px;
+        "
+      >
+        <option value="">상품을 선택하세요</option>
+      </select>
+
+      <button
+        type="button"
+        id="hotdealRemoveBtn"
+        style="
+          padding:10px 18px;
+          border:0;
+          border-radius:9px;
+          font-size:16px;
+          font-weight:700;
+        "
+      >제거</button>
+    </div>
+  </div>
+
+  <!-- ③ 완전삭제 -->
+  <div style="
+    margin-bottom:14px;
+    padding:18px;
+    border-radius:16px;
+    background:#1a1a1a;
+  ">
+    <div style="font-size:22px;font-weight:800;margin-bottom:14px;">
+      ③ 완전삭제
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center;">
+      <select
+        id="hotdealProductSelectDelete"
+        style="
+          flex:1;
+          min-width:0;
+          padding:12px;
+          border-radius:9px;
+          background:#222;
+          color:#fff;
+          border:1px solid #555;
+          font-size:16px;
+        "
+      >
+        <option value="">상품을 선택하세요</option>
+      </select>
+
+      <button
+        type="button"
+        id="hotdealDeleteBtn"
+        style="
+          padding:10px 18px;
+          border:0;
+          border-radius:9px;
+          font-size:16px;
+          font-weight:700;
+        "
+      >완전삭제</button>
+    </div>
+  </div>
+
+  <!-- ④ 상품목록 -->
+  <div style="
+    margin-bottom:14px;
+    padding:18px;
+    border-radius:16px;
+    background:#1a1a1a;
+  ">
+    <div style="
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:10px;
+    ">
+      <div style="font-size:22px;font-weight:800;">
+        ④ 상품목록
+      </div>
+
+      <button
+        type="button"
+        id="hotdealListBtn"
+        style="
+          padding:9px 14px;
+          border:0;
+          border-radius:9px;
+          font-size:15px;
+          font-weight:700;
+        "
+      >목록 새로고침</button>
+    </div>
+
+    <div
+      id="hotdealProductList"
+      style="
+        min-height:55px;
+        padding:10px;
+        border:1px solid #444;
+        border-radius:9px;
+        background:#151515;
+      "
+    >상품목록을 불러오는 중...</div>
+  </div>
+
+  <!-- ⑤ 상품정보 검색 -->
+  <div style="
+    margin-bottom:14px;
+    padding:18px;
+    border-radius:16px;
+    background:#1a1a1a;
+  ">
+    <div style="font-size:22px;font-weight:800;margin-bottom:14px;">
+      ⑤ 상품정보 검색
+    </div>
+
+    <button
+      type="button"
+      id="hotdealSearchBtn"
+      style="
+        padding:10px 18px;
+        border:0;
+        border-radius:9px;
+        font-size:16px;
+        font-weight:700;
+      "
+    >상품정보 갱신</button>
+
+    <div
+      id="hotdealSearchResult"
+      style="
+        margin-top:12px;
+        padding:11px;
+        border:1px solid #444;
+        border-radius:9px;
+        background:#151515;
+        font-size:17px;
+      "
+    >준비</div>
+  </div>
+
+  <!-- ⑥ 쇼츠제작 -->
+  <div style="
+    padding:18px;
+    border-radius:16px;
+    background:#1a1a1a;
+  ">
+    <div style="font-size:22px;font-weight:800;margin-bottom:14px;">
+      ⑥ 쇼츠제작
+    </div>
+
+    <div style="
+      display:flex;
+      align-items:center;
+      gap:14px;
+      flex-wrap:wrap;
+    ">
+      <button
+        type="button"
+        id="hotdealCreateBtn"
+        style="
+          padding:11px 20px;
+          border:0;
+          border-radius:9px;
+          font-size:17px;
+          font-weight:700;
+        "
+      >쇼츠 제작 시작</button>
+
+      <span style="font-size:14px;color:#aaa;">
+        ⑤ 갱신 완료 후 제작
+      </span>
+    </div>
+
+    <div
+      id="hotdealStatus"
+      style="
+        margin-top:12px;
+        padding:10px;
+        border:1px solid #444;
+        border-radius:9px;
+        background:#151515;
+      "
+    >준비</div>
+  </div>
+
+</section>
+
+<script src="/app.js"></script>
 </body>
 
 </html>

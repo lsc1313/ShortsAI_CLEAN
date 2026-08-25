@@ -34,7 +34,7 @@ debug("[Pixabay] Provider Start");
 
                     safesearch:true,
 
-                    per_page:20
+                    per_page:5
 
                 },
 

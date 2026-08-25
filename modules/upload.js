@@ -1,3 +1,24 @@
+
+
+function buildFinalDescription(originalDesc, isHotdeal = false) {
+    const base =
+        originalDesc ||
+        "오늘의 생필품 최저가 가격비교 쇼츠입니다.";
+
+    if (!isHotdeal) {
+        return base;
+    }
+
+    const profileNotice =
+        "\n\n👉 영상 속 상품 정보는 채널 프로필 링크를 확인해 주세요!";
+
+    const coupangNotice =
+        "\n※ 이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.";
+
+    return base + profileNotice + coupangNotice;
+}
+
+
 import fs from "fs";
 import { google } from "googleapis";
 
@@ -16,7 +37,8 @@ export async function uploadVideo(
     metadata,
     channel = null,
     sourceTopic = "",
-    thumbnailFile = null
+    thumbnailFile = null,
+    isHotdeal = false
 ) {
 
     success(
@@ -79,9 +101,13 @@ export async function uploadVideo(
         "놀라운 사실 이야기";
 
 
-    const description =
-        metadata?.description ||
-        "재미있는 정보 쇼츠입니다.";
+const description =
+    isHotdeal
+        ? buildFinalDescription(metadata?.description, true)
+        : (
+            metadata?.description ||
+            "재미있는 정보 쇼츠입니다."
+        );
 
 
     const tags =

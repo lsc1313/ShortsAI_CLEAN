@@ -56,6 +56,86 @@ export async function getModels(provider){
 
 }
 
+export async function getVisualSearchModels(){
+
+    const apiKey =
+        process.env.OPENROUTER_API_KEY;
+
+    if(!apiKey){
+
+        throw new Error(
+            "OPENROUTER_API_KEY 없음"
+        );
+
+    }
+
+    const res =
+        await axios.get(
+            "https://openrouter.ai/api/v1/models",
+            {
+                headers:{
+                    Authorization:
+                        `Bearer ${apiKey}`
+                }
+            }
+        );
+
+    const now =
+        new Date();
+
+    return (res.data.data || [])
+        .filter(
+            model =>
+                model?.id?.includes(":free")
+        )
+        .filter(
+            model =>
+                Array.isArray(
+                    model?.architecture?.input_modalities
+                ) &&
+                model.architecture.input_modalities
+                    .includes("image")
+        )
+        .filter(
+            model =>
+                Array.isArray(
+                    model?.supported_parameters
+                ) &&
+                model.supported_parameters
+                    .includes("tools")
+        )
+        .filter(
+            model =>
+                Array.isArray(
+                    model?.supported_parameters
+                ) &&
+                model.supported_parameters
+                    .includes("tool_choice")
+        )
+        .filter(
+            model => {
+
+                if(
+                    !model.expiration_date
+                ){
+
+                    return true;
+
+                }
+
+                return new Date(
+                    model.expiration_date
+                ) > now;
+
+            }
+        )
+        .map(
+            model =>
+                model.id
+        );
+
+}
+
 async function getGeminiModel(){
 
     if(CACHE.gemini.length){

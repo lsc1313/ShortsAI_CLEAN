@@ -82,22 +82,22 @@ export class Planner {
             `[Planner] QUICK Channel : ${channel}`
         );
 
-        this.pool = [
-            {
-                topic:
-                    job.topic,
+this.pool = [
+    {
+        topic: job.topic,
+        category,
+        channel,
 
-                category,
+        score: 100,
 
-                channel,
+        product:
+            job.product || null,
 
-                score:
-                    100,
-
-                product:
-                    job.product || null
-            }
-        ];
+        ...(job.type === "HOTDEAL"
+            ? { type: "HOTDEAL" }
+            : {})
+    }
+];
 
         return await this.manager.execute(
             this,

@@ -1,73 +1,1641 @@
 <!doctype html>
+
 <html lang="ko">
+
 <head>
+
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+
+<meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1"
+>
+
 <title>영상 속 상품 모아보기</title>
+
+<meta
+    name="description"
+    content="영상에서 소개한 상품을 빠르게 확인하세요."
+>
+
 <style>
-* { box-sizing:border-box; }
-body { margin:0; background:#f7f7f7; color:#181818; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
-.page { width:100%; max-width:640px; margin:0 auto; padding:26px 16px 44px; }
-.header { text-align:center; margin-bottom:20px; }
-.header h1 { margin:0 0 8px; font-size:26px; font-weight:800; }
-.header p { margin:0; color:#777; font-size:14px; }
-.notice { margin:0 0 20px; padding:12px; background:#fff; border:1px solid #e4e4e4; border-radius:12px; color:#666; font-size:11px; }
 
-.tab-container { display:flex; gap:8px; margin-bottom:20px; }
-.tab-btn { flex:1; padding:12px 0; border:1px solid #ddd; border-radius:10px; background:#fff; color:#555; font-weight:700; font-size:14px; cursor:pointer; text-align:center; }
-.tab-btn.active { background:#292929; color:#fff; border-color:#292929; }
-.tab-content { display:none; }
-.tab-content.active { display:grid; }
+* {
+    box-sizing:border-box;
+}
 
-.product-grid { grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; }
-.product-card { position:relative; display:block; background:#fff; border:1px solid #e7e7e7; border-radius:14px; text-decoration:none; color:#181818; overflow:hidden; }
-.latest-badge { position:absolute; top:6px; left:6px; padding:4px 6px; background:#292929; border-radius:6px; color:#fff; font-size:10px; font-weight:700; }
-.product-image { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1/1; }
-.product-image img { width:100%; height:100%; object-fit:contain; padding:4px; }
-.product-name { min-height:50px; padding:8px; border-top:1px solid #f1f1f1; font-size:12px; font-weight:700; line-height:1.3; word-break:keep-all; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.footer { margin-top:30px; color:#999; text-align:center; font-size:11px; }
+html {
+    -webkit-text-size-adjust:100%;
+}
+
+body {
+    margin:0;
+    background:#f7f7f7;
+    color:#181818;
+
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+}
+
+.page {
+    width:100%;
+    max-width:640px;
+    margin:0 auto;
+    padding:26px 16px 44px;
+}
+
+
+/* =====================================================
+HEADER
+===================================================== */
+
+.header {
+    text-align:center;
+    margin-bottom:24px;
+}
+
+.header h1 {
+    margin:0 0 8px;
+    font-size:26px;
+    line-height:1.35;
+    font-weight:800;
+    letter-spacing:-0.7px;
+}
+
+.header p {
+    margin:0;
+    color:#777;
+    font-size:14px;
+    line-height:1.5;
+}
+
+
+/* =====================================================
+COUPANG NOTICE
+===================================================== */
+
+.notice {
+    margin:0 0 24px;
+    padding:12px 13px;
+
+    background:#fff;
+
+    border:
+        1px solid #e4e4e4;
+
+    border-radius:12px;
+
+    color:#666;
+
+    font-size:11px;
+    line-height:1.55;
+}
+
+
+/* =====================================================
+PRODUCT GRID
+===================================================== */
+
+.product-grid {
+    display:grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0,1fr));
+
+    gap:14px;
+}
+
+
+/* =====================================================
+PRODUCT CARD
+===================================================== */
+
+.product-card {
+    position:relative;
+
+    display:block;
+
+    overflow:hidden;
+
+    min-width:0;
+
+    background:#fff;
+
+    border:
+        1px solid #e7e7e7;
+
+    border-radius:15px;
+
+    color:#181818;
+
+    text-decoration:none;
+
+    box-shadow:
+        0 2px 8px rgba(0,0,0,0.035);
+
+    -webkit-tap-highlight-color:
+        transparent;
+}
+
+.product-card:active {
+    transform:scale(0.985);
+}
+
+
+/* =====================================================
+LATEST
+===================================================== */
+
+.latest-badge {
+    position:absolute;
+
+    z-index:2;
+
+    top:8px;
+    left:8px;
+
+    padding:5px 7px;
+
+    background:#292929;
+
+    border-radius:6px;
+
+    color:#fff;
+
+    font-size:10px;
+    line-height:1;
+
+    font-weight:700;
+}
+
+
+/* =====================================================
+IMAGE
+===================================================== */
+
+.product-image {
+    display:flex;
+
+    align-items:center;
+    justify-content:center;
+
+    width:100%;
+
+    aspect-ratio:1 / 1;
+
+    overflow:hidden;
+
+    background:#fff;
+}
+
+.product-image img {
+    display:block;
+
+    width:100%;
+    height:100%;
+
+    object-fit:contain;
+
+    padding:6px;
+}
+
+.no-image {
+    display:flex;
+
+    align-items:center;
+    justify-content:center;
+
+    width:100%;
+    height:100%;
+
+    background:#eee;
+
+    color:#999;
+
+    font-size:12px;
+}
+
+
+/* =====================================================
+NAME
+===================================================== */
+
+.product-name {
+    min-height:56px;
+
+    padding:
+        9px 8px 10px;
+
+    border-top:
+        1px solid #f1f1f1;
+
+    font-size:13px;
+    line-height:1.4;
+
+    font-weight:700;
+
+    word-break:keep-all;
+
+    overflow-wrap:break-word;
+
+    display:-webkit-box;
+
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+
+    overflow:hidden;
+}
+
+
+/* =====================================================
+EMPTY
+===================================================== */
+
+.empty {
+    padding:50px 20px;
+
+    background:#fff;
+
+    border:
+        1px solid #e8e8e8;
+
+    border-radius:15px;
+
+    text-align:center;
+
+    color:#777;
+
+    font-size:14px;
+}
+
+
+/* =====================================================
+FOOTER
+===================================================== */
+
+.footer {
+    margin-top:30px;
+
+    color:#999;
+
+    text-align:center;
+
+    font-size:11px;
+    line-height:1.6;
+}
+
+
+/* =====================================================
+SMALL PHONE
+===================================================== */
+
+@media (max-width:360px) {
+
+    .page {
+        padding-left:12px;
+        padding-right:12px;
+    }
+
+    .product-grid {
+        gap:10px;
+    }
+
+    .product-name {
+        font-size:14px;
+    }
+
+}
+
 </style>
-</head>
-<body>
-<main class="page">
-    <header class="header">
-        <h1>영상 속 상품 모아보기</h1>
-        <p>영상에서 소개한 상품을 빠르게 확인하세요.</p>
-    </header>
-    <div class="notice">※ 이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</div>
 
-    <div class="tab-container">
-        <button id="btn-hotdeal" class="tab-btn active" onclick="switchTab('hotdeal')">🔥 오늘의 핫딜</button>
-        <button id="btn-all" class="tab-btn" onclick="switchTab('all')">📦 전체 상품</button>
+
+<style>
+.tab-container { display: flex; gap: 10px; margin-bottom: 20px; margin-top: 10px; }
+.tab-btn { flex: 1; padding: 12px; border: 1px solid #e0e0e0; border-radius: 10px; background: #fff; font-size: 14px; font-weight: 700; color: #666; cursor: pointer; text-align: center; }
+.tab-btn.active { background: #222; color: #fff; border-color: #222; }
+.tab-content { display: none; }
+.tab-content.active { display: grid !important; }
+</style>
+
+</head>
+
+
+<body>
+
+<main class="page">
+<div class="tab-container"><button id="btn-hotdeal" class="tab-btn active" onclick="switchTab(hotdeal)">🔥 오늘의 핫딜</button><button id="btn-all" class="tab-btn" onclick="switchTab(all)">📦 전체 상품</button></div>
+
+    <header class="header">
+
+        <h1>
+            영상 속 상품 모아보기
+        </h1>
+
+        <p>
+            영상에서 소개한 상품을 빠르게 확인하세요.
+        </p>
+
+    </header>
+
+
+    <div class="notice">
+        ※ 이 페이지는 쿠팡 파트너스 활동의 일환으로,
+        이에 따른 일정액의 수수료를 제공받습니다.
     </div>
 
-    <!-- HOTDEAL_START -->
-<section id="hotdeal-section" class="product-grid tab-content active">
-<a class="product-card" href="https://link.coupang.com/a/sample1" target="_blank" rel="nofollow sponsored">
-        <span class="latest-badge">오늘의 핫딜</span>
+
+    
+            <section
+                class="product-grid"
+                aria-label="영상 속 상품"
+            >
+                <a
+        class="product-card"
+        href="https://link.coupang.com/a/gsKTYOF3Bs"
+        rel="nofollow sponsored"
+        aria-label="运动용 water bottle 상품 확인하기"
+    >
+
+        
+                <span class="latest-badge">
+                    최근 영상
+                </span>
+                
+
         <div class="product-image">
-            <img src="https://thumbnail7.coupangcdn.com/thumbnails/remote/492x492ex/image/retail/images/2023/10/24/11/4/2f8bbfdf-ceef-4015-8f6b-ef6268bd1e0d.jpg" alt="키친타월 100% 천연펄프 무형광 5000매" loading="lazy">
+            
+            <img
+                src="https://t4a.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/1139166345372150-eecf0b0c-5291-46fd-b0f8-f72f7c199b79.png"
+                alt="运动용 water bottle"
+                loading="lazy"
+            >
+            
         </div>
-        <div class="product-name">키친타월 100% 천연펄프 무형광 5000매</div>
+
+        <div class="product-name">
+            运动용 water bottle
+        </div>
+
     </a>
-</section>
-<!-- HOTDEAL_END -->
 
-    <!-- ALL_START -->
-    <section id="all-section" class="product-grid tab-content">
-    </section>
-    <!-- ALL_END -->
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gsGCRSaXOS"
+        rel="nofollow sponsored"
+        aria-label="가족用 picinic mat 상품 확인하기"
+    >
 
-    <footer class="footer">상품의 가격, 옵션, 구성, 재고, 할인 및 배송 정보는 판매 페이지에서 확인할 수 있습니다.</footer>
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail4.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/265852831804979-f46dd511-f84b-4719-94b4-6fa043f0280f.jpg"
+                alt="가족用 picinic mat"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            가족用 picinic mat
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gsCkKR2emi"
+        rel="nofollow sponsored"
+        aria-label="수納用 drawer organizer 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t2a.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/99af/68b49ce5114db5b3e5b92c3a1a0dfa01fcd8547fb894579fc50d15a0679b.png"
+                alt="수納用 drawer organizer"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            수納用 drawer organizer
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gsx2PSguIe"
+        rel="nofollow sponsored"
+        aria-label="블루투스 이어폰 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t1c.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/5f79/e6b148cbc08cf18170ec659cf2e503c1d581148ce0518391e55d8c56de43.jpg"
+                alt="블루투스 이어폰"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            블루투스 이어폰
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gstKBhZVbo"
+        rel="nofollow sponsored"
+        aria-label="반려동물 간식 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail3.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/2026/04/01/18/3/8a4bc082-3771-41f7-965a-57efe7a0d50c.jpg"
+                alt="반려동물 간식"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            반려동물 간식
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gspsKrylXM"
+        rel="nofollow sponsored"
+        aria-label="auto car air freshener 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t1c.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/85e3/121e26c7d673af7bfb60f1b61f871142f1199b0521b0a65e2a988c476e89.jpg"
+                alt="auto car air freshener"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            auto car air freshener
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gsla5Uv93I"
+        rel="nofollow sponsored"
+        aria-label="帐篷用 ground sheet 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t2a.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/1a48/3236f6ecf6b3ab980424dd353a4c46c876e4777e7ee1366a385be1bf62d4.jpg"
+                alt="帐篷用 ground sheet"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            帐篷用 ground sheet
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gsgS1p7Qyq"
+        rel="nofollow sponsored"
+        aria-label="아기 용품 보온병 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail9.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/aec4/945db6986420f276e90e9f110a09a3888c1114c931de1954750f6a3f5a37.png"
+                alt="아기 용품 보온병"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            아기 용품 보온병
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gscA4brvxs"
+        rel="nofollow sponsored"
+        aria-label="데스크用 정리장 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t5c.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/301d/d0d637d09776b985cc3543c6063ccf7259458498ea9873ee28c3d219ca75.jpg"
+                alt="데스크用 정리장"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            데스크用 정리장
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gr8kj7DzRk"
+        rel="nofollow sponsored"
+        aria-label="주방용 filter 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t1c.coupangcdn.com/thumbnails/remote/212x212ex/image/1025_amir_coupang_oct_80k/274a/2d4a11412b7d7644c1a3787e026d688777eb1b8d6098b740cba3cee1166d.jpg"
+                alt="주방용 filter"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            주방용 filter
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gr31cuHAGG"
+        rel="nofollow sponsored"
+        aria-label="스마트폰 ring holder 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail13.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/image_audit/prod/79f6efa0-9f2c-43ff-ac09-a42493bbc245_fixing_v2.png"
+                alt="스마트폰 ring holder"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            스마트폰 ring holder
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grZJk5DqmW"
+        rel="nofollow sponsored"
+        aria-label="미용用 가위 세트 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t1c.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/f68b/cbc1bf959fabd63f090910a6a6b48e6d71659039a438e6dfb26edbd0461d.jpg"
+                alt="미용用 가위 세트"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            미용用 가위 세트
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grVrt26EkS"
+        rel="nofollow sponsored"
+        aria-label="여행용 packing cube 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail12.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/2019/07/10/5/5/46a5bb91-b44a-4c37-85a4-066408b683fb.jpg"
+                alt="여행용 packing cube"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            여행용 packing cube
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grRajwflIa"
+        rel="nofollow sponsored"
+        aria-label="요가 mat 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail12.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/f3ad/f1c41fa4fb74244ab1f7d319edd31673e7fb7003ce39f919ce8876bdb220.jpg"
+                alt="요가 mat"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            요가 mat
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grMS3r0L9w"
+        rel="nofollow sponsored"
+        aria-label="청소용 robot 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t5c.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/0af1/d536772530fd1da31e755745e73c37075f89e5a7789741fa65d53ed39165.jpg"
+                alt="청소용 robot"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            청소용 robot
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grIAu2aVl6"
+        rel="nofollow sponsored"
+        aria-label="수납용 bin 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail4.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/image_audit/stage/manual/e5b10c4c9fd75d06f00631eb73a1ad7bdbb1a0a4965136763fb89bf0ad35_1780649703902.png"
+                alt="수납용 bin"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            수납용 bin
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grEicxnIg8"
+        rel="nofollow sponsored"
+        aria-label="디지털 카메라 filter 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail14.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/4240/f0c82e94ea22f214ee76b8a69a8d8f8ac95649da71a4b7713d2fa20c41d4.jpg"
+                alt="디지털 카메라 filter"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            디지털 카메라 filter
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grz0PtqwJE"
+        rel="nofollow sponsored"
+        aria-label="auto car 휴대용 충전기 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail8.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/edb3/8dedadfaff88ceb521f47f4b9ee33eb5ba3596e1ad4cb795995c3a2c2b6d.jpg"
+                alt="auto car 휴대용 충전기"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            auto car 휴대용 충전기
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grvIYI91H2"
+        rel="nofollow sponsored"
+        aria-label="반려동물 용품 세정기 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail5.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/2024/08/20/14/5/7b9cb64b-3ce5-4957-937e-89d80e28051e.jpg"
+                alt="반려동물 용품 세정기"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            반려동물 용품 세정기
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grrqXOmt6O"
+        rel="nofollow sponsored"
+        aria-label="캠핑용 포table 경도 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail1.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/6d13/1487bd1af0e5cf59eebdb404993c8968d967a0d35a3a6353c1f5beb1d3e4.jpg"
+                alt="캠핑용 포table 경도"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            캠핑용 포table 경도
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grm9nWWCM8"
+        rel="nofollow sponsored"
+        aria-label="주방용 식기 건조rack 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail8.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/f97d/a02c7e24e8ac11e80c11ef119dc394c3f376b460cf86b6c2573f21956856.jpg"
+                alt="주방용 식기 건조rack"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            주방용 식기 건조rack
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/griSW67IJ2"
+        rel="nofollow sponsored"
+        aria-label="ottoman style 수/storage 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t3a.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/a391/56ec96fc7df5f1618437f6e9a281d52515f6170d9bff14695c80bc51bef8.jpg"
+                alt="ottoman style 수/storage"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            ottoman style 수/storage
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grez30sg9s"
+        rel="nofollow sponsored"
+        aria-label="가을용 담요 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail11.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/4fa0/2cf71321e06dd9196cd7fedd4bc2a634e434b476225d92d8198d2a506476.jpg"
+                alt="가을용 담요"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            가을용 담요
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/grajrBk1pk"
+        rel="nofollow sponsored"
+        aria-label="휴대용 무선 팬 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail13.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/12707783658553-46e16073-9116-4311-8505-6a11d63146b6.png"
+                alt="휴대용 무선 팬"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            휴대용 무선 팬
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gq50j6TKlU"
+        rel="nofollow sponsored"
+        aria-label="스마트폰 거치대 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail3.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/4dd9/6ed2656a7e83d9c1de94f7e2214d2077b1844c2d8fc50bad80939daddee4.png"
+                alt="스마트폰 거치대"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            스마트폰 거치대
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gq1HXiNSEK"
+        rel="nofollow sponsored"
+        aria-label="주방용 자동 과일 세탁기 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail2.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/50f8/72bd3039f69db5d41b48a7eaa4208a5da079d338a29335d259b4b473be98.png"
+                alt="주방용 자동 과일 세탁기"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            주방용 자동 과일 세탁기
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqXqim4Aq4"
+        rel="nofollow sponsored"
+        aria-label="여행용 휴대용 터틀 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail4.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/465592226254746-7f3bcb81-6de7-4b87-a1f9-0784f6f700c8.jpg"
+                alt="여행용 휴대용 터틀"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            여행용 휴대용 터틀
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqS9r1wWoC"
+        rel="nofollow sponsored"
+        aria-label="아기용 목浴 텐트 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail1.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/607a/0ae540c7a571723f47b0fe37cbb5ce6a16a284e9d753824f76a76044dac2.jpg"
+                alt="아기용 목浴 텐트"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            아기용 목浴 텐트
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqOP79b83w"
+        rel="nofollow sponsored"
+        aria-label="실내용 습식 공기청정기 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail4.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/28c9/a121c112193fbb1b369b97195c6090aaca529e8ff5039b845a38902606c5.jpg"
+                alt="실내용 습식 공기청정기"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            실내용 습식 공기청정기
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqKzZ6dbBk"
+        rel="nofollow sponsored"
+        aria-label="미니어처 냉장고 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail12.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/2025/06/23/15/1/a414554b-1d36-4a03-b376-bc60af2f1258.jpg"
+                alt="미니어처 냉장고"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            미니어처 냉장고
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqGh9zWRaK"
+        rel="nofollow sponsored"
+        aria-label="반려동물용 휴대용 배변袋 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail9.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/e8ed/23712b752bd13cf43fbbd8087394ee138d00dd18183d65a4a56e6b58146e.png"
+                alt="반려동물용 휴대용 배변袋"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            반려동물용 휴대용 배변袋
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqBZWpJfCm"
+        rel="nofollow sponsored"
+        aria-label="주차용 전동 카 키 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t2a.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/f98b/1de6d17372d6d89299c9e499f477910f81e0ca90d5a685a181e0c507e61d.jpg"
+                alt="주차용 전동 카 키"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            주차용 전동 카 키
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqxHy1F9CS"
+        rel="nofollow sponsored"
+        aria-label="여름용 시원한 베개 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t3a.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/e098/1140e6c7572f0e5cbaf48ca3d8b7fc91bb6aa7cfb6a34116c6db43f7e25e.png"
+                alt="여름용 시원한 베개"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            여름용 시원한 베개
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqtqQbGnsG"
+        rel="nofollow sponsored"
+        aria-label="스마트워치용 고가속 충전 케이블 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail6.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/623036578758145-5d8aa396-f128-40a6-af49-46fb2f5f7b9c.jpg"
+                alt="스마트워치용 고가속 충전 케이블"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            스마트워치용 고가속 충전 케이블
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqo7hVP5Z6"
+        rel="nofollow sponsored"
+        aria-label="다용도 클리핑 램프 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail15.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/134e/0ecceaa59cd9c60998d0b0f81f0fb10f740dbcf6716843c6734ff2aac9db.jpg"
+                alt="다용도 클리핑 램프"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            다용도 클리핑 램프
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqkQMPluWy"
+        rel="nofollow sponsored"
+        aria-label="실내용 키친 가드ening 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t4a.coupangcdn.com/thumbnails/remote/212x212ex/image/1025_amir_coupang_oct_80k/b33f/62450d58b4f4b220c6936dfcff2f1fbe2ea008e27d32eab12959e6330231.jpg"
+                alt="실내용 키친 가드ening"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            실내용 키친 가드ening
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqgyERlAmy"
+        rel="nofollow sponsored"
+        aria-label="아기용 자동차용 시트 밀봉 커버 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail3.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/e63e/d4251efb237ea188c26918b7f99513ff1a45ec63bd427db57e28a844182f.png"
+                alt="아기용 자동차용 시트 밀봉 커버"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            아기용 자동차용 시트 밀봉 커버
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gqcg1HIV3s"
+        rel="nofollow sponsored"
+        aria-label="주방용 음식물 밀봉 컨테이너 세트 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail2.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/7364/4968d8673657eff7a9c2884cb5723ae575ce964e1dcfa74f43969d06d2b7.jpg"
+                alt="주방용 음식물 밀봉 컨테이너 세트"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            주방용 음식물 밀봉 컨테이너 세트
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gp7ZDMiR4e"
+        rel="nofollow sponsored"
+        aria-label="旅行용 휴대용 세탁기 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail3.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/68f9/0166cc410adff05fa44cbda5cbe2eebf41551dad9c683cafabc064d7e529.jpg"
+                alt="旅行용 휴대용 세탁기"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            旅行용 휴대용 세탁기
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gp3GoMU6IS"
+        rel="nofollow sponsored"
+        aria-label="인공근육 마사지 기기 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail6.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/bd44/1776cb78efe39918eb9eab92cc1d716cf84c400628e8f295651df15398b9.jpg"
+                alt="인공근육 마사지 기기"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            인공근육 마사지 기기
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gpZotwTcse"
+        rel="nofollow sponsored"
+        aria-label="반려동물 물그릇 온도조절장치 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail3.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/5cdd/02ed14dcca2b7b3942ace2040ff1bb65f919cb642b70821cc88fecce4ffc.jpg"
+                alt="반려동물 물그릇 온도조절장치"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            반려동물 물그릇 온도조절장치
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gpU7ruVYGq"
+        rel="nofollow sponsored"
+        aria-label="건조기용 린스 필터 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail3.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/1798/ee3cbff762e9bb5b1b345a4cb747926d56540e2e5a73e19f4483169fee70.png"
+                alt="건조기용 린스 필터"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            건조기용 린스 필터
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gpQPnWfA2m"
+        rel="nofollow sponsored"
+        aria-label="삼각김밥 기계 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail1.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/a2d0/0c3aa9c494361efed4b1c9b0f05e32c1c7f4679681df45f5abee0288ec2e.png"
+                alt="삼각김밥 기계"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            삼각김밥 기계
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gpMwPXnaPk"
+        rel="nofollow sponsored"
+        aria-label="워터프루프 블루투스 이어폰 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail8.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/0f26/a1ece989ab6974c72b22b95bdebeaf924edc157695f037a1a8c2bec882a0.png"
+                alt="워터프루프 블루투스 이어폰"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            워터프루프 블루투스 이어폰
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gpIgfWIASG"
+        rel="nofollow sponsored"
+        aria-label="미니어처 공기청정기 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail13.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/a06e/ec737d11fd85ed085913447aeff1b228cd4e5022fb2d542f00ca0b00693a.jpg"
+                alt="미니어처 공기청정기"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            미니어처 공기청정기
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gpDX70oywC"
+        rel="nofollow sponsored"
+        aria-label="스마트폰 방열 패드 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail4.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/d757/d472c46967d3fed9e21ee42030400aaaaa5b08c6059d6dc2a939331e5921.jpg"
+                alt="스마트폰 방열 패드"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            스마트폰 방열 패드
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gpzE6KunbU"
+        rel="nofollow sponsored"
+        aria-label="차량용 음식물 보관 냉장고 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail4.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/2bfe/dae4f18856a4931aa66189cff04ac6c56357007a8fe408d62adbec796494.png"
+                alt="차량용 음식물 보관 냉장고"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            차량용 음식물 보관 냉장고
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gpvoZgHFRI"
+        rel="nofollow sponsored"
+        aria-label="휴대용 무선 선풍기 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://t5a.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/6549/2ddf5dcbdc30028e311207156ccce44d92918c14ed46803e7aa656ffef25.jpg"
+                alt="휴대용 무선 선풍기"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            휴대용 무선 선풍기
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gpq7mjhL9p"
+        rel="nofollow sponsored"
+        aria-label="반려동물 용기 패키지 세트 키트 상품 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail4.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/6845/568acf434b519de179903b3f85e74b81acef0f1e9312fed53c4f6f043121.png"
+                alt="반려동물 용기 패키지 세트 키트 상품"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            반려동물 용기 패키지 세트 키트 상품
+        </div>
+
+    </a>
+
+<a
+        class="product-card"
+        href="https://link.coupang.com/a/gpmND4PI2m"
+        rel="nofollow sponsored"
+        aria-label="반려동물 용기 패키지 세트 키트 상품 확인하기"
+    >
+
+        
+
+        <div class="product-image">
+            
+            <img
+                src="https://thumbnail4.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/6845/568acf434b519de179903b3f85e74b81acef0f1e9312fed53c4f6f043121.png"
+                alt="반려동물 용기 패키지 세트 키트"
+                loading="lazy"
+            >
+            
+        </div>
+
+        <div class="product-name">
+            반려동물 용기 패키지 세트 키트
+        </div>
+
+    </a>
+            </section>
+            
+
+
+    <footer class="footer">
+        상품의 가격, 옵션, 구성, 재고, 할인 및 배송 정보는
+        판매 페이지에서 확인할 수 있습니다.
+    </footer>
+
 </main>
 
+
 <script>
-function switchTab(tab) {
-    document.getElementById("btn-hotdeal").classList.toggle("active", tab === "hotdeal");
-    document.getElementById("btn-all").classList.toggle("active", tab === "all");
-    document.getElementById("hotdeal-section").classList.toggle("active", tab === "hotdeal");
-    document.getElementById("all-section").classList.toggle("active", tab === "all");
+function switchTab(tabName) {
+    var btns = document.querySelectorAll(".tab-btn");
+    var contents = document.querySelectorAll(".tab-content");
+    for (var i = 0; i < btns.length; i++) { btns[i].classList.remove("active"); }
+    for (var j = 0; j < contents.length; j++) { contents[j].classList.remove("active"); }
+
+    if (tabName === "hotdeal") {
+        document.getElementById("btn-hotdeal").classList.add("active");
+        document.getElementById("hotdeal-section").classList.add("active");
+    } else {
+        document.getElementById("btn-all").classList.add("active");
+        document.getElementById("all-section").classList.add("active");
+    }
 }
 </script>
+
 </body>
+
 </html>

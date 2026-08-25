@@ -1,7 +1,9 @@
 import {
     existsDuplicate,
-    addDuplicate
+    addDuplicate,
+    getDuplicates
 } from "../database/duplicateDB.js";
+
 
 function getTopic(candidate) {
 
@@ -77,6 +79,16 @@ export async function filterDuplicates(
     return results;
 }
 
+export async function getRecentDuplicates() {
+
+    return getDuplicates()
+        .map(item => ({
+            topic: item.topic,
+            channel: item.channel,
+            uploadedAt: item.uploaded_at
+        }));
+
+}
 
 /*
     실제 업로드 성공 후에만 호출
@@ -104,5 +116,6 @@ export async function remember(candidate) {
 export default {
     filterDuplicates,
     isDuplicate,
-    remember
+    remember,
+    getRecentDuplicates
 };

@@ -1,3 +1,21 @@
+import { updateShopPage } from "./hotdeal/shopUpdater.js";
+
+
+function formatTTSVoice(text) {
+    if (!text) return "";
+    return String(text)
+        .replace(/(\d+),(\d+)/g, "$1$2")         // 쉼표 제거 (18,000 -> 18000)
+        .replace(/(\d+)\.(\d+)/g, "$1점 $2");    // 소수점 띄어쓰기 교정 (0.6 -> 0점 6)
+}
+
+function formatSubtitle(text) {
+    if (!text) return "";
+    return String(text); // 자막은 원본 표기법 유지
+}
+
+
+
+
 import fs from "fs";
 import { createImage } from "./image.js";
 import { createTTS } from "./tts.js";
@@ -8,6 +26,8 @@ import { createMetadata } from "./metadata.js";
 import { uploadVideo } from "./upload.js";
 import { uploadInstagramReel } from "./instagram/instagramUploader.js";
 import { createShoppingDirector } from "./shopping/director.js";
+import { createHotdealDirector } from "./hotdeal/director.js";
+import { createHotdealCards } from "./hotdeal/card.js";
 import { createHistoryDirector } from "./history/director.js";
 import { createAnimalDirector } from "./animal/director.js";
 import { createAIDirector } from "./ai/director.js";
@@ -76,6 +96,7 @@ const product =
 step("DIRECTOR");
 
 let director;
+        let hotdealCards = [];
 
 const channelName =
     String(channel?.name || "")
@@ -84,13 +105,160 @@ const channelName =
 
 if (channelName === "shopping") {
 
-    director =
-        await createShoppingDirector(
-            product
-        );
+    /*
+     * SHOPPING 채널
+     *
+     * 일반 쇼핑
+     *   → 기존 Shopping Director
+     *
+     * HOTDEAL
+     *   → 상품정보
+     *   → HOTDEAL Director
+     *
+     * 채널 자체는 기존 SHOPPING을 그대로 사용한다.
+     */
 
-    for (const scene of director.scenes) {
-        scene.product = product;
+    if (
+        options?.hotdeal === true
+    ) {
+
+        const hotdealProducts =
+            Array.isArray(options?.products)
+                ? options.products
+                : [];
+
+        if (
+            hotdealProducts.length === 0
+        ) {
+            throw new Error(
+                "HOTDEAL: 상품 데이터가 없습니다."
+            );
+        }
+
+        /*
+         * HOTDEAL FLOW
+         *
+         * 상품정보
+         *   ↓
+         * 세로형 상품카드 생성
+         *   ↓
+         * 카드에 사용된 상품정보를 텍스트로 Director에 전달
+         *   ↓
+         * HOTDEAL Director가 영상 연출 결정
+         *
+         * Director에는 카드 이미지 자체를 전달하지 않는다.
+         * 카드에 들어간 상품정보만 전달한다.
+         */
+
+        hotdealCards = await createHotdealCards(hotdealProducts);
+
+        /*
+         * 카드 생성 결과를 Director 입력으로 사용한다.
+         *
+         * cardFile은 AI에게 전달하지 않는다.
+         * 상품정보 필드만 전달한다.
+         */
+        const directorProducts =
+            hotdealCards.map(card => ({
+                order: card.order,
+                productGroup: card.productGroup,
+                name: card.name,
+                price: card.price,
+                unitPrice: card.unitPrice,
+                unitLabel: card.unitLabel,
+                highestPrice: card.highestPrice,
+                dealRate: card.dealRate,
+                isHotdeal: card.isHotdeal,
+                sevenDayLow: card.sevenDayLow,
+                sevenDayStatus: card.sevenDayStatus,
+                thirtyDayLow: card.thirtyDayLow,
+                thirtyDayStatus: card.thirtyDayStatus,
+                image: card.image,
+                url: card.url
+            }));
+
+        director =
+            await createHotdealDirector(
+                directorProducts,
+                hotdealCards
+            );
+
+        /*
+         * HOTDEAL Director의 상품별 연출을
+         * 기존 TTS / SUBTITLE / VIDEO가 사용하는
+         * scenes 구조로 변환한다.
+         *
+         * 실제 화면은 이미 생성된 HOTDEAL CARD를 사용한다.
+         */
+
+        const hotdealScenes = [];
+
+        hotdealScenes.push({
+            type: "hook",
+            sceneType: "hook",
+            script: director.hook?.tts || "",
+            voice: formatTTSVoice(director.hook?.tts || ""),
+            subtitle: director.hook?.subtitle || "",
+            tts: director.hook?.tts || ""
+        });
+
+        for (
+            const item of director.products
+        ) {
+
+            hotdealScenes.push({
+                type: "global",
+                sceneType: "global",
+
+                product:
+                    item,
+
+                script:
+                    item.tts || "",
+
+                voice: formatTTSVoice(item.tts || ""),
+
+                subtitle:
+                    item.subtitle || "",
+
+                tts:
+                    item.tts || ""
+            });
+
+        }
+
+        hotdealScenes.push({
+            type: "ending",
+            sceneType: "ending",
+            script: director.ending?.tts || "",
+            voice: formatTTSVoice(director.ending?.tts || ""),
+            subtitle: director.ending?.subtitle || "",
+            tts: director.ending?.tts || ""
+        });
+
+        director.scenes =
+            hotdealScenes;
+
+        /*
+         * createVideo()가 사용할 수 있도록
+         * 카드 제작에 필요한 원본 상품정보를 보존한다.
+         */
+        director.hotdeal = true;
+        director.hotdealProducts =
+            hotdealProducts;
+
+    }
+    else {
+
+        director =
+            await createShoppingDirector(
+                product
+            );
+
+        for (const scene of director.scenes) {
+            scene.product = product;
+        }
+
     }
 
 }
@@ -216,14 +384,72 @@ step("IMAGE");
 
 let images = [];
 
-images =
-    await createImage(
-        director
+if (
+    channelName === "shopping" &&
+    options?.hotdeal === true
+) {
+    const cards = hotdealCards || [];
+    images = [];
+
+    if (cards.length > 0) {
+        // Scene 1: Hook (1번 카드 사용)
+        images.push({
+            scene: 1,
+            file: cards[0].cardFile,
+            mediaType: "image",
+            provider: "hotdeal-card",
+            score: 100
+        });
+
+        // Scene 2 ~ N+1: 상품 카드들 (각 순서 매칭: Scene 2 = 1번 카드, Scene 3 = 2번 카드)
+        cards.forEach((card, idx) => {
+            images.push({
+                scene: idx + 2,
+                file: card.cardFile,
+                mediaType: "image",
+                provider: "hotdeal-card",
+                score: 100
+            });
+        });
+
+        // Scene N+2: Ending (마지막 카드 사용)
+        const totalScenes = director?.scenes?.length || (cards.length + 2);
+        for (let s = cards.length + 2; s <= totalScenes; s++) {
+            images.push({
+                scene: s,
+                file: cards[cards.length - 1].cardFile,
+                mediaType: "image",
+                provider: "hotdeal-card",
+                score: 100
+            });
+        }
+    }
+
+    console.log("[HOTDEAL IMAGES MAPPED]", images.map(img => ({ scene: img.scene, file: img.file.split("/").pop() })));
+
+    success(
+        `HOTDEAL CARD ${images.length}장`
     );
 
-success(
-    `IMAGE ${images.length}장`
-);
+}
+else {
+
+    /*
+     * 기존 IMAGE ENGINE
+     * 일반 Shopping / History / Animal / Science / AI
+     * 기존 동작 그대로 유지
+     */
+
+    images =
+        await createImage(
+            director
+        );
+
+    success(
+        `IMAGE ${images.length}장`
+    );
+
+}
 
 
 
@@ -267,7 +493,8 @@ const video =
     await createVideo(
         director,
         images,
-        voices
+        voices,
+        channelName
     );
 
 debug(video);
@@ -287,17 +514,13 @@ debug(video.file);
             */
 step("THUMBNAIL");
 
-const thumbnail =
-    await createThumbnail(
-        director,
-        images
-    );
+const thumbnail = {
+    file: null
+};
 
-success(
-    "THUMBNAIL 완료"
+debug(
+    "THUMBNAIL DISABLED"
 );
-
-debug(thumbnail.file);
 
 
             /*
@@ -328,6 +551,28 @@ const metadata =
         }
     );
 
+/*
+ * HOTDEAL 전용 쿠팡 파트너스 고지
+ *
+ * 일반 영상에는 절대 붙이지 않는다.
+ */
+if (options?.hotdeal === true) {
+
+    const coupangNotice =
+        "※ 이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.";
+
+    const currentDescription =
+        String(metadata?.description || "").trim();
+
+    if (!currentDescription.includes("쿠팡 파트너스 활동의 일환")) {
+
+        metadata.description =
+            currentDescription
+                ? `${currentDescription}\n\n${coupangNotice}`
+                : coupangNotice;
+    }
+}
+
 success(
     "METADATA 완료"
 );
@@ -353,13 +598,6 @@ if(!fs.existsSync(video.file)){
 
 }
 
-if(!fs.existsSync(thumbnail.file)){
-
-    throw new Error(
-        "썸네일이 없습니다."
-    );
-
-}
 
 let uploadResult;
 
@@ -371,7 +609,7 @@ try {
             metadata,
             channel,
             topic,
-            thumbnail.file
+            null
         );
 
 }
@@ -630,3 +868,8 @@ return {
 }
 
 
+
+
+if (typeof products !== "undefined" && Array.isArray(products)) {
+    await updateShopPage(products);
+}

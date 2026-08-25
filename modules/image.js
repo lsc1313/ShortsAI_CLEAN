@@ -3,7 +3,12 @@ import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
 import { providers } from "./image/provider.js";
+import { searchVideo } from "./image/videoSearch.js";
 import { searchImage } from "./image/search.js";
+import {
+    selectBestMedia
+} from "./ai/reviewerAI.js";
+import { downloadVideo } from "./video/download.js";
 import { downloadImage } from "./image/download.js";
 import {
     ensureCache,
@@ -30,8 +35,10 @@ export async function createImage(director){
 
     ensureDir();
 
-const script =
-    director.scenes;
+    ensureCache();
+
+    const script =
+        director.scenes;
 
 const images = [];
     const usedUrls = new Set();
@@ -170,35 +177,216 @@ keywords.sort(
 const imageLimit = item.imageLimit || 1;
 
 let imageNo = 1;
+let reviewAttempts = 0;
+
+const MAX_REVIEW_ATTEMPTS = 5;
 
 for(const keyword of keywords){
 
     if(imageNo > imageLimit){
-
         break;
-
     }
 
-try{
-    const cache = cacheFile(keyword);
+    if(reviewAttempts >= MAX_REVIEW_ATTEMPTS){
+        break;
+    }
 
-    if(fs.existsSync(cache)){
+    reviewAttempts++;
 
-        const file = path.join(
+    debug(
+        `[IMAGE] Scene ${sceneNo} REVIEW ATTEMPT ${reviewAttempts}/${MAX_REVIEW_ATTEMPTS} : ${keyword}`
+    );
 
+    try{
+
+        const cache =
+            cacheFile(keyword);
+
+const imageResults =
+    await searchImage(
+        keyword,
+        item,
+        usedUrls
+    );
+
+const videoResults =
+    await searchVideo(
+        keyword,
+        item,
+        usedUrls
+    );
+
+const imageCandidates =
+    Array.isArray(imageResults)
+        ? imageResults
+        : imageResults
+            ? [imageResults]
+            : [];
+
+const videoCandidates =
+    Array.isArray(videoResults)
+        ? videoResults
+        : videoResults
+            ? [videoResults]
+            : [];
+
+for(const candidate of imageCandidates){
+    candidate.mediaType = "image";
+}
+
+for(const candidate of videoCandidates){
+    candidate.mediaType = "video";
+}
+
+const mediaCandidates = [
+    ...imageCandidates,
+    ...videoCandidates
+]
+.filter(
+    candidate =>
+        candidate?.url &&
+        !usedUrls.has(candidate.url)
+);
+
+debug(
+    `[MEDIA COMPETITION] Scene ${sceneNo}`,
+    `IMAGE_CANDIDATES=${imageCandidates.length}`,
+    `VIDEO_CANDIDATES=${videoCandidates.length}`,
+    `TOTAL=${mediaCandidates.length}`
+);
+
+const result =
+    selectBestMedia(
+        mediaCandidates
+    );
+
+console.log(
+    `[MEDIA WINNER] Scene ${sceneNo}`,
+    `TYPE=${result?.mediaType || "NONE"}`,
+    `PROVIDER=${result?.provider || "NONE"}`,
+    `SCORE=${result?.score || 0}`,
+    `URL=${result?.url ? "YES" : "NO"}`
+);
+
+if(!result){
+    debug(
+        `[IMAGE] Scene ${sceneNo} IMAGE+VIDEO REVIEW FAIL ${reviewAttempts}/${MAX_REVIEW_ATTEMPTS} : ${keyword}`
+    );
+    continue;
+}
+
+result.mediaType =
+    result.mediaType || "image";
+
+        result.subject =
+            item.subject || "";
+
+        result.coreSubject =
+            item.coreSubject || "";
+
+        result.searchName =
+            item.searchName || "";
+
+        result.category =
+            item.category || "";
+
+        result.searchSubject =
+            item.searchSubject || "";
+
+        result.searchHint =
+            item.searchHint || "";
+
+        result.sceneType =
+            item.sceneType || "global";
+
+        if(
+            usedUrls.has(result.url)
+        ){
+
+            debug(
+                `중복 이미지 : ${keyword}`
+            );
+
+            continue;
+        }
+
+        usedUrls.add(
+            result.url
+        );
+
+let file;
+
+console.log(
+    `[MEDIA DOWNLOAD] Scene ${sceneNo}`,
+    `TYPE=${result.mediaType}`,
+    `PROVIDER=${result.provider}`,
+    `SCORE=${result.score || 0}`
+);
+
+if(
+    result.mediaType === "video"
+){
+
+    file =
+        path.join(
+            "media/video",
+            `scene_${sceneNo}_stock.mp4`
+        );
+
+    await downloadVideo(
+        result.url,
+        file
+    );
+
+}
+else{
+
+    file =
+        path.join(
             IMAGE_DIR,
-
             `scene_${sceneNo}_${imageNo}.jpg`
-
         );
 
-        fs.copyFileSync(
+    await downloadImage(
+        result.url,
+        file
+    );
 
-            cache,
+}
 
-            file
+if(
+    !fs.existsSync(file)
+){
+    continue;
+}
 
-        );
+const size =
+    fs.statSync(file).size;
+
+const minimumSize =
+    result.mediaType === "video"
+        ? 10000
+        : 5000;
+
+if(
+    size < minimumSize
+){
+
+    fs.unlinkSync(file);
+
+    continue;
+}
+
+if(
+    result.mediaType !== "video"
+){
+
+    fs.copyFileSync(
+        file,
+        cache
+    );
+
+}
 
         images.push({
 
@@ -210,289 +398,52 @@ try{
 
             subject:item.subject,
 
+            coreSubject:item.coreSubject,
+
             searchSubject:item.searchSubject,
 
             searchHint:item.searchHint,
 
             file,
 
-            provider:"CACHE",
+            provider:result.provider,
 
-            score:100
+            score:result.score || 0,
+
+mediaType:
+    result.mediaType || "image",
+
+            width:result.width,
+
+            height:result.height,
+
+            imageType:"fallback"
 
         });
 
-debug(
-    `[CACHE] ${keyword}`
-);
-
         imageNo++;
-
-        continue;
 
     }
 
-const result = await searchImage(
-    keyword,
-    item
-);
+    catch(e){
 
-if(result){
+        debug(
+            `[IMAGE] Scene ${sceneNo} REVIEW ERROR ${reviewAttempts}/${MAX_REVIEW_ATTEMPTS} : ${e.message}`
+        );
 
-    result.subject =
-        item.subject || "";
-
-    result.searchName =
-        item.searchName || "";
-
-    result.category =
-        item.category || "";
-
-    result.searchSubject =
-        item.searchSubject || "";
-
-    result.searchHint =
-        item.searchHint || "";
-
-    result.sceneType =
-        item.sceneType || "global";
+    }
 
 }
 
-                if(!result){
+if(
+    imageNo === 1
+){
 
-debug(
-    `검색 실패 : ${keyword}`
-);
-
-                    continue;
-
-                }
-
-                if(usedUrls.has(result.url)){
-
-debug(
-    `중복 이미지 : ${keyword}`
-);
-
-                    continue;
-
-                }
-
-                usedUrls.add(result.url);
-
-                const file = path.join(
-
-                    IMAGE_DIR,
-
-                    `scene_${sceneNo}_${imageNo}.jpg`
-
-                );
-
-                await downloadImage(
-                    result.url,
-                    file
-                );
-
-                if(!fs.existsSync(file)){
-                    continue;
-                }
-
-                const size = fs.statSync(file).size;
-
-                if(size<5000){
-
-                    fs.unlinkSync(file);
-
-                    continue;
-
-                }
-
-                fs.copyFileSync(
-                    file,
-                    cache
-                );
-
-images.push({
-
-    scene:sceneNo,
-
-    sceneType:item.sceneType,
-
-    keyword,
-
-    subject:item.subject,
-
-    searchSubject:item.searchSubject,
-
-    searchHint:item.searchHint,
-
-    file,
-
-    provider:result.provider,
-
-    score:result.score||0,
-
-    width:result.width,
-
-    height:result.height,
-
-    imageType:"fallback"
-
-});
-
-imageNo++;
-
-if(imageNo > imageLimit){
-
-    break;
+    throw new Error(
+        `[IMAGE] Scene ${sceneNo} 이미지 Reviewer 최종 실패 : coreSubject=${item.coreSubject || ""}, 최대 ${MAX_REVIEW_ATTEMPTS}회 시도`
+    );
 
 }
-
-            }
-
-            catch(e){
-
-debug(
-    "검색 오류:",
-    e.message
-);
-
-            }
-
-        }
-
-        if(
-
-            !images.some(
-
-                img=>img.scene===sceneNo
-
-            )
-
-        ){
-
-
-let fallback = "";
-
-if(item.subject){
-
-    fallback = item.subject;
-
-}
-else if(item.imageQueries?.length){
-
-    fallback = item.imageQueries[0];
-
-}
-else if(item.topic){
-
-    fallback = item.topic;
-
-}
-else{
-
-    fallback = "nature";
-
-}
-
-fallback = normalizeKeyword(fallback);
-
-            try{
-
-const result = await searchImage(
-    fallback,
-    item
-);
-
-if(result){
-
-    result.subject =
-        item.subject || "";
-
-    result.searchName =
-        item.searchName || "";
-
-    result.category =
-        item.category || "";
-
-    result.searchSubject =
-        item.searchSubject || "";
-
-    result.searchHint =
-        item.searchHint || "";
-
-}
-
-                if(result){
-
-                    const file = path.join(
-
-                        IMAGE_DIR,
-
-                        `scene_${sceneNo}_fallback.jpg`
-
-                    );
-
-                    await downloadImage(
-
-                        result.url,
-
-                        file
-
-                    );
-
-                    if(
-
-                        fs.existsSync(file) &&
-
-                        fs.statSync(file).size>5000
-
-                    ){
-
-images.push({
-
-    scene:sceneNo,
-
-    sceneType:
-        item.sceneType,
-
-    keyword:fallback,
-
-    subject:
-        item.subject,
-
-    searchSubject:
-        item.searchSubject,
-
-    searchHint:
-        item.searchHint,
-
-    file,
-
-    provider:
-        result.provider,
-
-    score:
-        result.score||0
-
-});
-
-                    }
-
-                }
-
-            }
-
-            catch(e){
-
-debug(
-    `Fallback 실패 : ${e.message}`
-);
-
-            }
-
-        }
 
         sceneNo++;
 

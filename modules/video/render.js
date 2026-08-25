@@ -4,26 +4,175 @@ import { execSync } from "child_process";
 
 import { VIDEO_DIR } from "./directory.js";
 
+function selectRandomBGM(channel = "") {
+
+    const channelName =
+        String(channel || "")
+            .trim()
+            .toLowerCase();
+
+    if (!channelName) {
+        return null;
+    }
+
+    const bgmDir =
+        path.resolve(
+            "media",
+            "bgm",
+            channelName
+        );
+
+    if (!fs.existsSync(bgmDir)) {
+        console.log(
+            `[BGM] 폴더 없음 : ${bgmDir}`
+        );
+
+        return null;
+    }
+
+    const files =
+        fs.readdirSync(
+            bgmDir
+        )
+        .filter(
+            file =>
+                /\.(mp3|wav|m4a)$/i.test(file)
+        );
+
+    if (files.length === 0) {
+
+        console.log(
+            `[BGM] 파일 없음 : ${bgmDir}`
+        );
+
+        return null;
+    }
+
+    const selected =
+        files[
+            Math.floor(
+                Math.random() * files.length
+            )
+        ];
+
+    const bgm =
+        path.join(
+            bgmDir,
+            selected
+        );
+
+    console.log(
+        `[BGM] 채널 : ${channelName}`
+    );
+
+    console.log(
+        `[BGM] 선택 : ${selected}`
+    );
+
+    return bgm;
+}
+
+
 export function renderVideo(
     merged,
-    audio
+    audio,
+    channel = ""
 ){
 
-    const speedVideo = path.join(
-        VIDEO_DIR,
-        "shorts_speed.mp4"
-    );
+    const mixedAudio =
+        path.join(
+            VIDEO_DIR,
+            "shorts_mixed_audio.m4a"
+        );
 
-    const finalVideo = path.join(
-        VIDEO_DIR,
-        "shorts_voice.mp4"
-    );
+    const speedVideo =
+        path.join(
+            VIDEO_DIR,
+            "shorts_speed.mp4"
+        );
+
+    const finalVideo =
+        path.join(
+            VIDEO_DIR,
+            "shorts_voice.mp4"
+        );
+
+
+    /*
+    =====================================================
+    BGM 선택
+    =====================================================
+    */
+
+    const bgm =
+        selectRandomBGM(
+            channel
+        );
+
+
+    /*
+    =====================================================
+    VOICE + BGM MIX
+    BGM = 8%
+    =====================================================
+    */
+
+    if (bgm) {
+
+        console.log(
+            "[BGM] 믹싱 시작 : 50%"
+        );
+
+        execSync(
+
+`ffmpeg -y \
+-i "${audio}" \
+-stream_loop -1 \
+-i "${bgm}" \
+-filter_complex "[1:a]volume=0.50[bgm];[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.95[a]" \
+-map "[a]" \
+-c:a aac \
+-b:a 192k \
+-shortest \
+"${mixedAudio}"`,
+
+            {
+                stdio: "ignore"
+            }
+
+        );
+
+        console.log(
+            "[BGM] 믹싱 완료"
+        );
+
+    }
+
+    else {
+
+        console.log(
+            "[BGM] 사용 가능한 BGM 없음"
+        );
+
+        fs.copyFileSync(
+            audio,
+            mixedAudio
+        );
+
+    }
+
+
+    /*
+    =====================================================
+    VIDEO + MIXED AUDIO
+    =====================================================
+    */
 
     execSync(
 
 `ffmpeg -y \
 -i "${merged}" \
--i "${audio}" \
+-i "${mixedAudio}" \
 -map 0:v \
 -map 1:a \
 -c:v libx264 \
@@ -31,11 +180,18 @@ export function renderVideo(
 -shortest \
 "${finalVideo}"`,
 
-{
-    stdio:"ignore"
-}
+        {
+            stdio: "ignore"
+        }
 
     );
+
+
+    /*
+    =====================================================
+    기존 1.10배속
+    =====================================================
+    */
 
     execSync(
 
@@ -51,20 +207,34 @@ export function renderVideo(
 -shortest \
 "${speedVideo}"`,
 
-{
-    stdio:"ignore"
-}
+        {
+            stdio: "ignore"
+        }
 
     );
 
-    const subtitle = "media/subtitle/shorts.ass";
 
-    const output = path.join(
-        VIDEO_DIR,
-        "shorts_final.mp4"
-    );
+    /*
+    =====================================================
+    기존 자막
+    =====================================================
+    */
 
-    if(fs.existsSync(subtitle)){
+    const subtitle =
+        "media/subtitle/shorts.ass";
+
+    const output =
+        path.join(
+            VIDEO_DIR,
+            "shorts_final.mp4"
+        );
+
+
+    if (
+        fs.existsSync(
+            subtitle
+        )
+    ) {
 
         execSync(
 
@@ -74,23 +244,15 @@ export function renderVideo(
 -c:a copy \
 "${output}"`,
 
-{
-    stdio:"ignore"
-}
+            {
+                stdio: "ignore"
+            }
 
         );
 
     }
 
-    else{
-
-        /*
-        ASS가 없는 경우에도
-        이미 1.10배속이 적용된 영상을 사용한다.
-
-        finalVideo = 배속 전
-        speedVideo = 영상/음성 1.10배속 완료
-        */
+    else {
 
         fs.copyFileSync(
             speedVideo,
@@ -98,6 +260,7 @@ export function renderVideo(
         );
 
     }
+
 
     return output;
 

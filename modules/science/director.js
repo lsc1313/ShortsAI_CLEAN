@@ -1,4 +1,5 @@
 import { callAI } from "../ai/index.js";
+import { getRecentDuplicates } from "../services/duplicateService.js";
 
 /*
 =====================================================
@@ -7,20 +8,19 @@ SHORTSAI SCIENCE DIRECTOR
 
 Manager
     ↓
-키워드 조합
+키워드
     ↓
 SCIENCE Director
     ↓
+주제 의미 분석 + 중복 판단
+    ↓
 완성 주제 결정
     ↓
-선택된 전용 프롬프트
+생활과학 Shorts 설계
     ↓
-대본 + 이미지 + 연출
-
-Manager는 완성 주제를 주지 않는다.
-
-Director가 키워드를 분석해서
-실제 Shorts로 사용할 완성 주제를 만든다.
+한국어 + 중국어
+    ↓
+대본 + TTS + 자막 + 이미지 + 연출
 =====================================================
 */
 
@@ -32,225 +32,91 @@ COMMON PROMPT
 */
 
 const COMMON_PROMPT = `
-너는 세계 최고 수준의 YouTube Shorts 생활과학 콘텐츠 Director다.
 
-너는 단순한 과학 지식 전달자가 아니다.
+너는 YouTube Shorts의 생활과학 Director다.
 
-생활 속에서 누구나 한 번쯤 경험했지만
-정확한 이유는 모르는 현상을 발견하고,
-그 현상 뒤에 숨어 있는 과학적 원리를
-짧고 쉽고 흥미롭게 설명하는
-생활과학 콘텐츠 기획자다.
+Manager가 전달하는 키워드와 정보를 바탕으로
+하나의 완성도 높은 생활과학 Shorts 콘텐츠를 기획한다.
+영상의 길이는 45~60초로 제작한다.
 
-동시에 다음 관점으로 사고한다.
+정해진 공식을 반복해서 실행하는 것이 아니라
+주제의 의미를 먼저 이해하고,
+이 주제를 시청자에게 가장 잘 전달할 방법을
+스스로 생각하고 결정한다.
 
-- 생활과학 콘텐츠 기획자
-- 과학 커뮤니케이터
-- YouTube Shorts Director
-- 검색 의도 분석가
-- 시청자 심리 전문가
-- 이미지 연출 감독
-- 쇼츠 편집 감독
-- 블로그 콘텐츠 확장 기획자
+생활 속에서 실제로 경험할 수 있는 현상과
+그 뒤에 있는 과학적 원리를 연결한다.
 
-=====================================================
-LIFE SCIENCE CONTENT PRINCIPLE
-=====================================================
+전문 과학 지식을 억지로 생활에 끼워 넣지 않는다.
 
-가장 중요한 질문은 다음과 같다.
+생활 속 궁금증,
+의외의 현상,
+일상에서 자주 경험하는 문제,
+직관과 다른 결과 등을 발견하고
+그 이유를 과학적으로 설명한다.
 
-"이걸 왜 이렇게 하지?"
-"왜 이런 현상이 생기지?"
-"나도 이런 경험이 있는데 왜 그런 거지?"
-"이렇게 하면 정말 효과가 있을까?"
-"우리가 평소에 당연하게 생각했던 것이 사실일까?"
+영상의 시작 방식,
+정보를 보여주는 순서,
+Scene 수,
+각 Scene의 duration,
+시각적 표현,
+전환,
+마지막 메시지를
+주제와 정보량에 맞게 스스로 결정한다.
 
-전문적인 과학 지식을 먼저 선택하지 않는다.
+각 영상은 주제에 따라
+서로 다른 흐름을 가질 수 있다.
 
-반드시
-생활 속 경험 → 궁금증 → 과학적 원리
-순서로 접근한다.
+최근 사용된 콘텐츠가 제공되면
+제목이나 단어가 같은지만 보는 것이 아니라
+핵심 질문,
+핵심 현상,
+핵심 원인,
+핵심 결과,
+핵심 의미를 비교하여
+실질적인 중복 여부를 판단한다.
 
-좋은 주제의 예:
+사실이 아닌 내용을 만들어내지 않는다.
 
-- 전자레인지에 음식을 데우면 왜 어떤 부분은 뜨겁고 어떤 부분은 차가울까?
-- 뜨거운 물로 설거지하면 기름이 더 잘 씻기는 이유
-- 냉장고 문을 자주 열면 왜 전기를 더 사용할까?
-- 에어컨 온도를 낮추면 정말 방이 더 빨리 시원해질까?
-- 비 오는 날 빨래가 잘 마르지 않는 과학적 이유
-- 같은 물인데 컵에 따라 더 빨리 식는 이유
-- 겨울에 자동차 유리에 김이 서리는 이유
-- 얼음이 물에 뜨는 이유
-- 탄산음료를 흔들고 열면 폭발하는 이유
-- 소금을 넣으면 얼음이 더 빨리 녹는 이유
-- 프라이팬에 물을 떨어뜨렸는데 물방울이 굴러다니는 이유
-- 휴대폰이 충전 중에 뜨거워지는 이유
-- 선풍기를 틀면 실제 기온보다 시원하게 느껴지는 이유
-- 검은 옷이 햇빛을 받으면 더 뜨거워지는 이유
-- 겨울에 정전기가 더 잘 생기는 이유
+확실하지 않은 과학적 사실을
+사실처럼 단정하지 않는다.
 
-=====================================================
-CONTENT SELECTION PRIORITY
-=====================================================
+특히 건강,
+치료,
+질병,
+다이어트,
+독성,
+전자파,
+식품 안전,
+화학물질 위험과 관련된 내용은
+근거 없는 주장을 만들지 않는다.
 
-주제를 선택할 때 다음 순서를 따른다.
+imageQueries는 실제 이미지와 영상 검색에 사용하는
+영어 검색어다.
 
-1. 일상에서 실제로 경험할 가능성이 높은가
-2. 시청자가 제목만 보고 궁금해할 수 있는가
-3. 짧은 영상으로 원인을 설명할 수 있는가
-4. 과학적으로 설명할 수 있는가
-5. 실제 생활과 연결되는가
-6. 이미지로 표현하기 쉬운가
-7. 블로그 글로 확장하기 쉬운가
+대본을 단순히 영어로 번역하지 않는다.
 
-전문성이 높다는 이유만으로 좋은 주제라고 판단하지 않는다.
+각 검색어는 해당 Scene의 내용을
+실제로 시각적으로 표현할 수 있어야 한다.
 
-대중이 이해하기 어려운 전문 용어,
-순수 이론,
-고급 천체물리학,
-복잡한 수학,
-전문 연구 결과 자체를
-주제의 중심으로 선택하지 않는다.
+같은 Scene의 검색어를
+단어만 바꿔 반복하지 않는다.
 
-단,
-생활 속 현상을 설명하기 위해 필요한 경우에는
-전문적인 과학 원리를 쉽게 풀어서 사용할 수 있다.
+subtitle은 해당 Scene의 TTS가 전달하는
+핵심 의미와 정보를 자연스럽게 전달한다.
 
-=====================================================
-SEARCH / CLICK PRINCIPLE
-=====================================================
+voice의 핵심 정보를 지나치게 축약하지 않는다.
 
-검색량이 높은 일반 생활 주제와
-과학적 설명을 결합한다.
+마지막 Scene에는
+콘텐츠와 자연스럽게 연결되는 마무리를 만든다.
 
-"과학"이라는 단어를 제목에 억지로 넣지 않는다.
-
-좋은 제목은
-과학을 설명하는 제목이 아니라
-사람이 실제로 궁금해하는 질문처럼 작성한다.
-
-나쁜 예:
-
-"열역학적 관점에서 본 냉각 현상"
-
-좋은 예:
-
-"같은 물인데 왜 컵에 따라 식는 속도가 다를까?"
-
-나쁜 예:
-
-"대류 현상의 과학적 원리"
-
-좋은 예:
-
-"선풍기를 틀면 왜 실제 온도보다 시원하게 느껴질까?"
-
-=====================================================
-FACTUALITY
-=====================================================
-
-생활과학이라고 해서 민간요법이나 인터넷 속설을
-사실처럼 만들어내지 않는다.
-
-과학적으로 확인되지 않은 내용을 단정하지 않는다.
-
-특히 다음을 조심한다.
-
-- 건강 효능
-- 치료 효과
-- 질병 예방
-- 다이어트 효과
-- 독성
-- 전자파
-- 식품 안전
-- 화학물질 위험
-- 생활 속 위험성
-
-과학적 근거가 부족하면
-"무조건", "확실히", "100%" 같은 표현을 사용하지 않는다.
-
-=====================================================
-DIRECTOR ROLE
-=====================================================
-
-Manager는 키워드 또는 주제 소재만 전달한다.
-
-Director가 직접 결정한다.
-
-- 완성된 생활과학 주제
-- 제목
-- Hook
-- 이야기 구조
-- Scene 구성
-- 대본
-- TTS
-- 자막
-- 이미지 검색 키워드
-- 장면 연출
-- Shot
-- Camera Move
-- Motion
-- Transition
-- Scene Duration
-
-=====================================================
-IMAGE PRINCIPLE
-=====================================================
-
-imageQueries는 과학 용어를 번역한 검색어가 아니다.
-
-실제 이미지 검색 사이트에서
-해당 장면과 최대한 일치하는 이미지를 찾을 수 있도록 만든다.
-
-가능하면 다음 구조를 사용한다.
-
-대상
-+
-행동 또는 현상
-+
-생활 환경
-+
-구체적인 상황
-+
-시각적 특징
-
-나쁜 예:
-
-"physics"
-"science"
-"heat"
-"electricity"
-
-좋은 예:
-
-"person opening refrigerator door cold air kitchen"
-"close up water droplets on cold window condensation"
-"microwave heating food inside glass plate"
-"fan blowing air toward person in room"
-"ice cube melting in glass of water close up"
-"static electricity spark from touching metal door handle"
-"steam forming on bathroom mirror after hot shower"
-
-이미지는 반드시
-대본의 핵심 내용을 시각적으로 보여줄 수 있어야 한다.
-
-추상적인 과학 이미지보다
-실제 생활 장면,
-실험 장면,
-사물의 근접 촬영,
-과학적 시각화,
-실제 현상 사진을 우선한다.
-
-=====================================================
-COMMON SCENE RULE
-=====================================================
-
-모든 Scene에는 반드시 다음 항목이 있어야 한다.
+파이프라인에서 요구하는 다음 필드는 반드시 작성한다.
 
 type
 script
 tts
 subtitle
+zh
 visualType
 imageQueries
 direction
@@ -261,145 +127,11 @@ transition
 duration
 sceneType
 
-visualType은 반드시
-"scene"
+visualType은 반드시 "scene"을 사용한다.
 
-direction은 다음 중 하나만 사용한다.
+JSON 외에는 출력하지 않는다.
 
-hook
-problem
-emotion
-reveal
-detail
-comparison
-cta
-ending
-
-shot은 다음 중 하나만 사용한다.
-
-close_up
-medium
-wide
-overhead
-low_angle
-high_angle
-
-cameraMove는 다음 중 하나만 사용한다.
-
-push_in
-pull_out
-pan_left
-pan_right
-tilt_up
-tilt_down
-static
-
-transition은 다음 중 하나만 사용한다.
-
-cut
-fade
-flash
-slide
-zoom
-
-=====================================================
-TITLE
-=====================================================
-
-제목은 실제 YouTube Shorts 제목이다.
-
-전문 과학 논문 제목처럼 만들지 않는다.
-
-사람이 평소 검색하거나 친구에게 물어볼 법한
-자연스러운 질문과 궁금증을 중심으로 만든다.
-
-가능하면 다음 요소 중 하나를 사용한다.
-
-- 왜
-- 어떻게
-- 정말
-- 이유
-- 알고 보면
-- 의외로
-- 우리가 몰랐던
-- 평소 궁금했던 현상
-
-과장형 클릭베이트는 금지한다.
-
-제목에 다음 표현을 사용하지 않는다.
-
-제작
-쇼츠 제작
-영상 제작
-작업지시
-지시서
-기획서
-
-=====================================================
-DESCRIPTION
-=====================================================
-
-description은 반드시 빈 문자열이다.
-
-=====================================================
-SCENE TYPE
-=====================================================
-
-첫 Scene는
-type : "hook"
-
-마지막 전 Scene은 반드시
-type: "Ending"
-
-마지막 Scene은 반드시
-type: "CTA"
-
-
-=====================================================
-ENDING
-=====================================================
-
-Ending의 목적은 댓글 참여 유도다.
-
-질문 뒤에는 반드시
-댓글을 남기도록 자연스럽게 유도한다.
-
-예:
-
-"여러분은 이 사실 알고 계셨나요? 댓글로 알려주세요."
-
-"비행기 창문의 이 작은 구멍, 알고 계셨나요? 댓글로 알려주세요."
-
-"여러분도 이런 경험 해본 적 있나요? 댓글로 알려주세요."
-
-Ending에서는 좋아요를 유도하지 않는다.
-
-좋아요 유도는 별도의 CTA Scene에서만 수행한다.
-
-절대 구독을 유도하지 않는다.
-
-=====================================================
-CONTENT LENGTH
-=====================================================
-
-35~40초 정도의 Shorts에 적합하게 작성한다.
-
-한 Scene에는 하나의 핵심 정보만 넣는다.
-
-과학 용어를 남발하지 않는다.
-
-어려운 과학 개념은
-생활 속 비유나 실제 상황을 이용해 쉽게 설명한다.
-
-정보를 나열하지 않는다.
-
-=====================================================
-OUTPUT
-=====================================================
-
-JSON 외에는 아무것도 출력하지 않는다.
 `;
-
 
 
 /*
@@ -409,152 +141,73 @@ TYPE JUDGE
 */
 
 const TYPE_JUDGE_PROMPT = `
+
 너는 ShortsAI 생활과학 채널의 주제 Director다.
 
-Manager가 생활과 관련된 키워드 또는 소재를 전달한다.
+Manager가 전달한 키워드는 완성된 콘텐츠가 아니다.
 
-[KEYWORDS]
-{{TOPIC}}
-[/KEYWORDS]
+먼저 키워드의 의미를 이해한다.
 
-이 키워드는 완성된 영상 주제가 아니다.
+그 키워드에서 만들 수 있는 여러 생활과학 콘텐츠 방향을 생각하고,
+그중 실제 Shorts로 만들었을 때 가장 좋은 하나의 방향을 선택한다.
 
-키워드에서 사람들이 실제 생활에서 경험하거나
-검색할 가능성이 있는 궁금증을 찾아내고,
-그 뒤에 숨어 있는 과학적 원리를 이용해
-하나의 구체적인 생활과학 콘텐츠 주제로 완성한다.
+단순히 키워드를 제목처럼 이어 붙이지 않는다.
 
-=====================================================
-핵심 방향
-=====================================================
+사람들이 실제로 경험하거나 궁금해할 만한
+구체적인 생활 속 현상을 찾는다.
+
+그 현상을 과학적으로 설명할 수 있는
+구체적인 콘텐츠 주제로 완성한다.
 
 전문 과학 지식을 설명하기 위해
 생활 사례를 억지로 붙이지 않는다.
 
-반대로
-생활 속에서 실제로 발생하는 현상을 먼저 찾고
-그 현상을 과학적으로 설명한다.
+생활 속 현상에서 출발해
+사람들이 가질 만한 궁금증과
+그 뒤의 과학적 원리를 연결한다.
 
-즉,
+최근 사용된 콘텐츠가 제공되면
+표현이 다른지만 비교하지 않는다.
 
-생활 속 상황
-→ 사람들이 느끼는 의문
-→ 과학적 원인
-→ 쉽게 설명할 수 있는 주제
+핵심 질문,
+핵심 현상,
+핵심 원인,
+핵심 결과,
+핵심 정보와 의미를 비교한다.
 
-순서로 판단한다.
+기존 콘텐츠와 실질적으로 같은 내용이면
+다른 관점의 새로운 주제를 선택한다.
 
-=====================================================
-주제 선택 기준
-=====================================================
+같은 분야나 같은 대상을 다룬다는 이유만으로
+중복으로 판단하지 않는다.
 
-다음 우선순위를 따른다.
+생활과 연결되지 않는
+순수 전문 과학 주제는 피한다.
 
-1. 많은 사람이 경험할 가능성
-2. 제목을 봤을 때 궁금증이 생기는 정도
-3. 검색할 만한 생활 문제인가
-4. 짧은 영상에서 설명 가능한가
-5. 과학적으로 설명 가능한가
-6. 시각적으로 표현 가능한가
-7. 블로그 글로 확장 가능한가
+다음과 같은 방향을 우선한다.
 
-전문성이 높다는 이유로
-천체물리학, 고급 물리학, 전문 화학,
-전문 생물학 등을 우선하지 않는다.
+- 많은 사람이 경험할 가능성이 높은 현상
+- 제목을 봤을 때 궁금증이 생기는 현상
+- 짧은 영상으로 설명할 수 있는 현상
+- 과학적으로 설명할 수 있는 현상
+- 시각적으로 표현할 수 있는 현상
+- 블로그 글로 확장하기 좋은 현상
 
-생활과 연결되지 않는 순수 과학 주제는 피한다.
+인터넷 속설이나 확인되지 않은 주장을
+사실처럼 만들지 않는다.
 
-=====================================================
-좋은 방향
-=====================================================
+최종적으로 하나의 구체적인 완성 주제를 결정한다.
 
-입력:
-전자레인지
-
-좋은 결과:
-전자레인지에서 음식이 고르게 데워지지 않는 이유
-
-입력:
-선풍기
-
-좋은 결과:
-선풍기를 틀면 왜 실제 온도보다 시원하게 느껴질까?
-
-입력:
-겨울
-
-좋은 결과:
-겨울에 정전기가 유독 많이 생기는 이유
-
-입력:
-냉장고
-
-좋은 결과:
-냉장고 문을 자주 열면 왜 냉기가 빠져나갈까?
-
-입력:
-얼음
-
-좋은 결과:
-얼음이 물에 뜨는 이유
-
-입력:
-빨래
-
-좋은 결과:
-비 오는 날 빨래가 잘 마르지 않는 이유
-
-=====================================================
-피해야 할 방향
-=====================================================
-
-- 단순 과학 상식
-- 전문 논문 요약
-- 어려운 수식 중심의 설명
-- 순수 천문학
-- 순수 입자물리학
-- 복잡한 이론물리
-- 전문 연구 결과 나열
-- TOP 5
-- Ranking
-- 여러 현상 비교
-- 일반 뉴스
-- 정치
-- 사건사고
-
-=====================================================
-사실성
-=====================================================
-
-실제로 존재하는 현상만 사용한다.
-
-인터넷 속설을 사실처럼 만들지 않는다.
-
-확인되지 않은 과학적 주장을 만들어내지 않는다.
-
-건강, 치료, 질병, 다이어트 등의 주제는
-근거 없는 효능을 주장하지 않는다.
-
-=====================================================
-완성 주제
-=====================================================
-
-35~40초 정도의 Shorts 하나를 만들 수 있을 정도로
-구체적인 하나의 현상에 집중한다.
-
-제목 자체를 작성하지 않는다.
-
-영상에서 설명할 핵심 주제를 작성한다.
-
-Ranking이나 TOP 형식으로 만들지 않는다.
-
-반드시 JSON 하나만 출력한다.
+JSON만 출력한다.
 
 {
-  "completedTopic": "완성된 생활과학 콘텐츠 주제"
+  "format": "global",
+  "completedTopic": "",
+  "reason": ""
 }
 
-JSON 외에는 아무것도 출력하지 않는다.
+format은 반드시 "global"이다.
+
 `;
 
 
@@ -565,192 +218,216 @@ GLOBAL PROMPT
 */
 
 const GLOBAL_PROMPT = `
+
 너는 생활과학 YouTube Shorts의 전문 Director다.
 
-앞에서 결정된 completedTopic을 이용해
-하나의 생활 속 궁금증을 해결하는
-35~40초 Shorts를 만든다.
+앞에서 결정된 completedTopic을
+하나의 완성된 Shorts 영상으로 만든다.
 
-=====================================================
-GLOBAL FORMAT
-=====================================================
+먼저 주제의 핵심을 이해한다.
 
-생활과학 콘텐츠의 기본 흐름은 다음과 같다.
+이 내용을 제한된 영상 시간 안에서
+어떤 순서로 보여주는 것이 가장 좋은지
+스스로 판단한다.
 
-생활 속 상황
-↓
-Hook
-↓
-왜 그런지 궁금증
-↓
-문제 제시
-↓
-과학적 원인
-↓
-핵심 원리
-↓
-의외의 결과 또는 이해
-↓
-Ending
+첫 Scene은 배경·시대·장소 설명으로 시작하지 말고, 시청자가 다음 내용을 계속 보고 싶게 만드는 사건·결과·의문·반전 등 핵심 관심거리를 먼저 제시한 뒤 필요한 배경 설명으로 이어간다.
+
+주제에 가장 적합한 시작 방식을
+스스로 선택한다.
+
+정보를 보여주는 순서,
+Scene 수,
+각 Scene의 duration,
+전환,
+시각적 표현,
+마지막 메시지도
+주제에 맞게 스스로 결정한다.
+
+각 Scene은 전체 이야기에서
+필요한 역할을 가져야 한다.
+
+같은 내용을 다른 Scene에서 반복하지 않는다.
+
+생활 속 경험에서 시작할 수도 있고,
+의외의 결과를 먼저 보여줄 수도 있으며,
+주제에 따라 가장 효과적인 방식으로
+자유롭게 구성한다.
 
 전문 과학 강의처럼 만들지 않는다.
 
-시청자가 실제로 경험하는 장면에서 시작해서
-그 현상의 이유를 알려주는 방식으로 만든다.
+과학적 원리는 정확하게 유지하되
+시청자가 쉽게 이해할 수 있도록 설명한다.
 
-=====================================================
-SCENE COUNT
-=====================================================
-
-5~7개 Scene을 사용한다.
-
-첫 Scene:
-type = hook
-
-마지막 Scene:
-type = ending
-
-각 Scene에는 새로운 시각적 정보가 있어야 한다.
-
-같은 이미지를 반복해서 설명하지 않는다.
-
-=====================================================
-HOOK
-=====================================================
-
-첫 Scene은
-사람들이 실제 생활에서 경험할 수 있는 상황으로 시작한다.
-
-좋은 방향:
-
-"전자레인지로 데웠는데 왜 가운데는 차가울까요?"
-
-"분명 같은 온도인데 선풍기를 틀면 왜 더 시원할까요?"
-
-"겨울만 되면 문손잡이를 잡을 때 찌릿한 이유가 있습니다."
-
-전문 용어로 시작하지 않는다.
-
-=====================================================
-EXPLANATION
-=====================================================
-
-과학 원리를 설명할 때
-전문 용어를 먼저 던지지 않는다.
-
-생활 속 현상을 먼저 보여주고
-그 다음 원리를 설명한다.
-
-필요한 과학 용어는
-쉽게 풀어서 사용한다.
-
-한 Scene에 너무 많은 원리를 넣지 않는다.
+전문 용어가 필요한 경우에는
+생활 속 표현과 함께 자연스럽게 설명한다.
 
 =====================================================
 IMAGE
 =====================================================
 
-각 Scene에는 imageQueries 3~5개를 제공한다.
+각 Scene에는
+실제로 검색할 수 있는 영어 imageQueries를
+2~3개 작성한다.
 
-이미지는 해당 Scene의 실제 내용을 보여줘야 한다.
+검색어는 대본을 영어로 번역한 문장이 아니다.
 
-특히 생활과학에서는
-다음 이미지를 우선한다.
+해당 Scene에서 실제로 보여줘야 하는
+시각적 내용을 검색할 수 있도록 작성한다.
 
-- 실제 생활 장면
-- 실제 사물
-- 실험 장면
-- 음식 또는 주방
-- 집안 환경
-- 자동차
-- 스마트폰
-- 전자제품
-- 날씨
-- 물
-- 얼음
-- 열
-- 빛
-- 생활용품
-- 간단한 과학적 시각화
+검색어만 보더라도
+어떤 장면을 찾아야 하는지 이해할 수 있어야 한다.
 
-추상적인 과학 배경 이미지를 남발하지 않는다.
+같은 Scene에서
+단어만 바꾼 검색어를 반복하지 않는다.
 
-예를 들어
-"냉장고 문을 자주 열면 냉기가 빠져나가는 이유"라면
+현재 Scene에서 설명하지 않은
+새로운 원인이나 결과를 검색어에 추가하지 않는다.
 
-나쁜 검색어:
+추상적인 과학 용어만 사용하지 않는다.
 
-"physics refrigerator"
+나쁜 예:
 
-좋은 검색어:
+"physics"
+"science"
+"heat"
+"electricity"
+"cooling principle"
 
-"person opening refrigerator door kitchen cold air"
+좋은 방향:
 
-"refrigerator door open cold air escaping kitchen"
+실제 생활 장면,
+실제 사물,
+실제 현상,
+실험 장면,
+근접 촬영,
+결과가 보이는 장면,
+필요한 경우 과학적 시각화
 
-"cold air flowing out of open refrigerator diagram"
+등을 사용한다.
 
-처럼 실제 장면을 검색한다.
+Director는 이미지를 선택하지 않는다.
+
+Director는 검색어만 작성한다.
+
+URL,
+이미지 ID,
+사이트명,
+상품명,
+특정 검색 결과를 넣지 않는다.
+
 
 =====================================================
 SCRIPT
 =====================================================
 
-35~40초 분량으로 작성한다.
+전체 영상 길이는
+주제와 정보량에 맞게 스스로 결정한다.
 
-문장은 TTS로 읽었을 때 자연스러워야 한다.
+지나치게 장황하게 설명하지 않는다.
 
 정보를 백과사전처럼 나열하지 않는다.
 
-한 문장에는 하나의 핵심만 담는다.
+한 Scene에 너무 많은 정보를 넣지 않는다.
 
-시청자가
-"아 그래서 그랬구나"
-라고 느끼게 만드는 것이 목표다.
+시청자가 내용을 이해하고
+"아, 그래서 그랬구나"
+라고 느낄 수 있도록 구성한다.
+
+
+=====================================================
+SUBTITLE
+=====================================================
+
+subtitle은 TTS를 단순히 짧게 줄인 문구가 아니다.
+
+TTS가 전달하는 핵심 사실,
+원인,
+결과,
+조건,
+수치,
+중요한 정보를
+시청자가 자막만 읽어도 이해할 수 있도록 작성한다.
+
+짧게 만드는 것보다
+정보를 정확하게 전달하는 것을 우선한다.
+
+TTS에 없는 새로운 정보를 subtitle에 추가하지 않는다.
+
 
 =====================================================
 ENDING
 =====================================================
 
 마지막 Scene은
-영상의 핵심 현상과 연결된 짧은 질문으로 끝낸다.
+영상의 내용과 자연스럽게 연결되는 방식으로 마무리한다.
 
-Ending의 목적은 댓글 참여 유도다.
+콘텐츠에 적합하다면
+짧은 질문을 통해 댓글 참여를 유도할 수 있다.
 
-예:
+억지로 동일한 CTA 문장을 반복하지 않는다.
 
-"여러분도 이 구멍을 본 적 있으셨나요? 댓글로 알려주세요."
-
-"이 이유 알고 계셨나요? 댓글로 알려주세요."
-
-"여러분이라면 어떻게 생각하시나요? 댓글로 알려주세요."
-
-Ending에서는 좋아요를 유도하지 않는다.
-좋아요 유도는 별도의 CTA Scene에서만 수행한다.
+좋아요나 댓글 등의 유도 역시
+주제와 흐름에 자연스럽게 맞춰 판단한다.
 
 구독 유도는 하지 않는다.
 
+
 =====================================================
-CTA
+CHINESE VERSION
 =====================================================
 
-CTA Scene은 좋아요 유도만 담당한다.
+한국어 원본과 동일한 내용의
+중국어 버전을 함께 생성한다.
 
-CTA에서는 댓글을 다시 유도하지 않는다.
-댓글 유도는 Ending의 역할이다.
+중국어 버전은 새로운 콘텐츠를 기획하는 것이 아니다.
 
-영상의 내용과 자연스럽게 연결된 짧은 문장으로
-좋아요를 유도한다.
+한국어 원본의 의미와 정보를 유지하면서
+중국 본토 시청자가 자연스럽게 이해할 수 있는
+간체 중국어로 번역한다.
 
-예:
+다음 내용을 변경하지 않는다.
 
-"이런 생활 속 과학이 재미있었다면 좋아요를 눌러주세요."
+- 사실
+- 원인
+- 결과
+- 인과관계
+- 수치
+- 단위
+- 시간
+- 조건
+- 비교
+- 핵심 정보
+- 과학적 주장
 
-"이런 신기한 생활 속 원리가 재미있었다면 좋아요를 눌러주세요."
+원본에 없는 새로운 정보를 추가하지 않는다.
 
-"생활 속 궁금증을 해결하는 이런 이야기가 재미있었다면 좋아요를 눌러주세요."
+원본의 정보를 삭제하지 않는다.
 
-CTA에서는 구독을 유도하지 않는다.
+원본보다 더 강한 표현을 사용하지 않는다.
+
+원본보다 더 자극적인 표현을 추가하지 않는다.
+
+과학적으로 이상해 보이는 원문이라도
+중국어 번역 과정에서 임의로 수정하지 않는다.
+
+중국어 문장을 자연스럽게 만들기 위한
+문장 구조 변경은 허용한다.
+
+단,
+의미와 정보는 동일해야 한다.
+
+한국어의
+
+script
+tts
+subtitle
+
+을 각각 중국어로 번역하여
+zh 객체에 작성한다.
+
+장면 구조와 시각적 연출은
+중국어 번역 때문에 변경하지 않는다.
+
 
 =====================================================
 OUTPUT
@@ -758,16 +435,37 @@ OUTPUT
 
 {
   "title": "",
+  "zhTitle": "",
   "description": "",
   "format": "global",
   "work_instructions": {
-    "scenes": []
+    "scenes": [
+      {
+        "type": "",
+        "script": "",
+        "tts": "",
+        "subtitle": "",
+        "zh": {
+          "script": "",
+          "tts": "",
+          "subtitle": ""
+        },
+        "visualType": "scene",
+        "imageQueries": [],
+        "direction": "",
+        "shot": "",
+        "cameraMove": "",
+        "motion": "",
+        "transition": "",
+        "duration": 0,
+        "sceneType": "global"
+      }
+    ]
   }
 }
 
 JSON 외에는 출력하지 않는다.
 `;
-
 
 
 /*
@@ -778,14 +476,492 @@ JSON PARSER
 
 function parseJSON(result){
 
-    const json =
+    let json =
         String(result || "")
             .replace(/^```json/i, "")
             .replace(/^```/i, "")
             .replace(/```$/i, "")
             .trim();
 
-    return JSON.parse(json);
+
+    let normalized = "";
+    let inString = false;
+    let escaped = false;
+
+
+    for(
+        let i = 0;
+        i < json.length;
+        i++
+    ){
+
+        const char =
+            json[i];
+
+
+        if(
+            escaped
+        ){
+
+            normalized +=
+                char;
+
+            escaped =
+                false;
+
+            continue;
+
+        }
+
+
+        if(
+            char === "\\"
+        ){
+
+            normalized +=
+                char;
+
+            escaped =
+                true;
+
+            continue;
+
+        }
+
+
+        if(
+            char === '"'
+        ){
+
+            normalized +=
+                char;
+
+            inString =
+                !inString;
+
+            continue;
+
+        }
+
+
+        if(
+            inString
+        ){
+
+            if(
+                char === "\n"
+            ){
+
+                normalized +=
+                    "\\n";
+
+                continue;
+
+            }
+
+
+            if(
+                char === "\r"
+            ){
+
+                normalized +=
+                    "\\r";
+
+                continue;
+
+            }
+
+
+            if(
+                char === "\t"
+            ){
+
+                normalized +=
+                    "\\t";
+
+                continue;
+
+            }
+
+
+            const code =
+                char.charCodeAt(0);
+
+
+            if(
+                code < 32
+            ){
+
+                normalized +=
+                    "\\u" +
+                    code
+                        .toString(16)
+                        .padStart(4, "0");
+
+                continue;
+
+            }
+
+        }
+
+
+        normalized +=
+            char;
+
+    }
+
+
+    try{
+
+        return JSON.parse(
+            normalized
+        );
+
+    }
+    catch(error){
+
+        console.error(
+            "[SCIENCE DIRECTOR] JSON PARSE FAILED"
+        );
+
+        console.error(
+            error.message
+        );
+
+        throw error;
+
+    }
+
+}
+
+
+/*
+=====================================================
+SCENE NORMALIZER
+=====================================================
+*/
+
+function normalizeScenes(
+    scenes
+){
+
+    if(
+        !Array.isArray(scenes)
+    ){
+
+        return [];
+
+    }
+
+
+    return scenes.map(
+        scene => {
+
+            return {
+
+                type:
+                    scene?.type ||
+                    "scene",
+
+                script:
+                    String(
+                        scene?.script ||
+                        ""
+                    ),
+
+                tts:
+                    String(
+                        scene?.tts ||
+                        scene?.script ||
+                        ""
+                    ),
+
+                subtitle:
+                    String(
+                        scene?.subtitle ||
+                        ""
+                    ),
+
+                zh: {
+                    script:
+                        String(
+                            scene?.zh?.script ||
+                            ""
+                        ).trim(),
+
+                    tts:
+                        String(
+                            scene?.zh?.tts ||
+                            ""
+                        ).trim(),
+
+                    subtitle:
+                        String(
+                            scene?.zh?.subtitle ||
+                            ""
+                        ).trim()
+                },
+
+                visualType:
+                    "scene",
+
+                imageQueries:
+                    Array.isArray(
+                        scene?.imageQueries
+                    )
+                        ? scene.imageQueries
+                            .map(
+                                item =>
+                                    String(
+                                        item || ""
+                                    )
+                                        .replace(
+                                            /\s+/g,
+                                            " "
+                                        )
+                                        .trim()
+                            )
+                            .filter(Boolean)
+                        : [],
+
+                direction:
+                    [
+                        "hook",
+                        "problem",
+                        "emotion",
+                        "reveal",
+                        "detail",
+                        "comparison",
+                        "cta",
+                        "ending"
+                    ].includes(
+                        scene?.direction
+                    )
+                        ? scene.direction
+                        : (
+                            scene?.type === "ending"
+                                ? "ending"
+                                : "detail"
+                        ),
+
+                shot:
+                    [
+                        "close_up",
+                        "medium",
+                        "wide",
+                        "overhead",
+                        "low_angle",
+                        "high_angle"
+                    ].includes(
+                        scene?.shot
+                    )
+                        ? scene.shot
+                        : "medium",
+
+                cameraMove:
+                    [
+                        "push_in",
+                        "pull_out",
+                        "pan_left",
+                        "pan_right",
+                        "tilt_up",
+                        "tilt_down",
+                        "static"
+                    ].includes(
+                        scene?.cameraMove
+                    )
+                        ? scene.cameraMove
+                        : "static",
+
+                motion:
+                    String(
+                        scene?.motion ||
+                        "static"
+                    ),
+
+                transition:
+                    [
+                        "cut",
+                        "fade",
+                        "flash",
+                        "slide",
+                        "zoom"
+                    ].includes(
+                        scene?.transition
+                    )
+                        ? scene.transition
+                        : "cut",
+
+                duration:
+                    Number(
+                        scene?.duration
+                    ) > 0
+                        ? Number(
+                            scene.duration
+                        )
+                        : 5,
+
+                sceneType:
+                    "global"
+
+            };
+
+        }
+    );
+
+}
+
+
+/*
+=====================================================
+SCIENCE DIRECTOR SCENE SAFETY
+=====================================================
+*/
+
+function validateScienceSceneSafety(
+    scenes
+){
+
+    if(
+        !Array.isArray(scenes) ||
+        scenes.length === 0
+    ){
+
+        throw new Error(
+            "[SCIENCE DIRECTOR] FAILED : NO SCENES"
+        );
+
+    }
+
+
+    for(
+        let i = 0;
+        i < scenes.length;
+        i++
+    ){
+
+        const scene =
+            scenes[i];
+
+        const sceneNumber =
+            i + 1;
+
+
+        /*
+        =================================================
+        IMAGE QUERIES
+        =================================================
+        */
+
+        if(
+            !Array.isArray(
+                scene.imageQueries
+            )
+        ){
+
+            throw new Error(
+                `[SCIENCE DIRECTOR] FAILED : SCENE ${sceneNumber} HAS NO IMAGE QUERIES`
+            );
+
+        }
+
+
+        if(
+            scene.imageQueries.length < 2
+        ){
+
+            throw new Error(
+                `[SCIENCE DIRECTOR] FAILED : SCENE ${sceneNumber} IMAGE QUERIES LESS THAN 2`
+            );
+
+        }
+
+
+        if(
+            scene.imageQueries.length > 3
+        ){
+
+            throw new Error(
+                `[SCIENCE DIRECTOR] FAILED : SCENE ${sceneNumber} IMAGE QUERIES MORE THAN 3`
+            );
+
+        }
+
+
+        for(
+            const query of scene.imageQueries
+        ){
+
+            if(
+                !String(
+                    query || ""
+                ).trim()
+            ){
+
+                throw new Error(
+                    `[SCIENCE DIRECTOR] FAILED : SCENE ${sceneNumber} HAS EMPTY IMAGE QUERY`
+                );
+
+            }
+
+        }
+
+
+        /*
+        =================================================
+        CHINESE VERSION
+        =================================================
+        */
+
+        if(
+            !scene.zh ||
+            typeof scene.zh !== "object" ||
+            Array.isArray(scene.zh)
+        ){
+
+            throw new Error(
+                `[SCIENCE DIRECTOR] FAILED : SCENE ${sceneNumber} CHINESE STRUCTURE ERROR`
+            );
+
+        }
+
+
+        if(
+            !scene.zh.script
+        ){
+
+            throw new Error(
+                `[SCIENCE DIRECTOR] FAILED : SCENE ${sceneNumber} CHINESE SCRIPT EMPTY`
+            );
+
+        }
+
+
+        if(
+            !scene.zh.tts
+        ){
+
+            throw new Error(
+                `[SCIENCE DIRECTOR] FAILED : SCENE ${sceneNumber} CHINESE TTS EMPTY`
+            );
+
+        }
+
+
+        if(
+            !scene.zh.subtitle
+        ){
+
+            throw new Error(
+                `[SCIENCE DIRECTOR] FAILED : SCENE ${sceneNumber} CHINESE SUBTITLE EMPTY`
+            );
+
+        }
+
+    }
+
+
+    return true;
 
 }
 
@@ -808,15 +984,37 @@ export async function createScienceDirector(
     /*
     =================================================
     1.
-    키워드 → 완성 주제 + 유형 판단
+    키워드 → 완성 주제
     =================================================
     */
 
+    const recentDuplicates =
+        await getRecentDuplicates();
+
+
+    const duplicateTopics =
+        recentDuplicates.length > 0
+            ? recentDuplicates
+                .map(
+                    item =>
+                        `- ${item.topic}`
+                )
+                .join("\n")
+            : "(최근 7일 중복 주제 없음)";
+
+
     const judgePrompt =
-        TYPE_JUDGE_PROMPT.replace(
-            "{{TOPIC}}",
-            String(topic || "")
-        );
+        TYPE_JUDGE_PROMPT
+            .replace(
+                "{{TOPIC}}",
+                String(
+                    topic || ""
+                )
+            )
+            .replace(
+                "{{DUPLICATE_TOPICS}}",
+                duplicateTopics
+            );
 
 
     const judgeResult =
@@ -831,9 +1029,17 @@ export async function createScienceDirector(
         );
 
 
-    const format = "global";
+    /*
+    =================================================
+    SCIENCE FORMAT
+    =================================================
+    */
 
-        const completedTopic =
+    const format =
+        "global";
+
+
+    const completedTopic =
         String(
             judge?.completedTopic ||
             topic ||
@@ -854,17 +1060,15 @@ export async function createScienceDirector(
     /*
     =================================================
     2.
-    선택된 유형 전용 Director Prompt
+    FINAL DIRECTOR PROMPT
     =================================================
     */
 
-    const typePrompt = GLOBAL_PROMPT;
-
-        const finalPrompt = `
+    const finalPrompt = `
 
 ${COMMON_PROMPT}
 
-${typePrompt}
+${GLOBAL_PROMPT}
 
 =====================================================
 DIRECTOR INPUT
@@ -874,33 +1078,48 @@ Manager Keywords:
 
 ${topic}
 
-
 Director Completed Topic:
 
 ${completedTopic}
 
-
-선택된 콘텐츠 형식:
+Selected Format:
 
 ${format}
 
+위 정보를 바탕으로
+최종 생활과학 Shorts Director 결과를 만든다.
 
-위 정보를 바탕으로 최종 Shorts Director 결과를 만든다.
+Director는 completedTopic의 의미를 이해한 뒤
+영상 전체를 스스로 설계한다.
 
+고정된 Scene 수나 고정된 전개 공식을
+사용할 필요가 없다.
 
-중요:
+주제에 가장 적합한
 
-completedTopic을 그대로 반복하는 것이 아니라
-실제 영상에서 사용할 수 있도록
-대본과 장면을 구성한다.
+영상 흐름,
+Scene 구성,
+Hook,
+대본,
+TTS,
+자막,
+시각자료,
+연출,
+Scene duration
 
+을 스스로 판단한다.
 
-모든 Scene에는 다음 필드를 빠짐없이 넣는다.
+단,
+현재 파이프라인이 사용할 수 있는
+필수 JSON 구조는 유지한다.
+
+모든 Scene에는 다음 필드를 작성한다.
 
 type
 script
 tts
 subtitle
+zh
 visualType
 imageQueries
 direction
@@ -911,133 +1130,263 @@ transition
 duration
 sceneType
 
+imageQueries는 각 Scene마다
+2~3개를 작성한다.
+
+중국어는 한국어 원본의 내용을
+그대로 번역한다.
+
+중국어에서 새로운 내용을 만들지 않는다.
+
+description은 빈 문자열이다.
 
 JSON 외에는 절대 출력하지 않는다.
+
 `;
 
 
     /*
     =================================================
     3.
-    최종 Director 실행
+    FINAL DIRECTOR
+    =================================================
+
+    중국어 결과 구조가 잘못되면
+    결과를 폐기하고 다시 호출한다.
+
+    최대 2회.
     =================================================
     */
 
-    const result =
-        await callAI(
-            finalPrompt
-        );
+    const MAX_DIRECTOR_ATTEMPTS = 2;
 
+    let director = null;
+    let lastDirectorError = null;
 
-    console.log(
-        "===== SCIENCE DIRECTOR RESULT ====="
-    );
-
-
-    console.log(
-        result
-    );
-
-
-    console.log(
-        "==================================="
-    );
-
-
-    const director =
-        parseJSON(
-            result
-        );
-
-
-    /*
-    =================================================
-    4.
-    안전 보정
-    =================================================
-    */
-
-    director.title =
-        String(
-            director.title ||
-            completedTopic
-        ).trim();
-
-
-    director.description =
-        "";
-
-
-    director.format =
-        format;
-
-
-    director.scenes =
-        director
-            .work_instructions
-            ?.scenes ||
-        director
-            .director_analysis
-            ?.work_instructions
-            ?.scenes ||
-        [];
-
-
-    /*
-    =================================================
-    5.
-    SCENE SAFETY NORMALIZATION
-    =================================================
-    */
 
     for(
-        const scene of director.scenes
+        let attempt = 1;
+        attempt <= MAX_DIRECTOR_ATTEMPTS;
+        attempt++
     ){
 
-        /*
-        모든 Scene은 visualType = scene
-        */
-
-        scene.visualType =
-            "scene";
+        console.log(
+            `[SCIENCE DIRECTOR] GENERATION ATTEMPT ${attempt}/${MAX_DIRECTOR_ATTEMPTS}`
+        );
 
 
-        /*
-        Ending은 반드시 ending
-        */
+        try{
 
-        if(
-            scene.type === "ending"
-        ){
+            const result =
+                await callAI(
+                    finalPrompt
+                );
 
-            scene.sceneType =
+
+            console.log(
+                "===== SCIENCE DIRECTOR RESULT ====="
+            );
+
+
+            console.log(
+                result
+            );
+
+
+            console.log(
+                "==================================="
+            );
+
+
+            const candidate =
+                parseJSON(
+                    result
+                );
+
+
+            /*
+            =================================================
+            BASIC NORMALIZATION
+            =================================================
+            */
+
+            candidate.title =
+                String(
+                    candidate.title ||
+                    completedTopic ||
+                    ""
+                ).trim();
+
+
+            candidate.zhTitle =
+                String(
+                    candidate.zhTitle ||
+                    ""
+                ).trim();
+
+
+            candidate.description =
+                "";
+
+
+            candidate.format =
                 format;
 
+
+            let scenes =
+                candidate
+                    ?.work_instructions
+                    ?.scenes ||
+                candidate
+                    ?.director_analysis
+                    ?.work_instructions
+                    ?.scenes ||
+                candidate?.scenes ||
+                [];
+
+
+            /*
+            =================================================
+            SCENE NORMALIZATION
+            =================================================
+            */
+
+            scenes =
+                normalizeScenes(
+                    scenes
+                );
+
+
+            /*
+            =================================================
+            SCENE VALIDATION
+            =================================================
+            */
+
+            validateScienceSceneSafety(
+                scenes
+            );
+
+
+            /*
+            =================================================
+            ENDING SAFETY
+            =================================================
+            */
+
+            if(
+                scenes.length > 0
+            ){
+
+                scenes[
+                    scenes.length - 1
+                ].type =
+                    "ending";
+
+                scenes[
+                    scenes.length - 1
+                ].sceneType =
+                    "global";
+
+                scenes[
+                    scenes.length - 1
+                ].direction =
+                    "ending";
+
+            }
+
+
+            /*
+            =================================================
+            FINAL RESULT
+            =================================================
+            */
+
+            candidate.scenes =
+                scenes;
+
+
+            if(
+                !candidate.work_instructions ||
+                typeof candidate.work_instructions !== "object"
+            ){
+
+                candidate.work_instructions =
+                    {};
+
+            }
+
+
+            candidate.work_instructions.scenes =
+                scenes;
+
+
+            director =
+                candidate;
+
+
+            console.log(
+                `[SCIENCE DIRECTOR] CHINESE VALIDATION PASS : ${scenes.length} scenes`
+            );
+
+
+            break;
+
         }
-        else{
+        catch(error){
 
-            scene.sceneType =
-                format;
+            lastDirectorError =
+                error;
+
+
+            console.error(
+                `[SCIENCE DIRECTOR] ATTEMPT ${attempt} FAILED :`,
+                error.message
+            );
+
+
+            if(
+                attempt <
+                MAX_DIRECTOR_ATTEMPTS
+            ){
+
+                console.log(
+                    "[SCIENCE DIRECTOR] 결과 검증 실패 → Director 재호출"
+                );
+
+            }
 
         }
-
-
-        /*
-        imageQueries가 없으면 배열 생성
-        */
-
-        if(
-            !Array.isArray(
-                scene.imageQueries
-            )
-        ){
-
-            scene.imageQueries = [];
-
-        }
-
 
     }
 
+
+    /*
+    =================================================
+    FINAL FAILURE
+    =================================================
+    */
+
+    if(
+        !director
+    ){
+
+        throw new Error(
+            "SCIENCE DIRECTOR 결과 검증 실패 : " +
+            (
+                lastDirectorError?.message ||
+                "알 수 없는 오류"
+            )
+        );
+
+    }
+
+
+    console.log(
+        `[SCIENCE DIRECTOR] COMPLETE : ${director.scenes.length} SCENES`
+    );
+
+
     return director;
+
 }

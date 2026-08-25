@@ -1,98 +1,432 @@
-import { validateImageKeywords } from "../core/reviewer.js";
+import {
+    validateImageKeywords
+} from "../core/reviewer.js";
+
+
+function normalizeSubject(
+    text = ""
+){
+
+    return String(
+        text || ""
+    )
+        .split(",")[0]
+        .replace(/\brealistic\b/ig, "")
+        .replace(/\bdocumentary photography\b/ig, "")
+        .replace(/\bdocumentary\b/ig, "")
+        .replace(/\bwide shot\b/ig, "")
+        .replace(/\bclose up\b/ig, "")
+        .replace(/\bcloseup\b/ig, "")
+        .replace(/\bphotography\b/ig, "")
+        .replace(/\bhighly detailed\b/ig, "")
+        .replace(/\bnatural behavior\b/ig, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+
+}
+
+
+function getCoreWords(
+    subject = ""
+){
+
+    return normalizeSubject(
+        subject
+    )
+        .split(/\s+/)
+        .map(
+            word =>
+                word.replace(
+                    /^(.*?)(s|es)$/i,
+                    "$1"
+                )
+        )
+        .filter(
+            word =>
+                word.length > 2
+        );
+
+}
+
+
+function getProviderText(
+    candidate
+){
+
+    return String(
+        [
+            candidate?.tags,
+            candidate?.description,
+            candidate?.alt
+        ]
+            .filter(Boolean)
+            .join(" ")
+    )
+        .toLowerCase();
+
+}
+
+
+function coreSubjectMatches(
+    coreSubject = "",
+    query = "",
+    options = {}
+){
+
+    const subject =
+        String(coreSubject || "")
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+
+    const text =
+        String(query || "")
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+
+    const channel =
+        String(
+            options?.channel ||
+            options?.category ||
+            ""
+        )
+        .toLowerCase()
+        .trim();
+
+    /*
+    =====================================================
+    CORE SUBJECT POLICY
+
+    Animal:
+        coreSubject is mandatory.
+        Subject mismatch may reject.
+
+    AI / Science / History:
+        coreSubject is advisory.
+        Scene meaning is evaluated separately.
+        coreSubject mismatch alone must NOT reject.
+
+    =====================================================
+    */
+
+    if(
+        channel === "animal"
+    ){
+
+        if(
+            !subject ||
+            !text
+        ){
+            return false;
+        }
+
+        const words =
+            subject
+                .split(/\s+/)
+                .filter(
+                    word =>
+                        word.length > 2
+                );
+
+        if(!words.length){
+            return false;
+        }
+
+        let matched = 0;
+
+        for(
+            const word of words
+        ){
+
+            if(
+                text.includes(word)
+            ){
+                matched++;
+            }
+
+        }
+
+        const required =
+            words.length <= 3
+                ? words.length
+                : 2;
+
+        return matched >= required;
+    }
+
+    /*
+    Non-Animal:
+    coreSubject is NOT a hard rejection condition.
+
+    The reviewer must judge the complete Scene meaning.
+    */
+
+    return true;
+}
+
+
+export function selectBestMedia(candidates = []){
+    const valid = candidates.filter(
+        candidate =>
+            candidate?.url &&
+            candidate?.mediaType
+    );
+
+    if(!valid.length){
+        return null;
+    }
+
+    const images = valid.filter(
+        candidate =>
+            candidate.mediaType !== "video"
+    );
+
+    const videos = valid.filter(
+        candidate =>
+            candidate.mediaType === "video"
+    );
+
+    /*
+    =====================================================
+    FINAL MEDIA SELECTION
+
+    Reviewer 승인 후보끼리 최종 경쟁한다.
+
+    영상은 이미지보다 최대 15점 낮아도 선택한다.
+
+    예:
+        IMAGE 180
+        VIDEO 170
+        → VIDEO
+
+        IMAGE 180
+        VIDEO 164
+        → IMAGE
+    =====================================================
+    */
+
+    if(images.length && videos.length){
+
+        const bestImage = images.reduce(
+            (best, candidate) =>
+                Number(candidate.score || 0) >
+                Number(best?.score || 0)
+                    ? candidate
+                    : best,
+            null
+        );
+
+        const bestVideo = videos.reduce(
+            (best, candidate) =>
+                Number(candidate.score || 0) >
+                Number(best?.score || 0)
+                    ? candidate
+                    : best,
+            null
+        );
+
+        const imageScore =
+            Number(bestImage?.score || 0);
+
+        const videoScore =
+            Number(bestVideo?.score || 0);
+
+        if(
+            videoScore >= imageScore - 15
+        ){
+            return bestVideo;
+        }
+
+        return bestImage;
+    }
+
+    return valid.reduce(
+        (best, candidate) =>
+            Number(candidate.score || 0) >
+            Number(best?.score || 0)
+                ? candidate
+                : best,
+        null
+    );
+}
 
 export async function reviewImage(
     candidate,
     scene
 ){
 
-    if(!candidate){
+    if(
+        !candidate
+    ){
         return null;
     }
 
-    const tags = String(
-        [
-            candidate.tags,
-            candidate.keyword,
-            candidate.description,
-            candidate.alt,
-            scene?.searchSubject,
-            scene?.searchHint,
-            candidate.primarySubject
-        ]
-        .filter(Boolean)
-        .join(" ")
-    ).toLowerCase();
+
+    /*
+    =====================================================
+    CORE SUBJECT
+
+    오직 Director가 실제로 지정한
+    scene.coreSubject만 사용한다.
+
+    중요:
+
+    coreSubject가 없으면
+    candidate.primarySubject나
+    searchSubject를 핵심 주체로 승격시키지 않는다.
+
+    즉,
+
+    coreSubject 없음
+        → 배경 / 장소 / 분위기 Scene
+        → 주체 강제 검증 없음
+
+    coreSubject 있음
+        → 핵심 주체 검증
+    =====================================================
+    */
+
+
+    const coreSubject =
+        normalizeSubject(
+            scene?.coreSubject ||
+            ""
+        );
+
+
+    const providerText =
+        getProviderText(
+            candidate
+        );
+
+
+    /*
+    =====================================================
+    1. CORE SUBJECT가 있는 경우
+
+    핵심 주체를 반드시 검증한다.
+    =====================================================
+    */
+
+
+
+
+
+    /*
+    =====================================================
+    2. CORE SUBJECT가 없는 경우
+
+    주체 검증을 하지 않는다.
+
+    예:
+
+    조선시대 주막 Scene에서
+    coreSubject가 비어 있다면
+
+    → 주막
+    → 한옥
+    → 전통 한국 건축
+    → 밤 분위기
+
+    같은 Scene 표현을 Reviewer가 평가할 수 있다.
+
+    "Core Subject 없음"이라는 이유만으로
+    Reject하지 않는다.
+    =====================================================
+    */
+
+
+    /*
+    =====================================================
+    3. 기존 Keyword 검증
+
+    핵심 주체 검증을 통과했거나
+    애초에 coreSubject가 없는 후보에 대해
+    기존 Reviewer 검증을 수행한다.
+    =====================================================
+    */
+
 
     if(
-        !validateImageKeywords([tags])
+        !validateImageKeywords(
+            [
+                providerText
+            ]
+        )
     ){
+
         console.log(
             `[${candidate.provider}] Reject : Keyword`
         );
+
+
         return null;
+
     }
 
-const subject = String(
-    candidate.primarySubject || ""
-)
-.replace(/\brealistic\b/ig,"")
-.replace(/\bdocumentary\b/ig,"")
-.replace(/\bphotography\b/ig,"")
-.replace(/\bwide shot\b/ig,"")
-.replace(/\bclose up\b/ig,"")
-.replace(/\bportrait\b/ig,"")
-.replace(/\bhighly detailed\b/ig,"")
-.replace(/\bnatural behavior\b/ig,"")
-.replace(/\s+/g," ")
-.trim()
-.toLowerCase();
 
-if(!subject){
-    return null;
-}
+    /*
+    =====================================================
+    4. 해상도 점수
+    =====================================================
+    */
 
-if(
-    !tags.includes(subject)
-){
 
-    const ok = subject
-        .split(" ")
-        .filter(word=>word.length>2)
-        .every(word=>tags.includes(word));
-
-    if(!ok){
-
-        console.log(
-            `[${candidate.provider}] Reject : Subject`,
-            subject
+    candidate.score =
+        Number(
+            candidate.score || 0
         );
 
-        return null;
+
+    if(
+        candidate.width >= 1920
+    ){
+
+        candidate.score += 20;
 
     }
 
-}
 
-candidate.score = candidate.score || 0;
+    if(
+        candidate.height >= 1080
+    ){
 
-if(candidate.width >= 1920){
-    candidate.score += 20;
-}
+        candidate.score += 20;
 
-if(candidate.height >= 1080){
-    candidate.score += 20;
-}
+    }
 
-console.log(
-    `[${candidate.provider}] PASS`,
-    candidate.keyword,
-    "SCORE:",
-    candidate.score
-);
+
+    /*
+    =====================================================
+    5. CORE SUBJECT 후보 우선순위 유지
+
+    search.js에서 지정한
+    searchPriority를 그대로 보존한다.
+    =====================================================
+    */
+
+
+    if(
+        candidate.searchPriority === 100
+    ){
+
+        candidate.score += 40;
+
+    }
+
+
+    console.log(
+        `[${candidate.provider}] PASS`,
+        candidate.keyword || "",
+        "CORE:",
+        coreSubject || "NONE",
+        "SCORE:",
+        candidate.score
+    );
+
 
     return candidate;
 
 }
-
-
-

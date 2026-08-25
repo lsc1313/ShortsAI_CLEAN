@@ -1,5 +1,11 @@
 import fs from "fs";
+import {
+    searchVideo
+} from "./image/videoSearch.js";
 
+import {
+    downloadVideo
+} from "./video/download.js";
 import {
     mkdir
 } from "./video/directory.js";
@@ -48,12 +54,12 @@ ENDING
 */
 
 
-function cleanText(text=""){
-
+function cleanText(text="") {
     return String(text || "")
-        .replace(/\s+/g," ")
+        .replace(/(\d+),(\d+)/g, "$1$2")       // 18,000 -> 18000
+        .replace(/(\d+)\.(\d+)/g, "$1점$2")    // 0.6 -> 0점6 (공백 없이 매끄럽게 발음)
+        .replace(/\s+/g, " ")
         .trim();
-
 }
 
 
@@ -109,7 +115,8 @@ const type =
 export async function createVideo(
     director,
     images,
-    voices
+    voices,
+    channel = ""
 ){
 
     mkdir();
@@ -320,62 +327,129 @@ continue;
         =================================================
         */
 
-        const imageList =
-            sceneImages.get(
-                i+1
-            ) || [];
+        /*
+        =================================================
+        HOTDEAL CARD WIRING
 
+        HOTDEAL 구조:
+
+        scene 1 = HOOK
+        scene 2 = card_01
+        scene 3 = card_02
+        ...
+        scene N = 마지막 상품카드
+        scene N+1 = ENDING
+
+        일반 채널은 기존 i+1을 그대로 사용한다.
+        =================================================
+        */
+
+        // 씬 인덱스 매칭: Hook(i=0)과 상품1(i=1)은 모두 1번 카드를 사용하도록 보정
+        let targetScene = i + 1;
+        if (channel === "shopping" || director?.hotdeal === true) {
+            if (i === 0) targetScene = 1;        // Hook -> 1번 카드 (Scene 1)
+            else if (i === 1) targetScene = 2;   // 상품1 -> 1번 카드 (Scene 2)
+            else targetScene = i + 1;             // 상품2부터 순서대로
+        }
+
+        const imageList = sceneImages.get(targetScene) || sceneImages.get(i + 1) || sceneImages.get(i) || [];
+
+        
+
+let videoFile = null;
+
+
+const selectedVideo =
+    imageList.find(
+        img =>
+            img?.mediaType === "video" &&
+            img?.file &&
+            fs.existsSync(img.file)
+    );
+
+if(
+    selectedVideo
+){
+
+    videoFile =
+        selectedVideo.file;
+
+    debug(
+        `Scene ${i+1}`,
+        "VIDEO SELECTED BY MEDIA REVIEWER",
+        selectedVideo.provider,
+        selectedVideo.score
+    );
+
+}
+if(
+    videoFile &&
+    sceneType !== "ending"
+){
+
+    try{
+
+        const videoScene =
+            makeScene(
+                videoFile,
+                totalTime,
+                scenes.length,
+                {
+                    sceneType,
+                    shot:item?.shot,
+                    cameraMove:item?.cameraMove,
+                    motion:item?.motion,
+                    transition:item?.transition,
+                    duration:item?.duration
+                }
+            );
+
+        if(
+            videoScene &&
+            fs.existsSync(videoScene) &&
+            fs.statSync(videoScene).size > 10000
+        ){
+
+            scenes.push(
+                videoScene
+            );
+
+            transitions.push(
+                item?.transition || "cut"
+            );
+
+            lastImage =
+                videoFile;
+
+            debug(
+                `Scene ${i+1}`,
+                "VIDEO RENDER PASS"
+            );
+
+            continue;
+
+        }
+
+        debug(
+            `Scene ${i+1} VIDEO RENDER FALLBACK : 결과 파일 없음 또는 파일 크기 부족`
+        );
+
+    }
+    catch(e){
+
+        debug(
+            `Scene ${i+1} VIDEO RENDER FALLBACK : ${e.message}`
+        );
+
+    }
+
+}
 
         if(imageList.length===0){
 
-            /*
-            이미지가 없는 경우
-            직전 이미지를 안전하게 유지한다.
-            */
-
-            if(lastImage){
-
-                debug(
-                    `Scene ${i+1}`,
-                    "이미지 없음 - 이전 이미지 유지"
-                );
-
-
-                scenes.push(
-
-makeScene(
-    lastImage,
-    totalTime,
-    scenes.length,
-    {
-        sceneType,
-
-        shot:
-            item?.shot,
-
-        cameraMove:
-            item?.cameraMove,
-
-        motion:
-            item?.motion,
-
-        transition:
-            item?.transition,
-
-        duration:
-            item?.duration
-    }
-)
-
-                );
-
-transitions.push(
-    item?.transition || "cut"
-); 
-
-           }
-
-            continue;
+            throw new Error(
+                `[VIDEO] Scene ${i+1} FAILED : VIDEO AND IMAGE BOTH UNAVAILABLE / CORE SUBJECT : ${item?.coreSubject || "UNKNOWN"}`
+            );
 
         }
 
@@ -505,12 +579,12 @@ const merged =
     =====================================================
     */
 
-    const output =
-        renderVideo(
-            merged,
-            audio
-        );
-
+const output =
+    renderVideo(
+        merged,
+        audio,
+        channel
+    );
 
     success(
         "VIDEO COMPLETE"

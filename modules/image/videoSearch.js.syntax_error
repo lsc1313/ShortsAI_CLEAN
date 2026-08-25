@@ -1,0 +1,401 @@
+import {
+    searchPixabayVideo
+} from "../providers/pixabayVideoProvider.js";
+
+import {
+    searchPexelsVideo
+} from "../providers/pexelsVideoProvider.js";
+
+
+function normalizeSubject(text = ""){
+
+    return String(text || "")
+        .split(",")[0]
+        .replace(/\brealistic\b/ig, "")
+        .replace(/\bdocumentary photography\b/ig, "")
+        .replace(/\bdocumentary\b/ig, "")
+        .replace(/\bwide shot\b/ig, "")
+        .replace(/\bclose up\b/ig, "")
+        .replace(/\bcloseup\b/ig, "")
+        .replace(/\bhighly detailed\b/ig, "")
+        .replace(/\bnatural behavior\b/ig, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+
+}
+
+
+function subjectMatches(
+    candidate,
+    subject
+){
+
+    const coreSubject =
+        normalizeSubject(
+            subject
+        );
+
+    if(!coreSubject){
+        return true;
+    }
+
+    const tags = String(
+        [
+            candidate?.tags,
+            candidate?.keyword
+        ]
+            .filter(Boolean)
+            .join(" ")
+    ).toLowerCase();
+
+    if(!tags){
+        return true;
+    }
+
+    const words =
+        coreSubject
+            .split(/\s+/)
+            .filter(
+                word =>
+                    word.length > 2
+            );
+
+    if(!words.length){
+        return true;
+    }
+
+    let matchedWords = 0;
+
+    for(
+        const word of words
+    ){
+
+        if(
+            tags.includes(word)
+        ){
+
+            matchedWords++;
+
+        }
+
+    }
+
+    const requiredMatches =
+        words.length <= 2
+            ? 1
+            : Math.ceil(
+                words.length * 0.5
+            );
+
+    return (
+        matchedWords >=
+        requiredMatches
+    );
+
+}
+
+
+    /*
+    =====================================================
+    핵심 주제 강제 검증
+
+    예:
+        pygmy squirrel
+
+    pygmy      반드시 존재
+    squirrel   반드시 존재
+
+    하나라도 없으면 REJECT.
+
+    squirrel만 맞는 경우
+    절대 PASS하지 않는다.
+    =====================================================
+    */
+
+let matchedWords = 0;
+
+for(
+    const word of words
+){
+
+    if(
+        tags.includes(word)
+    ){
+
+        matchedWords++;
+
+    }
+
+}
+
+const requiredMatches =
+    words.length <= 3
+        ? words.length
+        : 2;
+
+return (
+    matchedWords >=
+    requiredMatches
+);
+
+}
+
+
+export async function searchVideo(
+    keyword,
+    scene = {}
+){
+
+    if(!keyword){
+        return null;
+    }
+
+
+    /*
+    =====================================================
+    핵심 주제
+
+    검색어가 아니라 Director가 정한
+    실제 핵심 주제를 기준으로 검증한다.
+
+    예:
+        keyword:
+        pygmy squirrel chewing tree bark in forest
+
+        core subject:
+        pygmy squirrel
+    =====================================================
+    */
+
+const primarySubject =
+    normalizeSubject(
+        scene?.coreSubject ||
+        ""
+    );
+
+    if(!primarySubject){
+
+        return null;
+
+    }
+
+
+    const providers = [
+
+        {
+            name:"Pixabay Video",
+            search:searchPixabayVideo
+        },
+
+        {
+            name:"Pexels Video",
+            search:searchPexelsVideo
+        }
+
+    ];
+
+
+const queries = [
+    primarySubject,
+    keyword,
+    scene?.searchName,
+    scene?.searchSubject,
+    scene?.imageQueries?.[0]
+]
+        .map(
+            value =>
+                String(
+                    value || ""
+                ).trim()
+        )
+        .filter(Boolean);
+
+
+    const uniqueQueries = [
+
+        ...new Set(
+            queries
+        )
+
+    ];
+
+
+    const candidates = [];
+
+
+    /*
+    =====================================================
+    모든 Provider + 모든 검색어 검색
+
+    핵심 주제를 만족하지 않는 영상은
+    후보에 넣지 않는다.
+    =====================================================
+    */
+
+    for(
+        const query of uniqueQueries
+    ){
+
+        for(
+            const provider of providers
+        ){
+
+            try{
+
+                const result =
+                    await provider.search(
+                        query
+                    );
+
+
+                if(
+                    !Array.isArray(result) ||
+                    !result.length
+                ){
+
+                    continue;
+
+                }
+
+
+                for(
+                    const candidate of result
+                ){
+
+                    if(
+                        !candidate?.url
+                    ){
+
+                        continue;
+
+                    }
+
+
+                    /*
+                    핵심 주제 검증
+                    */
+
+                    if(
+                        !subjectMatches(
+                            candidate,
+                            primarySubject
+                        )
+                    ){
+
+                        continue;
+
+                    }
+
+
+                    candidate.provider =
+                        provider.name;
+
+                    candidate.keyword =
+                        query;
+
+                    candidate.primarySubject =
+                        primarySubject;
+
+
+                    candidates.push(
+                        candidate
+                    );
+
+                }
+
+            }
+
+            catch{
+
+                continue;
+
+            }
+
+        }
+
+    }
+
+
+    /*
+    =====================================================
+    핵심 주제를 만족하는 영상이 하나도 없으면
+
+    절대로 다른 영상으로 대체하지 않는다.
+
+    createVideo()가 기존 이미지로 fallback 한다.
+    =====================================================
+    */
+
+    if(
+        candidates.length === 0
+    ){
+
+        return null;
+
+    }
+
+
+    /*
+    =====================================================
+    URL 중복 제거
+    =====================================================
+    */
+
+    const uniqueCandidates = [];
+
+    const usedUrls =
+        new Set();
+
+
+    for(
+        const candidate of candidates
+    ){
+
+        if(
+            usedUrls.has(
+                candidate.url
+            )
+        ){
+
+            continue;
+
+        }
+
+
+        usedUrls.add(
+            candidate.url
+        );
+
+
+        uniqueCandidates.push(
+            candidate
+        );
+
+    }
+
+
+    /*
+    =====================================================
+    최고 점수 영상
+    =====================================================
+    */
+
+    uniqueCandidates.sort(
+        (a,b) =>
+            Number(
+                b.score || 0
+            ) -
+            Number(
+                a.score || 0
+            )
+    );
+
+
+    const best =
+        uniqueCandidates[0];
+
+
+    return best;
+
+}

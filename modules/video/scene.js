@@ -101,6 +101,31 @@ function getFrameCount(time){
 
 }
 
+function makeVideoScene(
+    video,
+    time,
+    output
+){
+
+    execSync(
+
+`ffmpeg -y \
+-stream_loop -1 \
+-i "${video}" \
+-t ${time} \
+-vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30" \
+-an \
+-c:v libx264 \
+-pix_fmt yuv420p \
+-preset veryfast \
+-crf 20 \
+"${output}"`
+
+    ,{
+        stdio:"ignore"
+    });
+
+}
 
 function makeStillScene(
     image,
@@ -288,34 +313,49 @@ export function makeScene(
     =================================================
     */
 
-    if(images.length===1){
 
-        if(sceneType === "ending"){
+if(images.length===1){
 
-            makeStillScene(
-                images[0],
-                time,
-                output
-            );
+    const source =
+        images[0];
 
-        }
-        else{
+    const isVideo =
+        /\.(mp4|mov|webm|m4v)$/i.test(
+            String(source)
+        );
 
-makeMotionScene(
-    images[0],
-    time,
-    output,
-    sceneType,
-    options
-);
+    if(isVideo){
 
-        }
+        makeVideoScene(
+            source,
+            time,
+            output
+        );
 
+    }
+    else if(sceneType === "ending"){
 
-        return output;
+        makeStillScene(
+            source,
+            time,
+            output
+        );
+
+    }
+    else{
+
+        makeMotionScene(
+            source,
+            time,
+            output,
+            sceneType,
+            options
+        );
 
     }
 
+    return output;
+}
 
     /*
     =================================================

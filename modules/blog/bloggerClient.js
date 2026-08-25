@@ -96,6 +96,29 @@ export async function publishBlog({
     blogType = "shopping"
 }) {
 
+    const bloggerPostingEnabled =
+        String(
+            process.env.BLOGGER_POSTING_ENABLED || "false"
+        ).toLowerCase() === "true";
+
+    if (!bloggerPostingEnabled) {
+
+        console.log(
+            "[BloggerClient] POSTING DISABLED : Blogger API 게시를 건너뜁니다."
+        );
+
+        return {
+            success: false,
+            skipped: true,
+            mode: "DISABLED",
+            postId: null,
+            url: null,
+            title: title || "",
+            tags: Array.isArray(tags) ? tags : []
+        };
+
+    }
+
     if (!title) {
 
         throw new Error(

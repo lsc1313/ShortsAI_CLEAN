@@ -1,0 +1,57 @@
+{
+  "화장지": {
+    "name": "화장지",
+    "keyword": "화장지",
+    "enabled": true
+  },
+  "키친타월": {
+    "name": "키친타월",
+    "keyword": "키친타월",
+    "enabled": true
+  },
+  "물티슈": {
+    "name": "물티슈",
+    "keyword": "물티슈",
+    "enabled": true
+  },
+  "생수": {
+    "name": "생수",
+    "keyword": "생수",
+    "enabled": true
+  },
+  "즉석밥": {
+    "name": "즉석밥",
+    "keyword": "즉석밥",
+    "enabled": true
+  },
+  "주방세제": {
+    "name": "주방세제",
+    "keyword": "주방세제",
+    "enabled": true
+  },
+  "샴푸": {
+    "name": "샴푸",
+    "keyword": "샴푸 ml",
+    "enabled": true
+  },
+  "컨디셔너": {
+    "name": "컨디셔너",
+    "keyword": "컨디셔너 ml",
+    "enabled": true
+  },
+  "바디워시": {
+    "name": "바디워시",
+    "keyword": "바디워시",
+    "enabled": true
+  },
+  "치약": {
+    "name": "치약",
+    "keyword": "치약 g",
+    "enabled": true
+  },
+  "위생장갑": {
+    "name": "위생장갑",
+    "keyword": "위생장갑",
+    "enabled": true
+  }
+}

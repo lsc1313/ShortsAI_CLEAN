@@ -20,6 +20,8 @@ import * as Brain from "./brain/brain.js";
 import { createShort } from "./modules/createShort.js";
 import * as CoupangProductStore from "./modules/coupang/productStore.js";
 import { resolveCoupangProduct } from "./modules/coupang/productResolver.js";
+import Hotdeal from "./coupang-hotdeal/index.js";
+
 
 const app = express();
 
@@ -1305,6 +1307,311 @@ app.delete(
 
 
 
+
+/*
+=========================================================
+HOTDEAL PRODUCT MANAGEMENT API
+=========================================================
+*/
+
+// ① 상품 추가
+app.post("/hotdeal/products", (req, res) => {
+    try {
+        const product = Hotdeal.addProduct(
+            req.body?.name,
+            req.body?.keyword
+        );
+
+        res.json({
+            success: true,
+            product
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ② 상품 제거 — 비활성
+app.delete("/hotdeal/products/:name", (req, res) => {
+    try {
+        const product = Hotdeal.removeProduct(
+            decodeURIComponent(req.params.name)
+        );
+
+        res.json({
+            success: true,
+            product
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ③ 완전삭제
+app.delete("/hotdeal/products/:name/purge", (req, res) => {
+    try {
+        const product = Hotdeal.deleteProduct(
+            decodeURIComponent(req.params.name)
+        );
+
+        res.json({
+            success: true,
+            product
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ④ 상품목록 — 활성 / 비활성
+app.get("/hotdeal/products", (req, res) => {
+    try {
+        const products = Hotdeal.getProductList();
+
+        res.json({
+            success: true,
+            products
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+app.post("/hotdeal/products/:name/enabled", (req, res) => {
+    try {
+        const product = Hotdeal.setProductEnabled(
+            decodeURIComponent(req.params.name),
+            req.body?.enabled
+        );
+
+        res.json({
+            success: true,
+            product
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+app.put("/hotdeal/products/:name/enabled", (req, res) => {
+    try {
+        const product = Hotdeal.setProductEnabled(
+            decodeURIComponent(req.params.name),
+            req.body?.enabled
+        );
+
+        res.json({
+            success: true,
+            product
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ⑤ 상품정보 갱신 — 활성 상품군 전체 갱신
+app.post("/hotdeal/refresh", async (req, res) => {
+    try {
+        const activeProducts =
+            Hotdeal.getActiveProducts();
+
+        if (activeProducts.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: "활성 상품이 없습니다."
+            });
+        }
+
+        const productGroups =
+            activeProducts.map(
+                product => product.name
+            );
+
+        const products =
+            await Hotdeal.run(productGroups);
+
+        res.json({
+            success: true,
+            count: products.length,
+            total: activeProducts.length,
+            products
+        });
+
+    } catch (error) {
+        console.error(
+            "[HOTDEAL REFRESH]",
+            error
+        );
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ⑤ 상품정보 검색
+app.get("/hotdeal/search", async (req, res) => {
+    try {
+        const keyword = req.query?.keyword;
+
+        const products = await Hotdeal.searchProductInfo(
+            keyword,
+            Number(req.query?.limit) || 10
+        );
+
+        res.json({
+            success: true,
+            count: products.length,
+            products
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ⑥ 쇼츠 제작 — ⑤에서 갱신된 상품을 바로 기존 Brain 생산라인으로 전달
+app.post("/hotdeal/create", async (req, res) => {
+    try {
+        const activeProducts =
+            Hotdeal.getActiveProducts();
+
+        if (activeProducts.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: "활성 상품이 없습니다."
+            });
+        }
+
+        /*
+         * ⑤에서 이미 상품정보 갱신이 완료되었으므로
+         * ⑥에서는 Hotdeal.run()을 다시 호출하지 않는다.
+         *
+         * 기존 Brain → Planner → Manager → createShort
+         * 생산라인으로 바로 전달한다.
+         */
+
+        const todayPath =
+            path.join(
+                process.cwd(),
+                "coupang-hotdeal",
+                "data",
+                "today-products.json"
+            );
+
+        if (!fs.existsSync(todayPath)) {
+            return res.status(400).json({
+                success: false,
+                error: "상품정보 갱신 결과가 없습니다. ⑤ 상품정보 갱신을 먼저 실행하세요."
+            });
+        }
+
+        const todayData =
+            JSON.parse(
+                fs.readFileSync(
+                    todayPath,
+                    "utf-8"
+                )
+            );
+
+        const products =
+            Array.isArray(todayData.products)
+                ? todayData.products
+                : [];
+
+        const activeNames =
+            new Set(
+                activeProducts.map(
+                    product => product.name
+                )
+            );
+
+        const hotdealProducts =
+            products.filter(
+                product =>
+                    activeNames.has(product.productGroup)
+            );
+
+        if (hotdealProducts.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: "갱신된 활성 HOTDEAL 상품이 없습니다. ⑤ 상품정보 갱신을 확인하세요."
+            });
+        }
+
+        /*
+         * HOTDEAL은 상품별로 Brain을 반복 호출하지 않는다.
+         *
+         * ⑤에서 완성된 상품 전체를 하나의 HOTDEAL 작업으로
+         * Brain → Planner → Manager → createShort에 전달한다.
+         */
+        BrainQueue.start({
+            mode:
+                "QUICK",
+
+            topic:
+                "오늘의 생필품 HOTDEAL",
+
+            count:
+                1,
+
+            channel:
+                "Shopping",
+
+            type:
+                "HOTDEAL",
+
+            products:
+                hotdealProducts
+
+        }).catch(error => {
+            console.error(
+                "[HOTDEAL BRAIN QUICK CREATE ERROR]",
+                error
+            );
+        });
+
+        res.json({
+            success: true,
+            count: hotdealProducts.length,
+            total: activeProducts.length,
+            action: "brain_hotdeal_start"
+        });
+
+    } catch (error) {
+
+        console.error(
+            "[HOTDEAL CREATE]",
+            error
+        );
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 app.listen(
     PORT,
     ()=>{
