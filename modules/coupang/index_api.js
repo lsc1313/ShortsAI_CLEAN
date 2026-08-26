@@ -1,28 +1,28 @@
-import crypto from "crypto";
 import axios from "axios";
+import { createRequire } from "module";
 
-function auth(method, path){
+const require = createRequire(import.meta.url);
 
-    const datetime =
-        new Date().toISOString().replace(/[-:]/g,"").replace(/\..+/,"")+"Z";
+const {
+    ACCESS_KEY,
+    SECRET_KEY
+} = require("../../coupang-hotdeal/config.js");
 
-    const message =
-        `${datetime}${method}${path}`;
+const {
+    generateHmac
+} = require("../../coupang-hotdeal/hmacGenerator.js");
 
-    const signature =
-        crypto
-        .createHmac(
-            "sha256",
-            process.env.COUPANG_SECRET_KEY
-        )
-        .update(message)
-        .digest("hex");
+function auth(method, path) {
 
     return {
         Authorization:
-            `CEA algorithm=HmacSHA256, access-key=${process.env.COUPANG_ACCESS_KEY}, signed-date=${datetime}, signature=${signature}`
+            generateHmac(
+                method,
+                path,
+                SECRET_KEY,
+                ACCESS_KEY
+            )
     };
-
 }
 
 export async function searchProduct(keyword){

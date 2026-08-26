@@ -48,13 +48,13 @@
           font-family="Noto Sans CJK KR"
           font-size="74"
           font-weight="800"
-          fill="#111111">11,990원</text>
+          fill="#111111">12,900원</text>
 
     <text x="70" y="1360"
           font-family="Noto Sans CJK KR"
           font-size="50"
           font-weight="700"
-          fill="#333333">4.44원/g</text>
+          fill="#333333">4.78원/g</text>
 
     <line x1="70" y1="1420"
           x2="1010" y2="1420"
@@ -74,14 +74,6 @@
           fill="#444444">30일 최저가  수집중</text>
 
     
-            <text x="70" y="1660"
-                  font-family="Noto Sans CJK KR"
-                  font-size="42"
-                  font-weight="800"
-                  fill="#E53935">
-                할인율 7.1%
-            </text>
-            
 
     <text x="70" y="1780"
           font-family="Noto Sans CJK KR"

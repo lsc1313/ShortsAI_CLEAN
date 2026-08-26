@@ -311,10 +311,76 @@ export async function createLinkPage(
     =====================================================
     */
 
-    const html =
+    const generatedHTML =
         createLinkHTML({
             records
         });
+
+    /*
+    =====================================================
+    ALL PRODUCTS UPDATE
+
+    일반상품 제작 시:
+    - 기존 HOTDEAL 영역은 그대로 유지
+    - ALL_PRODUCTS 영역만 최신 일반상품 목록으로 교체
+    =====================================================
+    */
+
+    let html = generatedHTML;
+
+    if (fs.existsSync(OUTPUT_FILE)) {
+
+        const currentHTML =
+            fs.readFileSync(
+                OUTPUT_FILE,
+                "utf8"
+            );
+
+        const allStart =
+            "<!-- ALL_PRODUCTS_START -->";
+
+        const allEnd =
+            "<!-- ALL_PRODUCTS_END -->";
+
+        const generatedGridStart =
+            generatedHTML.indexOf("<section");
+
+        const generatedGridEnd =
+            generatedHTML.indexOf(
+                "</section>",
+                generatedGridStart
+            );
+
+        if (
+            currentHTML.includes(allStart) &&
+            currentHTML.includes(allEnd) &&
+            generatedGridStart >= 0 &&
+            generatedGridEnd >= 0
+        ) {
+
+            const newProductGrid =
+                generatedHTML.slice(
+                    generatedGridStart,
+                    generatedGridEnd +
+                        "</section>".length
+                );
+
+            const before =
+                currentHTML.split(allStart)[0];
+
+            const after =
+                currentHTML.split(allEnd)[1];
+
+            html =
+                before +
+                allStart +
+                "\n" +
+                newProductGrid +
+                "\n" +
+                allEnd +
+                after;
+        }
+    }
 
 
     /*

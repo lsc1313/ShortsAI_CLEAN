@@ -21,6 +21,13 @@ import { createShort } from "./modules/createShort.js";
 import * as CoupangProductStore from "./modules/coupang/productStore.js";
 import { resolveCoupangProduct } from "./modules/coupang/productResolver.js";
 import Hotdeal from "./coupang-hotdeal/index.js";
+import {
+    searchProduct,
+    createPartnerLink
+} from "./modules/coupang/index_api.js";
+import {
+    downloadImage
+} from "./modules/image/download.js";
 
 
 const app = express();
@@ -286,6 +293,235 @@ res.json(result);
 
     }
 );
+
+/*
+=========================================================
+SHOPPING QUICK CREATE
+
+상품명
+    ↓
+쿠팡 파트너스 API
+    ↓
+상품정보 / 이미지 / 파트너스 링크
+    ↓
+Brain QUICK → Shopping
+=========================================================
+*/
+app.post(
+    "/shopping/create",
+    async (req, res) => {
+
+        try {
+
+            const keyword =
+                String(
+                    req.body?.productName || ""
+                ).trim();
+
+            if (!keyword) {
+
+                return res.status(400).json({
+                    success: false,
+                    error: "상품명을 입력해주세요."
+                });
+
+            }
+
+            console.log(
+                `[SHOPPING QUICK] SEARCH : ${keyword}`
+            );
+
+            /*
+             * 1. 쿠팡 파트너스 API 상품 검색
+             */
+            const apiProduct =
+                await searchProduct(
+                    keyword
+                );
+
+            if (!apiProduct) {
+
+                return res.status(404).json({
+                    success: false,
+                    error: "쿠팡 상품을 찾지 못했습니다."
+                });
+
+            }
+
+            /*
+             * 2. 파트너스 링크 생성
+             */
+            const partnerUrl =
+                await createPartnerLink(
+                    apiProduct.url
+                );
+
+            if (!partnerUrl) {
+
+                throw new Error(
+                    "쿠팡 파트너스 링크 생성 실패"
+                );
+
+            }
+
+            /*
+             * 3. 상품 이미지 로컬 저장
+             *
+             * 기존 Shopping IMAGE 엔진이
+             * product.images의 로컬 파일을 사용하므로
+             * API 이미지를 먼저 저장한다.
+             */
+            const imageId =
+                `quick_${Date.now()}`;
+
+            const imageDir =
+                path.join(
+                    PRODUCT_IMAGE_DIR,
+                    imageId
+                );
+
+            fs.mkdirSync(
+                imageDir,
+                {
+                    recursive: true
+                }
+            );
+
+            const imageFile =
+                path.join(
+                    imageDir,
+                    "product.jpg"
+                );
+
+            await downloadImage(
+                apiProduct.image,
+                imageFile
+            );
+
+            if (
+                !fs.existsSync(imageFile) ||
+                fs.statSync(imageFile).size === 0
+            ) {
+
+                throw new Error(
+                    "쿠팡 상품 이미지 저장 실패"
+                );
+
+            }
+
+            /*
+             * 기존 Shopping 생산라인이 사용하는
+             * Product 객체 형식
+             */
+            const product = {
+
+                id:
+                    imageId,
+
+                name:
+                    apiProduct.title ||
+                    keyword,
+
+                keyword,
+
+                description:
+                    "",
+
+                price:
+                    apiProduct.price,
+
+                partnerUrl,
+
+                images: [
+                    imageFile
+                ],
+
+                enabled:
+                    true
+
+            };
+
+            console.log(
+                "[SHOPPING QUICK PRODUCT]",
+                {
+                    name: product.name,
+                    price: product.price,
+                    partnerUrl: product.partnerUrl,
+                    image: product.images[0]
+                }
+            );
+
+            /*
+             * 4. 기존 Brain QUICK 생산라인
+             *
+             * 새 쇼핑 생산라인을 만들지 않는다.
+             */
+            BrainQueue.start({
+
+                mode:
+                    "QUICK",
+
+                topic:
+                    product.name,
+
+                count:
+                    1,
+
+                channel:
+                    "Shopping",
+
+                product
+
+            }).catch(error => {
+
+                console.error(
+                    "[SHOPPING QUICK BRAIN ERROR]",
+                    error
+                );
+
+            });
+
+            /*
+             * 제작은 Brain에서 계속 진행하고
+             * UI에는 즉시 시작 응답
+             */
+            res.json({
+
+                success:
+                    true,
+
+                action:
+                    "brain_quick_start",
+
+                product: {
+                    name:
+                        product.name,
+
+                    price:
+                        product.price
+                }
+
+            });
+
+        }
+        catch (error) {
+
+            console.error(
+                "[SHOPPING QUICK ERROR]",
+                error
+            );
+
+            res.status(500).json({
+                success: false,
+                error:
+                    error.message
+            });
+
+        }
+
+    }
+);
+
 
 app.post(
 "/brain/start",

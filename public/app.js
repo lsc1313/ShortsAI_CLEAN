@@ -1654,3 +1654,111 @@ async function deleteCoupangProduct(
 
 /* HOTDEAL UI END */
 
+
+
+/*
+=========================================================
+SHOPPING QUICK CREATE
+상품명 → Coupang → Shopping 제작
+=========================================================
+*/
+async function createShoppingByProductName() {
+
+    const input =
+        document.getElementById(
+            "brainShoppingProductName"
+        );
+
+    const button =
+        document.getElementById(
+            "brainShoppingCreateBtn"
+        );
+
+    const productName =
+        String(input?.value || "").trim();
+
+    if (!productName) {
+
+        alert("제작할 상품명을 입력해주세요.");
+
+        input?.focus();
+
+        return;
+
+    }
+
+    if (button) {
+        button.disabled = true;
+        button.textContent = "⏳ 제작 시작 중...";
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                "/shopping/create",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        productName
+                    })
+                }
+            );
+
+        const result =
+            await response.json();
+
+        if (
+            !response.ok ||
+            result?.success === false
+        ) {
+
+            throw new Error(
+                result?.error ||
+                "쇼핑 제작 시작 실패"
+            );
+
+        }
+
+        console.log(
+            "[SHOPPING QUICK]",
+            result
+        );
+
+        alert(
+            `쇼핑 제작을 시작했습니다.\n\n상품: ${productName}`
+        );
+
+    }
+    catch (error) {
+
+        console.error(
+            "[SHOPPING QUICK ERROR]",
+            error
+        );
+
+        alert(
+            `쇼핑 제작 실패\n${error.message}`
+        );
+
+    }
+    finally {
+
+        if (button) {
+            button.disabled = false;
+            button.textContent = "🛒 쇼핑 제작";
+        }
+
+    }
+
+}
+
+
+window.createShoppingByProductName =
+    createShoppingByProductName;

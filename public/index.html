@@ -49,111 +49,32 @@
 	
     <!-- Brain -->
 
-    <!-- COUPANG PRODUCT MANAGEMENT -->
+    <!-- COUPANG PRODUCT MANAGEMENT REMOVED -->
 
-    <div class="card" id="coupangProductCard">
-
-        <h3 class="coupangTitle">
-            🛒 쿠팡 상품 관리
-        </h3>
-
-        <div class="coupangForm">
-
-            <label for="coupangName">
-                상품명
-            </label>
-
-            <input
-                id="coupangName"
-                type="text"
-                placeholder="쿠팡 상품명을 입력하세요"
-                autocomplete="off">
-
-
-            <label for="coupangPartnerUrl">
-                쿠팡 파트너스 링크
-            </label>
-
-            <input
-                id="coupangPartnerUrl"
-                type="url"
-                placeholder="https://link.coupang.com/...">
-
-
-            <label for="coupangImages">
-                상품 사진
-            </label>
-
-            <input
-                id="coupangImages"
-                class="coupangFileInput"
-                type="file"
-                accept="image/*"
-                multiple>
-
-
-            <div class="coupangImageHelp">
-                휴대폰 갤러리에서 상품 사진을 여러 장 선택하세요.
-            </div>
-
-
-            <div
-                id="coupangImagePreview"
-                class="coupangImagePreview">
-            </div>
-
-
-            <button
-                id="coupangAddBtn"
-                type="button"
-                onclick="addCoupangProduct()">
-                📦 상품 등록
-            </button>
-
-
-            <div
-                id="coupangMessage"
-                class="coupangMessage">
-            </div>
-
-        </div>
-
-
-        <div class="coupangDivider"></div>
-
-
-        <div class="coupangListHeader">
-
-            <strong>
-                등록 상품
-            </strong>
-
-            <button
-                type="button"
-                class="coupangRefreshBtn"
-                onclick="loadCoupangProducts()">
-                새로고침
-            </button>
-
-        </div>
-
-
-        <div
-            id="coupangProductList"
-            class="coupangProductList">
-            상품 목록 불러오는 중...
-        </div>
-
-    </div>
-
-
-
-
-    <div class="card">
+<div class="card">
 
         <h3 class="brainTitle">
             🤖 Brain 자동 제작
         </h3>
+
+        <div id="brainShoppingProduct">
+            <label for="brainShoppingProductName">
+                쇼핑 상품명
+            </label>
+
+            <input
+                id="brainShoppingProductName"
+                type="text"
+                placeholder="제작할 상품명을 입력하세요"
+                autocomplete="off">
+
+            <button
+                id="brainShoppingCreateBtn"
+                type="button"
+                onclick="createShoppingByProductName()">
+                🛒 쇼핑 제작
+            </button>
+        </div>
 
         <h3>카테고리</h3>
 

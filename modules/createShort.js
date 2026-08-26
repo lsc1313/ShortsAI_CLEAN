@@ -25,6 +25,8 @@ import { createThumbnail } from "./thumbnail.js";
 import { createMetadata } from "./metadata.js";
 import { uploadVideo } from "./upload.js";
 import { uploadInstagramReel } from "./instagram/instagramUploader.js";
+import { createThreadsDirector } from "./threads/director.js";
+import { uploadThreadsText } from "./threads/uploader.js";
 import { createShoppingDirector } from "./shopping/director.js";
 import { createHotdealDirector } from "./hotdeal/director.js";
 import { createHotdealCards } from "./hotdeal/card.js";
@@ -97,6 +99,7 @@ step("DIRECTOR");
 
 let director;
         let hotdealCards = [];
+let hotdealProducts = [];
 
 const channelName =
     String(channel?.name || "")
@@ -122,7 +125,7 @@ if (channelName === "shopping") {
         options?.hotdeal === true
     ) {
 
-        const hotdealProducts =
+        hotdealProducts =
             Array.isArray(options?.products)
                 ? options.products
                 : [];
@@ -828,8 +831,120 @@ else {
 
 
 /*
+=========================================================
+THREADS
+SHOPPING ONLY
+
+Shopping 채널에서만 실행한다.
+
+Threads 게시 실패는 이미 성공한
+YouTube / Instagram 업로드를 실패 처리하지 않는다.
+=========================================================
+*/
+
+let threadsResult = null;
+
+if (
+    channelName === "shopping" &&
+    channel?.threads?.enabled === true
+) {
+
+    section("THREADS");
+
+    const threads =
+        channel.threads;
+
+    console.log(
+        `[THREADS] 대상 : ${threads.username || channel.name}`
+    );
+
+    try {
+
+        const threadsDirector =
+            await createThreadsDirector({
+                product,
+                shoppingDirector: director,
+                metadata
+            });
+
+        if (!threadsDirector?.finalText) {
+            throw new Error(
+                "Threads Director finalText 없음"
+            );
+        }
+
+        threadsResult =
+            await uploadThreadsText(
+                threadsDirector.finalText,
+                {
+                    threadsUserId:
+                        threads.threadsUserId,
+
+                    accessToken:
+                        threads.accessToken,
+
+                    username:
+                        threads.username
+                }
+            );
+
+        success(
+            "THREADS 완료"
+        );
+
+        debug(
+            threadsResult
+        );
+
+    }
+    catch (threadsError) {
+
+        console.error(
+            "[THREADS] 게시 실패:",
+            threadsError?.message ||
+            threadsError
+        );
+
+        threadsResult = {
+            success: false,
+            platform: "threads",
+            username:
+                threads.username || "",
+            error:
+                threadsError?.message ||
+                String(threadsError)
+        };
+    }
+
+}
+else {
+
+    console.log(
+        `[THREADS] ${channel?.name || "UNKNOWN"} : SKIP`
+    );
+
+}
+
+/*
     플랫폼 업로드 처리 이후 작업파일을 정리한다.
 */
+/*
+    HOTDEAL 상품 링크 페이지 갱신
+
+    - HOTDEAL일 때만 실행
+    - 이전 HOTDEAL 상품은 제거
+    - 이번 HOTDEAL 상품으로 통째로 교체
+    - 전체상품 영역은 건드리지 않는다.
+*/
+if (
+    options?.hotdeal === true &&
+    hotdealProducts.length > 0
+) {
+    await updateShopPage(
+        hotdealProducts
+    );
+}
+
 cleanAfterUpload();
 
 
@@ -850,7 +965,8 @@ return {
 
     youtube: uploadResult,
 
-    instagram: instagramResult
+    instagram: instagramResult,
+    threads: threadsResult
 
 };
 
@@ -870,6 +986,3 @@ return {
 
 
 
-if (typeof products !== "undefined" && Array.isArray(products)) {
-    await updateShopPage(products);
-}
