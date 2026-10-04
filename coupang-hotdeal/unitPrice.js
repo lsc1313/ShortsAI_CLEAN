@@ -1,5 +1,7 @@
-function roundMoney(value) {
-  return Math.round(value);
+function roundUnitPrice(value) {
+  // 내부 비교값은 소수 정밀도를 보존한다.
+  // 생수처럼 1mL당 1원 미만인 상품이 0원으로 소실되는 것을 방지.
+  return Math.round(Number(value) * 10000) / 10000;
 }
 
 function normalizeComparableUnit(totalUnits, unitLabel) {
@@ -406,7 +408,7 @@ function calcUnitPrice(productName, price) {
 
   return {
     // 원화 비교/표시/TTS에는 소수 가격을 사용하지 않는다.
-    unitPrice: roundMoney(numericPrice / normalized.totalUnits),
+    unitPrice: roundUnitPrice(numericPrice / normalized.totalUnits),
     unitCount: normalized.totalUnits,
     unitLabel: normalized.unitLabel,
     confidence: parsed.confidence,
