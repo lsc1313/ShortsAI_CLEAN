@@ -860,12 +860,63 @@ if (
 
     try {
 
-        const threadsDirector =
-            await createThreadsDirector({
-                product,
-                shoppingDirector: director,
-                metadata
-            });
+const threadsProduct =
+    options?.hotdeal === true
+        ? (
+            [...hotdealProducts]
+                .sort((a, b) => {
+
+                    const rateA =
+                        parseFloat(
+                            String(a?.dealRate || 0)
+                                .replace(/[^\d.]/g, "")
+                        ) || 0;
+
+                    const rateB =
+                        parseFloat(
+                            String(b?.dealRate || 0)
+                                .replace(/[^\d.]/g, "")
+                        ) || 0;
+
+                    return rateB - rateA;
+                })[0] || null
+        )
+        : product;
+
+if (
+    options?.hotdeal === true &&
+    threadsProduct
+) {
+    console.log(
+        "[THREADS HOTDEAL 대표상품]",
+        {
+            name:
+                threadsProduct.name ||
+                threadsProduct.productGroup,
+
+            dealRate:
+                threadsProduct.dealRate,
+
+            image:
+                threadsProduct.image || ""
+        }
+    );
+}
+
+
+const threadsDirector =
+    await createThreadsDirector({
+        product:
+            threadsProduct,
+
+        shoppingDirector:
+            director,
+
+        metadata,
+
+        hotdeal:
+            options?.hotdeal === true
+    });
 
         if (!threadsDirector?.finalText) {
             throw new Error(
@@ -874,19 +925,24 @@ if (
         }
 
         threadsResult =
-            await uploadThreadsText(
-                threadsDirector.finalText,
-                {
-                    threadsUserId:
-                        threads.threadsUserId,
+await uploadThreadsText(
+    threadsDirector.finalText,
+    {
+        imageUrl:
+            threadsProduct?.productImageUrl ||
+            threadsProduct?.image ||
+            "",
 
-                    accessToken:
-                        threads.accessToken,
+        threadsUserId:
+            threads.threadsUserId,
 
-                    username:
-                        threads.username
-                }
-            );
+        accessToken:
+            threads.accessToken,
+
+        username:
+            threads.username
+    }
+);
 
         success(
             "THREADS 완료"

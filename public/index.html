@@ -21,6 +21,22 @@
         🤖 ShortsAI Studio
     </h1>
 
+<!-- PC MASTER SCHEDULER STATUS -->
+<div id="schedulerPanel" class="schedulerPanel">
+
+    <div class="schedulerHeader">
+        <strong>🖥️ PC 자동화</strong>
+        <span id="schedulerOverall">확인 중...</span>
+    </div>
+
+    <div id="schedulerJobs">
+        자동화 상태를 불러오는 중입니다.
+    </div>
+
+    <div id="schedulerError"></div>
+
+</div>
+
     <!-- 빠른 생성 -->
 
     <div class="card">
@@ -121,6 +137,29 @@
             </label>
 
         </div>
+
+
+<div class="countRow">
+
+    <label for="brainContentType">
+        &#51228;&#51089; &#54805;&#49885;
+    </label>
+
+    <select
+        id="brainContentType"
+        onchange="syncBrainContentType()">
+
+        <option value="SHORTS">
+            SHORTS
+        </option>
+
+        <option value="LONGFORM">
+            LONGFORM
+        </option>
+
+    </select>
+
+</div>
 
 <div class="countRow">
 

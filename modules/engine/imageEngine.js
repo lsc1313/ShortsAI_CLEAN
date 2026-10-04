@@ -14,6 +14,7 @@ export async function createImages(data){
         script.push({
 
             type:"hook",
+            mediaMode: data.mediaMode || "",
             scene:0,
             sceneType:"hook",
             imageLimit:1,
@@ -63,6 +64,11 @@ voice:data.hook,
             sceneType:
                 scene.sceneType || "global",
 
+            mediaMode:
+                scene.mediaMode ||
+                data.mediaMode ||
+                "",
+
             imageLimit:
                 scene.imageLimit ||
                 (scene.sceneType==="ranking" ? 3 : 1),
@@ -107,7 +113,7 @@ voice:scene.voice,
 
     data.script = script;
 
-    data.images = await createImage(script);
+    data.images = await createImage({ scenes: script });
 
 debug("========== IMAGE PLAN ==========");
 

@@ -1,0 +1,12 @@
+﻿{
+  "enabled": true,
+  "genre": "history_mystery",
+  "language": "ko",
+  "candidateCount": 30,
+  "finalistCount": 10,
+  "targetDurationMinutes": {
+    "min": 40,
+    "max": 70
+  },
+  "uploadIntervalDays": 2
+}

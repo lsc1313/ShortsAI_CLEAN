@@ -282,21 +282,27 @@ async function run(activeProductGroups = null) {
         continue;
       }
 
+      for (const candidate of candidates) {
+        recordSnapshot({
+          productId: candidate.productId,
+          name: candidate.name,
+          price: candidate.price,
+          unitPrice: candidate.unitPrice,
+          unitCount: candidate.unitCount,
+          unitLabel: candidate.unitLabel,
+          url: candidate.url,
+          image: candidate.image,
+          productGroup,
+        });
+      }
+
+      console.log(
+        `[HOTDEAL] ${productGroup} 상품정보 갱신 완료: ${candidates.length}개`
+      );
+
       candidates.sort((a, b) => a.unitPrice - b.unitPrice);
 
       const best = candidates[0];
-
-      recordSnapshot({
-        productId: best.productId,
-        name: best.name,
-        price: best.price,
-        unitPrice: best.unitPrice,
-        unitCount: best.unitCount,
-        unitLabel: best.unitLabel,
-        url: best.url,
-        image: best.image,
-        productGroup,
-      });
 
       const stats = getStats(best.productId);
 

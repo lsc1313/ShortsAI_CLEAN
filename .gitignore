@@ -140,3 +140,32 @@ data/**/*.BACKUP*
 public/app.jsxx
 modules/video/directory.js.
 media/thumbnail/
+
+# =========================================================
+# PC FULL SOURCE SNAPSHOT SAFETY
+# =========================================================
+
+# Accidental nested repository
+/ShortsAI_CLEAN/
+
+# Longform runtime/generated data
+/longform/data/
+/longform/tts-test/
+
+# Temporary patch / repair / test utilities
+/patch-*.mjs
+/fix-*.mjs
+/test-*.mjs
+/check-*.mjs
+
+# Longform temporary patch utilities
+/longform/patch-*.mjs
+/longform/remove-image-hook.mjs
+
+# Old source snapshots
+*.before-*
+*.bak-*
+
+# Local OAuth/token utilities
+/scripts/getEchoesAgoRefreshToken.js
+/update-echoesago-token.mjs

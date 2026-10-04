@@ -1,3 +1,96 @@
+
+function trimUtf8Bytes(text, maxBytes) {
+
+    let result = "";
+
+    for (const char of String(text || "")) {
+
+        const next = result + char;
+
+        if (
+            Buffer.byteLength(next, "utf8") >
+            maxBytes
+        ) {
+            break;
+        }
+
+        result = next;
+    }
+
+    return result.trim();
+}
+
+
+function fitThreadsText(
+    text,
+    maxBytes = 480
+) {
+
+    const value =
+        String(text || "").trim();
+
+    if (
+        Buffer.byteLength(value, "utf8") <=
+        maxBytes
+    ) {
+        return value;
+    }
+
+    const noticeMarker =
+        "?? ???? ??? ??";
+
+    const noticeIndex =
+        value.lastIndexOf(noticeMarker);
+
+    if (noticeIndex === -1) {
+        return trimUtf8Bytes(
+            value,
+            maxBytes
+        );
+    }
+
+    const noticeStart =
+        value.lastIndexOf(
+            "?",
+            noticeIndex
+        );
+
+    const start =
+        noticeStart >= 0
+            ? noticeStart
+            : noticeIndex;
+
+    const notice =
+        value.slice(start).trim();
+
+    const body =
+        value.slice(0, start).trim();
+
+    const separator =
+        "\n\n";
+
+    const reservedBytes =
+        Buffer.byteLength(
+            separator + notice,
+            "utf8"
+        );
+
+    const bodyLimit =
+        Math.max(
+            0,
+            maxBytes - reservedBytes
+        );
+
+    return (
+        trimUtf8Bytes(
+            body,
+            bodyLimit
+        ) +
+        separator +
+        notice
+    ).trim();
+}
+
 import axios from "axios";
 
 /*
@@ -24,12 +117,26 @@ export async function uploadThreadsText(
     {
         threadsUserId,
         accessToken,
-        username = ""
+        username = "",
+        imageUrl = ""
     } = {}
 ) {
 
+    console.log(
+        "[THREADS] UTF8 BYTES :",
+        Buffer.byteLength(text, "utf8")
+    );
+
+
     text =
         String(text || "").trim();
+
+const safeImageUrl =
+    /^https?:\/\//i.test(
+        String(imageUrl || "").trim()
+    )
+        ? String(imageUrl).trim()
+        : "";
 
     if (!text) {
         throw new Error(
@@ -59,13 +166,13 @@ export async function uploadThreadsText(
     =====================================================
     */
 
-    if (
-        Buffer.byteLength(text, "utf8") > 500
-    ) {
-        throw new Error(
-            `Threads 본문 500바이트 초과 : ${Buffer.byteLength(text, "utf8")}`
-        );
-    }
+if (
+    Array.from(text).length > 500
+) {
+    throw new Error(
+        `Threads 본문 500자 초과 : ${Array.from(text).length}`
+    );
+}
 
 
     console.log("");
@@ -104,12 +211,24 @@ export async function uploadThreadsText(
                 `${GRAPH_URL}/${threadsUserId}/threads`,
                 null,
                 {
-                    params: {
-                        media_type: "TEXT",
-                        text,
-                        access_token:
-                            accessToken
-                    }
+params: {
+    media_type:
+        safeImageUrl
+            ? "IMAGE"
+            : "TEXT",
+
+    text,
+
+    ...(safeImageUrl
+        ? {
+            image_url:
+                safeImageUrl
+        }
+        : {}),
+
+    access_token:
+        accessToken
+}
                 }
             );
 

@@ -28,6 +28,14 @@ export class Planner {
 
         this.job = job;
 
+        const isLongform =
+            String(job.type || "")
+                .toUpperCase() === "LONGFORM";
+
+        if (isLongform) {
+            return await this.planLongform(job);
+        }
+
         switch (job.mode) {
 
             case "QUICK":
@@ -52,6 +60,119 @@ export class Planner {
         사용자가 입력한 주제를 그대로 사용한다.
         Planner는 적합한 채널만 결정한다.
     */
+
+    async planLongform(job) {
+
+
+
+        const topic =
+
+
+            String(job.topic || "").trim() ||
+
+
+            "AUTO";
+
+
+
+        const category =
+
+
+            job.category ||
+
+
+            "history";
+
+
+
+        this.logger.log(
+
+
+            `[Planner] LONGFORM : ${topic}`
+
+
+        );
+
+
+
+        this.pool = [
+
+
+            {
+
+
+                type: "LONGFORM",
+
+
+
+                topic,
+
+
+                category,
+
+
+
+                channel: "History",
+
+
+
+                score: 100,
+
+
+
+                mode:
+
+
+                    job.mode ||
+
+
+                    "AUTO",
+
+
+
+                languages:
+
+
+                    ["ko", "en"],
+
+
+
+                channels: {
+
+
+                    ko: "History",
+
+
+                    en: "EchoesAgo"
+
+
+                }
+
+
+            }
+
+
+        ];
+
+
+
+        return await this.manager.execute(
+
+
+            this,
+
+
+            this.reporter
+
+
+        );
+
+
+
+    }
+
+
+
 
     async planQuick(job) {
 

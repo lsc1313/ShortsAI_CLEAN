@@ -127,56 +127,104 @@ async function createShorts(){
 
 }
 
-async function startBrain(){
 
-const count = Number(
+function syncBrainContentType(){
 
-    document.getElementById(
-        "brainCount"
-    ).value
+    const type =
+        document.getElementById(
+            "brainContentType"
+        )?.value || "SHORTS";
 
-);
+    const countInput =
+        document.getElementById(
+            "brainCount"
+        );
 
-const categories = [
+    const categories =
+        document.querySelectorAll(
+            ".brainCategory"
+        );
 
-    ...document.querySelectorAll(
-        ".brainCategory:checked"
-    )
+    const longform =
+        type === "LONGFORM";
 
-].map(x=>x.value);
+    if (countInput) {
 
-await fetch(
+        countInput.disabled =
+            longform;
 
-    "/brain/start",
-
-    {
-
-        method:"POST",
-
-        headers:{
-
-            "Content-Type":
-            "application/json"
-
-        },
-
-        body:JSON.stringify({
-
-            mode:"AUTO",
-
-            count,
-
-            categories
-
-        })
+        if (longform) {
+            countInput.value = "1";
+        }
 
     }
 
-);
-
-updateBrainStatus();
+    categories.forEach(
+        item => {
+            item.disabled =
+                longform;
+        }
+    );
 
 }
+
+async function startBrain(){
+
+    const contentType =
+        document.getElementById(
+            "brainContentType"
+        )?.value || "SHORTS";
+
+    const isLongform =
+        contentType === "LONGFORM";
+
+    const count =
+        isLongform
+            ? 1
+            : Number(
+                document.getElementById(
+                    "brainCount"
+                ).value
+            );
+
+    const categories =
+        isLongform
+            ? ["history"]
+            : [
+                ...document.querySelectorAll(
+                    ".brainCategory:checked"
+                )
+            ].map(x => x.value);
+
+    const response = await fetch(
+        "/brain/start",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                    "application/json"
+            },
+
+            body: JSON.stringify({
+                mode: "AUTO",
+                type: contentType,
+                count,
+                categories
+            })
+        }
+    );
+
+    if (!response.ok) {
+        console.error(
+            "BRAIN START FAILED",
+            await response.text()
+        );
+    }
+
+    updateBrainStatus();
+}
+
 
 async function stopBrain(){
 
@@ -1762,3 +1810,234 @@ async function createShoppingByProductName() {
 
 window.createShoppingByProductName =
     createShoppingByProductName;
+
+async function loadSchedulerStatus() {
+
+    const overall =
+        document.getElementById(
+            "schedulerOverall"
+        );
+
+    const jobsBox =
+        document.getElementById(
+            "schedulerJobs"
+        );
+
+    const errorBox =
+        document.getElementById(
+            "schedulerError"
+        );
+
+    if (
+        !overall ||
+        !jobsBox ||
+        !errorBox
+    ) {
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/scheduler/status",
+                {
+                    cache:
+                        "no-store"
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (
+            !response.ok ||
+            data?.success === false
+        ) {
+
+            throw new Error(
+                data?.error ||
+                "스케줄러 상태 조회 실패"
+            );
+
+        }
+
+
+        /*
+        전체 상태
+        */
+
+        if (data.running) {
+
+            overall.textContent =
+                data.currentJob
+                    ? `실행 중 · ${data.currentJob}`
+                    : "실행 중";
+
+        }
+        else {
+
+            overall.textContent =
+                "대기 중";
+
+        }
+
+
+        /*
+        작업별 표시명
+        */
+
+        const labels = {
+
+            "hotdeal-morning":
+                "🔥 아침 핫딜",
+
+            "ai":
+                "🤖 AI",
+
+            "science":
+                "🔬 Science",
+
+            "shopping-recommendation":
+                "🛍️ 추천템",
+
+            "history":
+                "🏛️ History",
+
+            "animal":
+                "🐾 Animal",
+
+            "hotdeal-evening":
+                "🔥 저녁 핫딜"
+
+        };
+
+
+        const statusLabels = {
+
+            waiting:
+                "대기",
+
+            running:
+                "실행 중",
+
+            completed:
+                "완료",
+
+            "pending-recovery":
+                "복구 대기"
+
+        };
+
+
+        const rows =
+            Array.isArray(data.jobs)
+                ? data.jobs.map(job => {
+
+                    const label =
+                        labels[job.id] ||
+                        job.channel ||
+                        job.id;
+
+                    const statusText =
+                        statusLabels[job.status] ||
+                        job.status;
+
+let displayStatus =
+    statusText;
+
+if (
+    job.status === "completed" &&
+    job.completedCount !== null &&
+    job.completedCount !== undefined
+) {
+
+    displayStatus =
+        `${statusText} ${job.completedCount}/${job.targetCount}`;
+
+}
+
+                    return `
+                        <div class="schedulerJob scheduler-${job.status}">
+                            <span class="schedulerTime">
+                                ${job.time}
+                            </span>
+
+                            <span class="schedulerName">
+                                ${label}
+                                ${job.count > 1
+                                    ? `× ${job.count}`
+                                    : ""}
+                            </span>
+
+<span class="schedulerStatus">
+    ${displayStatus}
+</span>
+                        </div>
+                    `;
+
+                }).join("")
+                : "";
+
+
+        jobsBox.innerHTML =
+            rows ||
+            "예약 작업이 없습니다.";
+
+
+        /*
+        최근 오류
+        */
+
+        if (data.lastError) {
+
+            errorBox.innerHTML = `
+                <div class="schedulerLastError">
+                    ⚠️ 최근 오류:
+                    ${data.lastError.jobId || ""}
+                    ·
+                    ${data.lastError.message || ""}
+                </div>
+            `;
+
+        }
+        else {
+
+            errorBox.innerHTML =
+                "";
+
+        }
+
+    }
+    catch (error) {
+
+        overall.textContent =
+            "연결 오류";
+
+        jobsBox.innerHTML =
+            "PC 자동화 상태를 불러오지 못했습니다.";
+
+        errorBox.innerHTML = `
+            <div class="schedulerLastError">
+                ${error?.message || error}
+            </div>
+        `;
+
+    }
+
+}
+
+
+window.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        loadSchedulerStatus();
+
+        setInterval(
+            loadSchedulerStatus,
+            30000
+        );
+
+    }
+);

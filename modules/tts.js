@@ -161,7 +161,57 @@ function createVoice(text,file){
 }
 
 
-export async function createTTS(director){
+
+function createVoiceEnglish(text,file){
+
+    try{
+
+        const safe =
+            cleanText(text)
+                .replace(/([0-9]),([0-9]{3})/g, "$1$2")
+                .replace(/%/g, " percent")
+                .replace(/\u2103/g, " degrees Celsius")
+                .replace(/&/g, " and ")
+                .replace(/@/g, " at ")
+                .replace(/\//g, " ")
+                .replace(/[()]/g, " ")
+                .replace(/\s+/g, " ")
+                .replace(/"/g, "'")
+                .trim();
+
+        execSync(
+
+`edge-tts \
+--voice en-US-GuyNeural \
+--rate=+10% \
+--pitch=+0Hz \
+--text "${safe}" \
+--write-media "${file}"`,
+
+            {
+                stdio:"ignore"
+            }
+
+        );
+
+        return true;
+
+    }
+    catch(e){
+
+        console.log(
+            "Edge TTS EN FAILED:",
+            e.message
+        );
+
+        return false;
+
+    }
+
+}
+
+
+export async function createTTS(director, language = "ko"){
 
     ensureDir();
 
@@ -195,10 +245,11 @@ const voiceItems =
 
             scene:index+1,
 
-            voice:
-                scene.tts ||
-                scene.script ||
-                "",
+voice:
+    scene.voice ||
+    scene.tts ||
+    scene.script ||
+    "",
 
             text:
                 scene.tts ||
@@ -288,10 +339,15 @@ const voiceItems =
 
 
         const ok =
-            createVoice(
-                text,
-                file
-            );
+            language === "en"
+                ? createVoiceEnglish(
+                    text,
+                    file
+                )
+                : createVoice(
+                    text,
+                    file
+                );
 
 
         if(!ok){

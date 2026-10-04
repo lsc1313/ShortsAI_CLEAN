@@ -361,13 +361,17 @@ export async function searchImage(
     */
 
 
-    const primaryQueries =
+    const directorImageQueries =
+        scene?.mediaMode === "image" &&
+        Array.isArray(scene.imageQueries) && scene.imageQueries.length > 0;
+
+    const primaryQueries = directorImageQueries ? [] :
         buildPrimarySearchWords(
             primarySubject
         );
 
 
-    const fallbackQueries =
+    const fallbackQueries = directorImageQueries ? [keyword] :
         buildFallbackSearchWords(
             keyword,
             scene
@@ -399,12 +403,23 @@ export async function searchImage(
     */
 
 
-    if(
-        primaryQueries.length > 0
-    ){
+    const activeProviders =
+    scene?.mediaMode === "image"
+        ? providers.filter(
+            provider => provider.name !== "Pollinations"
+        )
+        : providers;
+
+debug(
+    `[IMAGE PROVIDERS] MODE=${scene?.mediaMode || "default"} : ${activeProviders.map(p => p.name).join(", ")}`
+);
+
+if(
+    primaryQueries.length > 0
+){
 
         for(
-            const provider of providers
+            const provider of activeProviders
         ){
 
             for(
@@ -448,7 +463,7 @@ export async function searchImage(
 
 
     for(
-        const provider of providers
+        const provider of activeProviders
     ){
 
         for(
@@ -461,7 +476,7 @@ export async function searchImage(
             */
 
             if(
-                primarySubject &&
+                !directorImageQueries && primarySubject &&
                 normalizeSubject(
                     searchWord
                 ) ===

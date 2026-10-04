@@ -110,6 +110,68 @@ TYPE JUDGE
 =====================================================
 */
 
+
+const ENGLISH_VERSION_PROMPT = `
+
+=====================================================
+ECHOESAGO ENGLISH VERSION
+=====================================================
+
+Create an English version for the global History Shorts channel "EchoesAgo"
+together with the existing Korean version.
+
+For every Scene, KEEP all existing Korean fields:
+
+script
+tts
+subtitle
+
+Also create:
+
+scriptEn
+ttsEn
+subtitleEn
+
+The English version must use the EXACT SAME:
+
+- historical topic
+- facts
+- scene order
+- coreSubject
+- imageQueries
+- visualType
+- direction
+- shot
+- cameraMove
+- motion
+- transition
+- duration
+- sceneType
+
+Do NOT create separate visuals or imageQueries for English.
+
+English writing rules:
+
+- Do not translate Korean word-for-word.
+- Write naturally for English-speaking YouTube Shorts viewers.
+- Preserve the same historical facts and meaning.
+- Use a strong natural English hook.
+- Keep narration concise for the same scene structure.
+- ttsEn must be natural spoken English.
+- subtitleEn must be natural on-screen English.
+- Do not invent unsupported historical facts.
+
+Also create this top-level field:
+
+titleEn
+
+titleEn must be a natural clickable English Shorts title
+for the same historical topic.
+
+Do not remove or rename any existing Korean fields.
+
+`;
+
 const TYPE_JUDGE_PROMPT = `
 
 너는 History YouTube Shorts의 Director다.
@@ -422,6 +484,8 @@ const judgeResult =
 ${COMMON_PROMPT}
 
 ${typePrompt}
+
+${ENGLISH_VERSION_PROMPT}
 
 =====================================================
 DIRECTOR INPUT

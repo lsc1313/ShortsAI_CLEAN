@@ -651,3 +651,140 @@ COUPANG MOBILE PRODUCT UI
 
 }
 
+/* =========================================
+   PC MASTER SCHEDULER STATUS
+========================================= */
+
+.schedulerPanel {
+    margin: 18px 0 24px;
+    padding: 16px;
+    border: 1px solid #dcdcdc;
+    border-radius: 14px;
+    background: #ffffff;
+}
+
+.schedulerHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    font-size: 16px;
+}
+
+#schedulerOverall {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: #f1f3f5;
+}
+
+.schedulerJob {
+    display: grid;
+    grid-template-columns: 58px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-top: 1px solid #eeeeee;
+}
+
+.schedulerJob:first-child {
+    border-top: 0;
+}
+
+.schedulerTime {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.schedulerName {
+    font-size: 14px;
+}
+
+.schedulerStatus {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: #f1f3f5;
+}
+
+.scheduler-completed .schedulerStatus {
+    background: #e8f7ed;
+}
+
+.scheduler-running .schedulerStatus {
+    background: #fff3cd;
+}
+
+.scheduler-pending-recovery .schedulerStatus {
+    background: #ffe8e8;
+}
+
+.schedulerLastError {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #fff1f1;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+
+    .schedulerPanel {
+        padding: 14px;
+    }
+
+    .schedulerJob {
+        grid-template-columns: 52px 1fr auto;
+        gap: 8px;
+    }
+
+    .schedulerName {
+        font-size: 13px;
+    }
+
+    .schedulerStatus {
+        font-size: 11px;
+    }
+}
+
+/* Scheduler text visibility fix */
+
+.schedulerPanel {
+    color: #222;
+}
+
+.schedulerHeader,
+.schedulerHeader strong,
+.schedulerJob,
+.schedulerTime,
+.schedulerName {
+    color: #222;
+}
+
+#schedulerOverall {
+    color: #555;
+}
+
+.schedulerStatus {
+    color: #444;
+}
+
+.scheduler-completed .schedulerStatus {
+    color: #137333;
+}
+
+.scheduler-running .schedulerStatus {
+    color: #8a5700;
+}
+
+.scheduler-pending-recovery .schedulerStatus {
+    color: #b3261e;
+}
+
+.schedulerLastError {
+    color: #b3261e;
+}

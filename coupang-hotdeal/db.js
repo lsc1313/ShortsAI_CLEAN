@@ -120,6 +120,37 @@ function hasEnoughPeriodData(history, days) {
 /**
  * 특정 상품의 가격 통계
  */
+
+function getProductGroupHistory(db, productGroup) {
+  if (!productGroup) {
+    return [];
+  }
+
+  const rows = [];
+
+  for (const history of Object.values(db)) {
+    if (!Array.isArray(history)) {
+      continue;
+    }
+
+    for (const item of history) {
+      if (
+        item &&
+        item.productGroup === productGroup &&
+        Number.isFinite(Number(item.unitPrice)) &&
+        Number(item.unitPrice) > 0
+      ) {
+        rows.push(item);
+      }
+    }
+  }
+
+  return rows.sort(
+    (a, b) =>
+      String(a.date).localeCompare(String(b.date))
+  );
+}
+
 function getStats(productId) {
   const db = loadDb();
   const history = db[productId] || [];
@@ -129,6 +160,13 @@ function getStats(productId) {
   }
 
   const today = history[history.length - 1];
+
+  // 같은 상품군 전체의 단위가격 기록
+  const groupHistory =
+    getProductGroupHistory(
+      db,
+      today.productGroup
+    );
 
   /*
    * ---------------------------------------------------------

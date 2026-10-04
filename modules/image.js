@@ -168,7 +168,8 @@ else{
 
 }
 
-keywords.sort(
+// Longform keeps the Director's two queries in their original order.
+if(item.mediaMode !== "image") keywords.sort(
     (a,b)=>
         keywordScore(b)-
         keywordScore(a)
@@ -209,12 +210,18 @@ const imageResults =
         usedUrls
     );
 
+const imageOnly =
+    item.mediaMode === "image" ||
+    item.imageOnly === true;
+
 const videoResults =
-    await searchVideo(
-        keyword,
-        item,
-        usedUrls
-    );
+    imageOnly
+        ? []
+        : await searchVideo(
+            keyword,
+            item,
+            usedUrls
+        );
 
 const imageCandidates =
     Array.isArray(imageResults)

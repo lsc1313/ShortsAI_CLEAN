@@ -17,6 +17,10 @@ import {cleanBeforeJob, cleanAfterUpload} from "./modules/cleanup.js";
 import {section,success,debug,step} from "./modules/logger.js";
 import * as BrainQueue from "./brain/brain.js";
 import * as Brain from "./brain/brain.js";
+import {
+    startMasterScheduler,
+    getMasterSchedulerStatus
+} from "./automation/masterScheduler.js";
 import { createShort } from "./modules/createShort.js";
 import * as CoupangProductStore from "./modules/coupang/productStore.js";
 import { resolveCoupangProduct } from "./modules/coupang/productResolver.js";
@@ -527,7 +531,13 @@ app.post(
 "/brain/start",
 async (req,res)=>{
 
-    const count =
+    const type =
+        String(
+            req.body.type ||
+            "SHORTS"
+        ).toUpperCase();
+
+const count =
         Number(req.body.count || 20);
 
     const categories =
@@ -617,6 +627,8 @@ if (brainStatus.running) {
 BrainQueue.start({
 
     mode: "AUTO",
+
+    type,
 
     count,
 
@@ -1848,6 +1860,33 @@ app.post("/hotdeal/create", async (req, res) => {
         });
     }
 });
+
+app.get(
+    "/api/scheduler/status",
+    (req, res) => {
+
+        try {
+
+            res.json({
+                success: true,
+                ...getMasterSchedulerStatus()
+            });
+
+        }
+        catch (error) {
+
+            res.status(500).json({
+                success: false,
+                error:
+                    error?.message ||
+                    String(error)
+            });
+
+        }
+
+    }
+);
+
 app.listen(
     PORT,
     ()=>{
@@ -1855,6 +1894,8 @@ app.listen(
         console.log(
             `ShortsAI FINAL Server Running : ${PORT}`
         );
+
+        startMasterScheduler();
 
     }
 );

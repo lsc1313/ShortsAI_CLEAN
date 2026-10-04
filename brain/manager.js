@@ -1,6 +1,9 @@
 import { createShort }
 from "../modules/createShort.js";
 
+import { runLongformFactory }
+from "../longform/factory.js";
+
 import {
     createBlog
 } from "../modules/blog/blogFactory.js";
@@ -663,10 +666,238 @@ export class Manager {
             topicStates[index].status =
                 "processing";
 
+            const isLongform =
+
+
+                String(order.type || "")
+
+
+                    .toUpperCase() === "LONGFORM";
+
+
+
+
+            /*
+
+
+            =============================================
+
+
+            LONGFORM FACTORY
+
+
+
+            UI -> Brain -> Planner -> Manager
+
+
+                                  -> LongformFactory
+
+
+            =============================================
+
+
+            */
+
+
+
+            if (isLongform) {
+
+
+
+                try {
+
+
+
+                    const longformResult =
+
+
+                        await runLongformFactory({
+
+
+                            ...order,
+
+
+
+                            type: "longform",
+
+
+
+                            category:
+
+
+                                order.category ||
+
+
+                                "history",
+
+
+
+                            languages:
+
+
+                                ["ko", "en"],
+
+
+
+                            channels: {
+
+
+                                ko: "History",
+
+
+                                en: "EchoesAgo"
+
+
+                            }
+
+
+                        });
+
+
+
+
+                    completed++;
+
+
+
+                    topicStates[index].status =
+
+
+                        "completed";
+
+
+
+
+                    this.logger.log(
+
+
+                        `[Manager] LONGFORM 완료 : ${
+
+
+                            longformResult?.topic ||
+
+
+                            order.topic ||
+
+
+                            "AUTO"
+
+
+                        }`
+
+
+                    );
+
+
+
+
+                    if (reporter) {
+
+
+
+                        reporter({
+
+
+
+                            status:
+
+
+                                "completed",
+
+
+
+                            current:
+
+
+                                completed,
+
+
+
+                            currentTopic:
+
+
+                                longformResult?.topic ||
+
+
+                                order.topic ||
+
+
+                                "",
+
+
+
+                            topics:
+
+
+                                topicStates
+
+
+
+                        });
+
+
+
+                    }
+
+
+
+
+                    continue;
+
+
+
+                }
+
+
+                catch (error) {
+
+
+
+                    topicStates[index].status =
+
+
+                        "failed";
+
+
+
+                    console.error(
+
+
+                        `[Manager] LONGFORM 제작 실패 : ${order.topic || "AUTO"}`,
+
+
+                        error?.message || error
+
+
+                    );
+
+
+
+                    continue;
+
+
+
+                }
+
+
+
+            }
+
+
+
+
             const channel =
+
+
                 this.getChannel(
+
+
                     order.channel
+
+
                 );
+
+
 
 
             if (!channel) {

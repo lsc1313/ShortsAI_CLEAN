@@ -247,24 +247,22 @@ else{
     테스트에서 통과한 Smooth Motion 방식.
     =================================================
     */
+const cleanEffect =
+    String(effect)
+        .replace(/\r?\n/g, "")
+        .trim();
 
-    execSync(
+const command =
+    `ffmpeg -y -loop 1 -i "${image}" -t ${time} ` +
+    `-vf "scale=2160:3840:force_original_aspect_ratio=increase,crop=2160:3840,${cleanEffect},scale=1080:1920" ` +
+    `-r 30 -c:v libx264 -pix_fmt yuv420p -preset veryfast -crf 20 "${output}"`;
 
-`ffmpeg -y \
--loop 1 \
--i "${image}" \
--t ${time} \
--vf "scale=2160:3840:force_original_aspect_ratio=increase,crop=2160:3840,${effect},scale=1080:1920" \
--r 30 \
--c:v libx264 \
--pix_fmt yuv420p \
--preset veryfast \
--crf 20 \
-"${output}"`
-
-    ,{
-        stdio:"ignore"
-    });
+execSync(
+    command,
+    {
+       stdio: "ignore"
+    }
+);
 
 }
 

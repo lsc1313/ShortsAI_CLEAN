@@ -758,13 +758,13 @@ function getVoiceScriptItems(script){
 
     return script.filter(item=>{
 
-        const text =
-            cleanText(
-                item?.voice ||
-                item?.subtitle ||
-                item?.text ||
-                ""
-            );
+const text =
+    cleanText(
+        item.subtitle ||
+        item.text ||
+        item.voice ||
+        ""
+    );
 
 
         return Boolean(text);

@@ -142,7 +142,7 @@ function createCardSvg(
                     fill="#E53935"/>
                 <text x="195" y="229"
                     text-anchor="middle"
-                    font-family="Noto Sans CJK KR"
+                    font-family="Noto Sans KR"
                     font-size="34"
                     font-weight="700"
                     fill="white">HOT DEAL</text>
@@ -169,7 +169,7 @@ function createCardSvg(
     <image x="90" y="180" width="900" height="900" preserveAspectRatio="xMidYMid meet" href="${href}"/>
 
     <text x="70" y="135"
-          font-family="Noto Sans CJK KR"
+          font-family="Noto Sans KR"
           font-size="58"
           font-weight="700"
           fill="#111111">${productGroup}</text>
@@ -192,19 +192,19 @@ function createCardSvg(
         xlink:href="${href}"/>
 
     <text x="70" y="1140"
-          font-family="Noto Sans CJK KR"
+          font-family="Noto Sans KR"
           font-size="42"
           font-weight="700"
           fill="#222222">${name}</text>
 
     <text x="70" y="1270"
-          font-family="Noto Sans CJK KR"
+          font-family="Noto Sans KR"
           font-size="74"
           font-weight="800"
           fill="#111111">${price}</text>
 
     <text x="70" y="1360"
-          font-family="Noto Sans CJK KR"
+          font-family="Noto Sans KR"
           font-size="50"
           font-weight="700"
           fill="#333333">${unitPrice}</text>
@@ -215,13 +215,13 @@ function createCardSvg(
           stroke-width="3"/>
 
     <text x="70" y="1500"
-          font-family="Noto Sans CJK KR"
+          font-family="Noto Sans KR"
           font-size="38"
           font-weight="600"
           fill="#444444">${escapeXml(sevenDay)}</text>
 
     <text x="70" y="1570"
-          font-family="Noto Sans CJK KR"
+          font-family="Noto Sans KR"
           font-size="38"
           font-weight="600"
           fill="#444444">${escapeXml(thirtyDay)}</text>
@@ -230,7 +230,7 @@ function createCardSvg(
         product.dealRate > 0
             ? `
             <text x="70" y="1660"
-                  font-family="Noto Sans CJK KR"
+                  font-family="Noto Sans KR"
                   font-size="42"
                   font-weight="800"
                   fill="#E53935">
@@ -243,7 +243,7 @@ function createCardSvg(
     }
 
     <text x="70" y="1780"
-          font-family="Noto Sans CJK KR"
+          font-family="Noto Sans KR"
           font-size="30"
           fill="#888888">
         오늘의 가격비교
