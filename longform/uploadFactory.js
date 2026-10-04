@@ -527,12 +527,11 @@ export async function uploadLongform({
         }
 
 
-        await waitForYoutubeProcessing(
-            koChannel,
-            koResult.id,
-            "KO"
-        );
-
+        /*
+        Upload itself has already succeeded once uploadVideo returns.
+        Persist the video ID BEFORE processing verification so a later
+        verification/auth failure can never cause a duplicate re-upload.
+        */
         updateUploadResult(
             productionId,
             "ko",
@@ -543,6 +542,12 @@ export async function uploadLongform({
                 url:
                     koResult.url || ""
             }
+        );
+
+        await waitForYoutubeProcessing(
+            koChannel,
+            koResult.id,
+            "KO"
         );
 
     }
@@ -607,12 +612,10 @@ export async function uploadLongform({
         }
 
 
-        await waitForYoutubeProcessing(
-            enChannel,
-            enResult.id,
-            "EN"
-        );
-
+        /*
+        Persist immediately after successful upload for resume safety.
+        Processing verification may fail independently of the upload.
+        */
         updateUploadResult(
             productionId,
             "en",
@@ -623,6 +626,12 @@ export async function uploadLongform({
                 url:
                     enResult.url || ""
             }
+        );
+
+        await waitForYoutubeProcessing(
+            enChannel,
+            enResult.id,
+            "EN"
         );
 
     }
