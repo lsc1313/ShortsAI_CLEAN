@@ -4,5 +4,12 @@
   "width": 1920,
   "height": 1080,
   "fps": 30,
-  "outputRoot": "D:/ShortsAI_DATA/ambience-test"
+  "outputRoot": "D:/ShortsAI_DATA/ambience-test",
+  "source": {
+    "provider": "pexels",
+    "fallback": "procedural",
+    "prefer": "video",
+    "query": "rainy night city apartment window",
+    "orientation": "landscape"
+  }
 }
