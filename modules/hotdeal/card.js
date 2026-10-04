@@ -54,7 +54,7 @@ function getDisplayUnit(unitLabel) {
     // 내부 비교값은 1g/1ml/1매 기준으로 유지하고,
     // 사람에게 보여줄 때만 읽기 쉬운 묶음 단위로 바꾼다.
     if (label === "g") return { multiplier: 100, label: "100g" };
-    if (label === "ml") return { multiplier: 100, label: "100mL" };
+    if (label === "ml") return { multiplier: 1000, label: "1L" };
     if (label === "매") return { multiplier: 100, label: "100매" };
 
     return { multiplier: 1, label: unitLabel };
