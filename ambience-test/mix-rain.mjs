@@ -5,6 +5,7 @@ import {spawn} from "child_process";
 const ROOT="D:/ShortsAI_DATA/ambience-library/rain";
 const OUTROOT="D:/ShortsAI_DATA/ambience-test/output";
 const OUT=path.join(OUTROOT,"rain-v2-30min.m4a");
+const SAMPLE=path.join(OUTROOT,"rain-v2-preview-60s.m4a");
 const DURATION=1800;
 fs.mkdirSync(OUTROOT,{recursive:true});
 
@@ -29,7 +30,7 @@ console.log("[RAIN V2] TEXTURE:",texture.id,texture.name);
 console.log("[RAIN V2] THUNDER:",thunder.id,thunder.name);
 console.log("[RAIN V2] TARGET: 30 minutes");
 
-const inputs=[bed,texture,thunder].map(locate);
+const inputs=[bed,texture,thunder].map(s=>locate(s.id));
 const args=[];
 for(const file of inputs) args.push("-stream_loop","-1","-i",file);
 
@@ -52,4 +53,9 @@ child.on("close",code=>{
   console.log("[RAIN V2] READY");
   console.log("[RAIN V2] FILE:",OUT);
   console.log("[RAIN V2] SIZE MB:",(size/1024/1024).toFixed(1));
+  const preview=spawn("ffmpeg",["-ss","300","-i",OUT,"-t","60","-c:a","aac","-b:a","192k","-y",SAMPLE],{stdio:["ignore","ignore","inherit"]});
+  preview.on("close",previewCode=>{
+    if(previewCode!==0){console.error("[RAIN V2] PREVIEW FAILED:",previewCode);return;}
+    console.log("[RAIN V2] PHONE PREVIEW READY:",SAMPLE);
+  });
 });
