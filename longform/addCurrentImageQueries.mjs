@@ -1,9 +1,11 @@
 ﻿import "dotenv/config";
 import fs from "fs";
+import path from "path";
+import { DATA_ROOT } from "./config/paths.js";
 import { callAI } from "../modules/ai/index.js";
 
-const FILE = "./longform/data/longform-script.json";
-const BACKUP = "./longform/data/longform-script.before-images.json";
+const FILE = path.join(DATA_ROOT, "longform-script.json");
+const BACKUP = path.join(DATA_ROOT, "longform-script.before-images.json");
 
 function clean(text = "") {
     return String(text)
