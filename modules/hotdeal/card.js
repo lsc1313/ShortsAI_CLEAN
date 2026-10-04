@@ -44,7 +44,7 @@ function formatPrice(value) {
         return "";
     }
 
-    return number.toLocaleString("ko-KR") + "원";
+    return Math.round(number).toLocaleString("ko-KR") + "원";
 
 }
 
@@ -60,7 +60,7 @@ function formatUnitPrice(
         return "";
     }
 
-    return `${value.toLocaleString("ko-KR")}원/${unitLabel}`;
+    return `${Math.round(value).toLocaleString("ko-KR")}원/${unitLabel}`;
 
 }
 
@@ -128,12 +128,12 @@ function createCardSvg(
     const sevenDay =
         product.sevenDayStatus === "수집중"
             ? "7일 최저가  수집중"
-            : `7일 최저가  ${formatPrice(product.sevenDayLow)}`;
+            : `7일 최저  ${formatUnitPrice(product.sevenDayLow, product.unitLabel)}`;
 
     const thirtyDay =
         product.thirtyDayStatus === "수집중"
             ? "30일 최저가  수집중"
-            : `30일 최저가  ${formatPrice(product.thirtyDayLow)}`;
+            : `30일 최저  ${formatUnitPrice(product.thirtyDayLow, product.unitLabel)}`;
 
     const hotdeal =
         product.isHotdeal === true
