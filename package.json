@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "auto-start": "powershell -ExecutionPolicy Bypass -File .\\start-shortsaai.ps1"
+    "auto-start": "powershell -ExecutionPolicy Bypass -File .\\start-shortsaai.ps1",
+    "ambience-test": "node ambience-test/generate.mjs"
   },
   "dependencies": {
     "@noble/hashes": "^2.2.0",
