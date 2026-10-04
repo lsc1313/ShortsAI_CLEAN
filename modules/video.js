@@ -57,7 +57,9 @@ ENDING
 function cleanText(text="") {
     return String(text || "")
         .replace(/(\d+),(\d+)/g, "$1$2")       // 18,000 -> 18000
-        .replace(/(\d+)\.(\d+)/g, "$1점$2")    // 0.6 -> 0점6 (공백 없이 매끄럽게 발음)
+        // 원화 금액의 .00은 소수 발음으로 바꾸지 않는다.
+        .replace(/(\d+)\.0+(?=\s*원)/g, "$1")
+        .replace(/(\d+)\.(\d+)/g, "$1점$2")    // 실제 소수값만 자연스럽게 발음
         .replace(/\s+/g, " ")
         .trim();
 }
