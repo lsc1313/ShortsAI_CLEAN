@@ -48,20 +48,26 @@ function formatPrice(value) {
 
 }
 
-function formatUnitPrice(
-    unitPrice,
-    unitLabel
-) {
+function getDisplayUnit(unitLabel) {
+    const label = String(unitLabel || "").toLowerCase();
 
-    const value =
-        Number(unitPrice);
+    // 내부 비교값은 1g/1ml/1매 기준으로 유지하고,
+    // 사람에게 보여줄 때만 읽기 쉬운 묶음 단위로 바꾼다.
+    if (label === "g") return { multiplier: 100, label: "100g" };
+    if (label === "ml") return { multiplier: 100, label: "100mL" };
+    if (label === "매") return { multiplier: 100, label: "100매" };
 
-    if (!Number.isFinite(value)) {
-        return "";
-    }
+    return { multiplier: 1, label: unitLabel };
+}
 
-    return `${Math.round(value).toLocaleString("ko-KR")}원/${unitLabel}`;
+function formatUnitPrice(unitPrice, unitLabel) {
+    const value = Number(unitPrice);
+    if (!Number.isFinite(value)) return "";
 
+    const display = getDisplayUnit(unitLabel);
+    const price = Math.round(value * display.multiplier);
+
+    return `${price.toLocaleString("ko-KR")}원/${display.label}`;
 }
 
 async function downloadImage(url, file) {
