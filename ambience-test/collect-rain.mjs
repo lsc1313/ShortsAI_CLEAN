@@ -67,3 +67,54 @@ async function downloadSound(s){
   return {file,meta};
 }
 
+
+async function main(){
+  console.log("[FREESOUND] RAIN COLLECTION START");
+  const byId=new Map();
+  for(const q of queries){
+    console.log("[FREESOUND] SEARCH:",q);
+    const results=await search(q);
+    console.log("[FREESOUND] FOUND:",results.length);
+    for(const s of results){
+      if(isCC0(s)) byId.set(s.id,s);
+    }
+  }
+
+  const candidates=[...byId.values()]
+    .filter(s=>Number(s.duration||0)>=30 && Number(s.samplerate||0)>=44100)
+    .sort((a,b)=>score(b)-score(a));
+
+  console.log("[FREESOUND] ACCEPTABLE CC0:",candidates.length);
+  if(!candidates.length) throw new Error("No acceptable CC0 rain sounds found");
+
+  const selected=candidates.slice(0,6);
+  const manifest={
+    version:1,type:TYPE,createdAt:new Date().toISOString(),
+    selectionRules:{
+      license:"CC0 only",
+      minimumDurationSeconds:30,
+      minimumSampleRate:44100,
+      preferredChannels:2,
+      preferredFormats:["wav","flac"],
+      acquisition:"Freesound HQ preview until OAuth2 original-download support is enabled"
+    },
+    sounds:[]
+  };
+
+  for(const s of selected){
+    console.log("[FREESOUND] DOWNLOAD:",s.id,s.name);
+    const got=await downloadSound(s);
+    manifest.sounds.push(got.meta);
+  }
+
+  fs.writeFileSync(path.join(DIR,"manifest.json"),JSON.stringify(manifest,null,2));
+  console.log("[FREESOUND] RAIN LIBRARY READY:",selected.length);
+  console.log(DIR);
+}
+
+main().catch(err=>{
+  const status=err?.response?.status;
+  const msg=err?.response?.data?.detail || err?.message || String(err);
+  console.error("[FREESOUND] FAILED",status?`HTTP ${status}`:"",Buffer.isBuffer(msg)?msg.toString("utf8"):msg);
+  process.exitCode=1;
+});
