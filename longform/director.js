@@ -524,6 +524,23 @@ async function main() {
         );
     }
 
+    for (const [index, chapter] of completed.entries()) {
+        const validImages =
+            Array.isArray(chapter.images) &&
+            chapter.images.length === 2 &&
+            chapter.images.every(
+                image =>
+                    typeof image?.query === "string" &&
+                    image.query.trim()
+            );
+
+        if (!validImages) {
+            throw new Error(
+                `Director chapter ${index + 1} must contain exactly two valid image queries`
+            );
+        }
+    }
+
     const scriptKo = completed
         .map(c => c.narrationKo)
         .join("\n\n");
