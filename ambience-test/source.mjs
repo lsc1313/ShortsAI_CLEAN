@@ -77,7 +77,8 @@ async function pollinationsImage(query,root){
 }
 
 export async function acquireVisual(cfg,root){
-  const query=cfg?.source?.query||"rainy night city apartment window";
+  const profile=cfg?.themes?.[cfg?.theme]||{};
+  const query=profile.visualQuery||cfg?.source?.query||"rainy night city apartment window";
   const attempts=[
     ["Pexels",()=>pexelsVideo(query,root)],
     ["Pixabay",()=>pixabayVideo(query,root)],
