@@ -174,141 +174,74 @@ function getPriceHistoryByUnit(history, days, latestDateString) {
 function getStats(productId) {
   const db = loadDb();
   const history = db[productId] || [];
-
-  if (history.length === 0) {
-    return null;
-  }
+  if (history.length === 0) return null;
 
   const today = history[history.length - 1];
   const unitLabel = String(today.unitLabel || "");
-
-  // 브랜드/productId를 구분하지 않고 같은 상품군 전체를 비교한다.
-  // 단, 서로 다른 물리 단위가 섞이지 않도록 같은 정규화 단위만 사용한다.
-  const groupHistory = getProductGroupHistory(
-    db,
-    today.productGroup
-  ).filter(
-    item => String(item.unitLabel || "") === unitLabel
-  );
-
-  const comparableHistory =
-    groupHistory.length > 0
-      ? groupHistory
-      : history.filter(
-          item => String(item.unitLabel || "") === unitLabel
-        );
-
   const currentUnitPrice = Number(today.unitPrice);
+
+  // 상품군 비교는 브랜드를 나누지 않는다. 같은 물리 단위끼리만 비교한다.
+  const groupHistory = getProductGroupHistory(db, today.productGroup)
+    .filter(item => String(item.unitLabel || "") === unitLabel);
+  const comparableHistory = groupHistory.length
+    ? groupHistory
+    : history.filter(item => String(item.unitLabel || "") === unitLabel);
+
+  // '할인율'은 다른 브랜드의 비싼 상품과 비교하지 않는다.
+  // 같은 productId의 직전 수집가격과 현재가격만 비교한다.
+  const ownPrevious = history
+    .slice(0, -1)
+    .filter(item =>
+      String(item.unitLabel || "") === unitLabel &&
+      Number.isFinite(Number(item.unitPrice)) &&
+      Number(item.unitPrice) > 0
+    )
+    .at(-1) || null;
+
+  const referenceUnitPrice = ownPrevious ? Number(ownPrevious.unitPrice) : null;
+  const dealRate =
+    referenceUnitPrice && referenceUnitPrice > currentUnitPrice
+      ? Math.round(((referenceUnitPrice - currentUnitPrice) / referenceUnitPrice) * 1000) / 10
+      : null;
+  const isHotdeal = dealRate !== null && dealRate >= HOTDEAL_THRESHOLD;
 
   const allUnitPrices = comparableHistory
     .map(item => Number(item.unitPrice))
     .filter(value => Number.isFinite(value) && value > 0);
-
-  const highestPrice =
-    allUnitPrices.length > 0
-      ? Math.max(...allUnitPrices)
-      : null;
-
-  const dealRate =
-    highestPrice !== null &&
-    Number.isFinite(currentUnitPrice) &&
-    highestPrice > 0
-      ? Math.round(
-          ((highestPrice - currentUnitPrice) / highestPrice) * 1000
-        ) / 10
-      : null;
-
-  const isHotdeal =
-    dealRate !== null &&
-    dealRate >= HOTDEAL_THRESHOLD;
-
-  const avg =
-    allUnitPrices.length > 0
-      ? allUnitPrices.reduce((a, b) => a + b, 0) / allUnitPrices.length
-      : null;
-
+  const avg = allUnitPrices.length
+    ? allUnitPrices.reduce((a,b) => a+b, 0) / allUnitPrices.length
+    : null;
   const avgDiscountPct =
-    avg !== null && Number.isFinite(currentUnitPrice)
-      ? Math.round(((avg - currentUnitPrice) / avg) * 1000) / 10
+    avg && Number.isFinite(currentUnitPrice)
+      ? Math.round(((avg-currentUnitPrice)/avg)*1000)/10
       : null;
 
-  const dated = [...comparableHistory].sort(
-    (a, b) => String(a.date).localeCompare(String(b.date))
-  );
+  const recentChangePct = dealRate;
 
-  const previousRows = dated.filter(
-    item => String(item.date) < String(today.date)
-  );
-
-  const prev = previousRows.length
-    ? previousRows[previousRows.length - 1]
+  const sevenDayHistory = getPriceHistoryByUnit(comparableHistory, 7, today.date);
+  const sevenDayReady = hasEnoughPeriodData(comparableHistory, 7);
+  const sevenDayLow = sevenDayReady && sevenDayHistory.length
+    ? Math.min(...sevenDayHistory.map(item => Number(item.unitPrice)))
     : null;
 
-  const recentChangePct =
-    prev && Number(prev.unitPrice) > 0
-      ? Math.round(
-          ((Number(prev.unitPrice) - currentUnitPrice) /
-            Number(prev.unitPrice)) *
-            1000
-        ) / 10
-      : null;
+  const thirtyDayHistory = getPriceHistoryByUnit(comparableHistory, 30, today.date);
+  const thirtyDayReady = hasEnoughPeriodData(comparableHistory, 30);
+  const thirtyDayLow = thirtyDayReady && thirtyDayHistory.length
+    ? Math.min(...thirtyDayHistory.map(item => Number(item.unitPrice)))
+    : null;
 
-  const sevenDayHistory = getPriceHistoryByUnit(
-    comparableHistory,
-    7,
-    today.date
-  );
-  const sevenDayReady = hasEnoughPeriodData(
-    comparableHistory,
-    7
-  );
-  const sevenDayLow =
-    sevenDayReady && sevenDayHistory.length > 0
-      ? Math.round(
-          Math.min(
-            ...sevenDayHistory.map(item => Number(item.unitPrice))
-          )
-        )
-      : null;
-
-  const thirtyDayHistory = getPriceHistoryByUnit(
-    comparableHistory,
-    30,
-    today.date
-  );
-  const thirtyDayReady = hasEnoughPeriodData(
-    comparableHistory,
-    30
-  );
-  const thirtyDayLow =
-    thirtyDayReady && thirtyDayHistory.length > 0
-      ? Math.round(
-          Math.min(
-            ...thirtyDayHistory.map(item => Number(item.unitPrice))
-          )
-        )
-      : null;
-
-  const thisMonth = today.date.slice(0, 7);
-  const thisMonthPrices = comparableHistory
-    .filter(item => String(item.date).slice(0, 7) === thisMonth)
+  const thisMonth = today.date.slice(0,7);
+  const monthPrices = comparableHistory
+    .filter(item => String(item.date).slice(0,7) === thisMonth)
     .map(item => Number(item.unitPrice))
     .filter(value => Number.isFinite(value) && value > 0);
-
-  const monthMin =
-    thisMonthPrices.length > 0
-      ? Math.min(...thisMonthPrices)
-      : null;
-
-  const isMonthLow =
-    monthMin !== null &&
-    Number.isFinite(currentUnitPrice) &&
-    currentUnitPrice <= monthMin;
+  const monthMin = monthPrices.length ? Math.min(...monthPrices) : null;
 
   return {
     today,
-    // 기존 필드명은 호환성을 위해 유지하지만 값의 의미는 상품군 단위가격 최고값이다.
-    highestPrice,
+    // 호환용 필드. 이제 다른 상품의 최고가가 아니라 동일 상품 직전 단위가격이다.
+    highestPrice: referenceUnitPrice,
+    referenceUnitPrice,
     dealRate,
     isHotdeal,
     sevenDayLow,
@@ -317,7 +250,7 @@ function getStats(productId) {
     thirtyDayStatus: thirtyDayReady ? '확인 가능' : '수집중',
     avgDiscountPct,
     recentChangePct,
-    isMonthLow,
+    isMonthLow: monthMin !== null && currentUnitPrice <= monthMin,
     dataPoints: comparableHistory.length,
   };
 }
