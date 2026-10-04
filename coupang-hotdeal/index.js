@@ -325,9 +325,15 @@ async function run(activeProductGroups = null) {
 
         dataPoints: stats ? stats.dataPoints : 0,
 
+        // 동일 상품의 직전 단위가격. 할인율 기준용.
         highestPrice:
           stats && Number.isFinite(stats.highestPrice)
             ? stats.highestPrice
+            : null,
+
+        referenceUnitPrice:
+          stats && Number.isFinite(stats.referenceUnitPrice)
+            ? stats.referenceUnitPrice
             : null,
 
         dealRate:
