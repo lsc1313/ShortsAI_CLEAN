@@ -1,5 +1,20 @@
-function round(value) {
-  return Math.round(value * 100) / 100;
+function roundMoney(value) {
+  return Math.round(value);
+}
+
+function normalizeComparableUnit(totalUnits, unitLabel) {
+  const label = String(unitLabel || "").toLowerCase();
+
+  // 가격비교 공통 최소단위: L -> ml, kg -> g
+  if (label === "l") {
+    return { totalUnits: totalUnits * 1000, unitLabel: "ml" };
+  }
+
+  if (label === "kg") {
+    return { totalUnits: totalUnits * 1000, unitLabel: "g" };
+  }
+
+  return { totalUnits, unitLabel };
 }
 
 function normalizeName(name) {
@@ -384,11 +399,16 @@ function calcUnitPrice(productName, price) {
       : 1;
 
   const numericPrice = Number(price) || 0;
+  const normalized = normalizeComparableUnit(
+    unitCount,
+    parsed.unitLabel
+  );
 
   return {
-    unitPrice: round(numericPrice / unitCount),
-    unitCount,
-    unitLabel: parsed.unitLabel,
+    // 원화 비교/표시/TTS에는 소수 가격을 사용하지 않는다.
+    unitPrice: roundMoney(numericPrice / normalized.totalUnits),
+    unitCount: normalized.totalUnits,
+    unitLabel: normalized.unitLabel,
     confidence: parsed.confidence,
   };
 }
