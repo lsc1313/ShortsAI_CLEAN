@@ -1,15 +1,69 @@
 {
+  "version": 2,
   "theme": "rainy-high-rise",
   "durationSeconds": 30,
   "width": 1920,
   "height": 1080,
   "fps": 30,
   "outputRoot": "D:/ShortsAI_DATA/ambience-test",
+  "themes": {
+    "rainy-high-rise": {
+      "visualQuery": "rainy night city apartment window",
+      "audio": "rain",
+      "audioMix": {
+        "environment": 0.82,
+        "roomTone": 0.1
+      }
+    },
+    "fireplace": {
+      "visualQuery": "cozy fireplace dark room night",
+      "audio": "fireplace",
+      "audioMix": {
+        "environment": 0.82,
+        "roomTone": 0.08
+      }
+    },
+    "cafe": {
+      "visualQuery": "cozy cafe window rainy night",
+      "audio": "cafe",
+      "audioMix": {
+        "environment": 0.76,
+        "roomTone": 0.12
+      }
+    },
+    "ocean": {
+      "visualQuery": "calm ocean waves night coast",
+      "audio": "ocean",
+      "audioMix": {
+        "environment": 0.82,
+        "roomTone": 0.05
+      }
+    },
+    "forest": {
+      "visualQuery": "misty forest rain peaceful nature",
+      "audio": "forest",
+      "audioMix": {
+        "environment": 0.8,
+        "roomTone": 0.06
+      }
+    },
+    "night-city": {
+      "visualQuery": "city skyline night window ambience",
+      "audio": "city",
+      "audioMix": {
+        "environment": 0.72,
+        "roomTone": 0.12
+      }
+    }
+  },
   "source": {
-    "provider": "pexels",
-    "fallback": "procedural",
+    "priority": [
+      "pexels",
+      "pixabay",
+      "pollinations",
+      "procedural"
+    ],
     "prefer": "video",
-    "query": "rainy night city apartment window",
     "orientation": "landscape"
   }
 }
