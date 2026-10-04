@@ -38,7 +38,7 @@ async function search(q){
     params:{
       query:q,
       filter:'license:"Creative Commons 0"',
-      fields:"id,name,url,license,duration,channels,samplerate,type,download,username",
+      fields:"id,name,url,license,duration,channels,samplerate,type,previews,username",
       page_size:50
     },
     timeout:30000
@@ -46,42 +46,24 @@ async function search(q){
   return r.data?.results||[];
 }
 async function downloadSound(s){
-  const ext=(String(s.type||"wav").toLowerCase().replace(/[^a-z0-9]/g,"")||"wav");
-  const file=path.join(DIR,`${s.id}.${ext}`);
+  // Freesound original-file /download/ requires OAuth2. For unattended
+  // collection we intentionally use the API-provided high-quality preview,
+  // which is accessible with token authentication.
+  const preview=s.previews?.["preview-hq-mp3"] || s.previews?.["preview-hq-ogg"];
+  if(!preview) throw new Error(`No HQ preview available for sound ${s.id}`);
+  const ext=preview.includes(".ogg")?"ogg":"mp3";
+  const file=path.join(DIR,`${s.id}.preview-hq.${ext}`);
   if(!fs.existsSync(file)){
-    const r=await axios.get(s.download||`https://freesound.org/apiv2/sounds/${s.id}/download/`,{
-      headers:{Authorization:`Token ${TOKEN}`},responseType:"arraybuffer",timeout:120000,maxContentLength:200*1024*1024
-    });
+    const r=await axios.get(preview,{responseType:"arraybuffer",timeout:120000,maxContentLength:200*1024*1024});
     fs.writeFileSync(file,r.data);
   }
   const meta={
     id:s.id,name:s.name,creator:s.username,url:s.url,license:s.license,
     duration:s.duration,channels:s.channels,samplerate:s.samplerate,type:s.type,
+    acquiredAs:"Freesound HQ preview",originalQuality:false,
     downloadedAt:new Date().toISOString(),purpose:TYPE
   };
   fs.writeFileSync(path.join(DIR,`${s.id}.license.json`),JSON.stringify(meta,null,2));
   return {file,meta};
 }
 
-const byId=new Map();
-for(const q of queries){
-  console.log("[FREESOUND] SEARCH:",q);
-  for(const s of await search(q)){
-    if(isCC0(s)) byId.set(s.id,s);
-  }
-}
-const candidates=[...byId.values()]
-  .filter(s=>Number(s.duration||0)>=30 && Number(s.samplerate||0)>=44100)
-  .sort((a,b)=>score(b)-score(a));
-
-if(!candidates.length) throw new Error("No acceptable CC0 rain sounds found");
-const selected=candidates.slice(0,6);
-const manifest={version:1,type:TYPE,createdAt:new Date().toISOString(),selectionRules:{license:"CC0 only",minimumDurationSeconds:30,minimumSampleRate:44100,preferredChannels:2,preferredFormats:["wav","flac"]},sounds:[]};
-for(const s of selected){
-  console.log("[FREESOUND] DOWNLOAD:",s.id,s.name);
-  const got=await downloadSound(s);
-  manifest.sounds.push(got.meta);
-}
-fs.writeFileSync(path.join(DIR,"manifest.json"),JSON.stringify(manifest,null,2));
-console.log("[FREESOUND] RAIN LIBRARY READY:",selected.length);
-console.log(DIR);
