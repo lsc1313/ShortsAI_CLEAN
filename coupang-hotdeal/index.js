@@ -196,6 +196,21 @@ function saveTodayProducts(products) {
   );
 }
 
+function isProductGroupMatch(productGroup, productName) {
+  const group = String(productGroup || "").trim();
+  const name = String(productName || "").toLowerCase();
+
+  // 브랜드는 제한하지 않고, 서로 다른 상품 종류만 교차 유입을 막는다.
+  const excluded = {
+    "화장지": ["키친타월", "키친타올", "주방타월", "주방타올", "냅킨", "핸드타월", "핸드타올"],
+    "키친타월": ["화장지", "두루마리", "롤휴지", "미용티슈", "각티슈"],
+    "물티슈": ["키친타월", "키친타올", "화장지"],
+    "생수": ["탄산수", "음료", "주스", "이온음료"]
+  };
+
+  return !(excluded[group] || []).some(word => name.includes(word));
+}
+
 /* =========================================================
    ⑥ 쇼츠제작용 데이터 생성
 ========================================================= */
@@ -255,6 +270,11 @@ async function run(activeProductGroups = null) {
           !Number.isFinite(price) ||
           price <= 0
         ) {
+          continue;
+        }
+
+        if (!isProductGroupMatch(productGroup, name)) {
+          console.log(`[HOTDEAL FILTER] ${productGroup} 제외: ${name}`);
           continue;
         }
 
