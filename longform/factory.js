@@ -563,6 +563,86 @@ export async function runLongformFactory(
 
     /*
     =====================================================
+    IMAGE QUERY RESUME REPAIR
+
+    Older/incomplete Director outputs may have fewer than
+    exactly two image queries per chapter. Preserve the
+    completed narration and repair only image queries.
+    =====================================================
+    */
+
+    const scriptFile =
+      path.join(
+        jobRoot,
+        "longform-script.json"
+      );
+
+    if (
+      stageDone(
+        currentStage,
+        "director"
+      ) &&
+      fs.existsSync(scriptFile)
+    ) {
+      const scriptData =
+        readJSON(scriptFile);
+
+      const imageQueriesValid =
+        Array.isArray(scriptData.chapters) &&
+        scriptData.chapters.length === 8 &&
+        scriptData.chapters.every(
+          (chapter, index) =>
+            Number(chapter?.number) === index + 1 &&
+            Array.isArray(chapter?.images) &&
+            chapter.images.length === 2 &&
+            chapter.images.every(
+              image =>
+                typeof image?.query === "string" &&
+                image.query.trim()
+            )
+        );
+
+      if (!imageQueriesValid) {
+        console.log(
+          "[LONGFORM FACTORY] DIRECTOR IMAGE QUERIES INCOMPLETE - REPAIR ONLY"
+        );
+
+        runNode(
+          "./longform/addCurrentImageQueries.mjs"
+        );
+
+        const repaired =
+          readJSON(scriptFile);
+
+        const repairValid =
+          Array.isArray(repaired.chapters) &&
+          repaired.chapters.length === 8 &&
+          repaired.chapters.every(
+            (chapter, index) =>
+              Number(chapter?.number) === index + 1 &&
+              Array.isArray(chapter?.images) &&
+              chapter.images.length === 2 &&
+              chapter.images.every(
+                image =>
+                  typeof image?.query === "string" &&
+                  image.query.trim()
+              )
+          );
+
+        if (!repairValid) {
+          throw new Error(
+            "Director image query repair failed"
+          );
+        }
+
+        console.log(
+          "[LONGFORM FACTORY] DIRECTOR IMAGE QUERIES REPAIRED 16/16"
+        );
+      }
+    }
+
+    /*
+    =====================================================
     IMAGE
     =====================================================
     */
