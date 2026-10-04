@@ -20,8 +20,8 @@ function run(args) {
   if (r.status !== 0) throw new Error(`ffmpeg exited with code ${r.status}`);
 }
 
-function renderStock(sourceFile) {
-  console.log("[AMBIENCE] VISUAL SOURCE: PEXELS VIDEO");
+function renderStock(sourceFile, provider = "stock") {
+  console.log("[AMBIENCE] VISUAL SOURCE:", String(provider).toUpperCase(), "VIDEO");
   run([
     "-y",
     "-stream_loop","-1","-i",sourceFile,
@@ -31,6 +31,24 @@ function renderStock(sourceFile) {
     `[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},fps=${fps},eq=brightness=-0.035:saturation=0.88,vignette=PI/6,format=yuv420p[v]`,
     "-map","[v]","-map","1:a",
     "-af","highpass=f=90,lowpass=f=7000,volume=0.55,afade=t=in:st=0:d=1.5,afade=t=out:st="+Math.max(0,d-1.5)+":d=1.5",
+    "-c:v","libx264","-preset","medium","-crf","20",
+    "-c:a","aac","-b:a","192k",
+    "-movflags","+faststart",
+    "-shortest",out
+  ]);
+}
+
+function renderGeneratedImage(sourceFile, provider = "ai") {
+  console.log("[AMBIENCE] VISUAL SOURCE:", String(provider).toUpperCase(), "IMAGE");
+  run([
+    "-y",
+    "-loop","1","-i",sourceFile,
+    "-f","lavfi","-i","anoisesrc=color=pink:amplitude=0.10:sample_rate=48000",
+    "-t",String(d),
+    "-filter_complex",
+    `[0:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},zoompan=z='min(zoom+0.00015,1.035)':d=${Math.ceil(d*fps)}:s=${w}x${h}:fps=${fps},eq=brightness=-0.025:saturation=0.9,vignette=PI/6,format=yuv420p[v]`,
+    "-map","[v]","-map","1:a",
+    "-af","highpass=f=90,lowpass=f=7000,volume=0.55",
     "-c:v","libx264","-preset","medium","-crf","20",
     "-c:a","aac","-b:a","192k",
     "-movflags","+faststart",
@@ -85,8 +103,10 @@ try {
 }
 
 try {
-  if (visual?.file && fs.existsSync(visual.file)) renderStock(visual.file);
-  else renderProcedural();
+  if (visual?.file && fs.existsSync(visual.file)) {
+    if (visual.type === "video") renderStock(visual.file, visual.provider);
+    else renderGeneratedImage(visual.file, visual.provider);
+  } else renderProcedural();
 } catch (e) {
   if (visual?.file) {
     console.warn("[AMBIENCE] STOCK RENDER FAILED; FALLBACK:", e.message);
