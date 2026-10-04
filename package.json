@@ -6,7 +6,8 @@
     "start": "node server.js",
     "auto-start": "powershell -ExecutionPolicy Bypass -File .\\start-shortsaai.ps1",
     "ambience-test": "node ambience-test/generate.mjs",
-    "ambience-rain-collect": "node ambience-test/collect-rain.mjs"
+    "ambience-rain-collect": "node ambience-test/collect-rain.mjs",
+    "ambience-rain-mix": "node ambience-test/mix-rain.mjs"
   },
   "dependencies": {
     "@noble/hashes": "^2.2.0",
