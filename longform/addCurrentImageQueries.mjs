@@ -35,15 +35,34 @@ const data = JSON.parse(
 
 fs.copyFileSync(FILE, BACKUP);
 
-const chapters = data.chapters.map(c => ({
-    number: c.number,
-    title: c.titleKo || c.title,
-    narration: (
-        c.narrationKo ||
-        c.narration ||
-        ""
-    ).slice(0, 1200)
-}));
+function validQuery(image) {
+    return (
+        image &&
+        typeof image.query === "string" &&
+        image.query.trim()
+    );
+}
+
+const chapters = data.chapters
+    .filter(c =>
+        !Array.isArray(c.images) ||
+        c.images.length !== 2 ||
+        c.images.some(image => !validQuery(image))
+    )
+    .map(c => ({
+        number: c.number,
+        title: c.titleKo || c.title,
+        narration: (
+            c.narrationKo ||
+            c.narration ||
+            ""
+        ).slice(0, 1200)
+    }));
+
+if (!chapters.length) {
+    console.log("IMAGE QUERIES ALREADY VALID");
+    process.exit(0);
+}
 
 const prompt = `
 역사 다큐멘터리의 각 챕터에 사용할
@@ -55,7 +74,10 @@ ${data.topic}
 챕터:
 ${JSON.stringify(chapters, null, 2)}
 
-각 챕터마다 정확히 2개만 만든다.
+위에 제공된 챕터만 처리한다.
+각 제공 챕터마다 정확히 2개만 만든다.
+query 필드는 반드시 비어 있지 않은 영어 문자열이어야 한다.
+query에 null을 절대 출력하지 않는다.
 
 규칙:
 - 검색어는 영어.
@@ -92,16 +114,37 @@ console.log("ADDING IMAGE QUERIES...");
 
 const result = parseJSON(await callAI(prompt));
 
-for (const chapter of data.chapters) {
-    const found = result.chapters.find(
-        x => Number(x.number) === Number(chapter.number)
+if (!Array.isArray(result.chapters)) {
+    throw new Error("Image query response chapters missing");
+}
+
+for (const target of chapters) {
+    const chapter = data.chapters.find(
+        x => Number(x.number) === Number(target.number)
     );
 
-    if (!found || !Array.isArray(found.images)) {
-        throw new Error(`Images missing: chapter ${chapter.number}`);
+    const found = result.chapters.find(
+        x => Number(x.number) === Number(target.number)
+    );
+
+    const images =
+        Array.isArray(found?.images)
+            ? found.images.slice(0, 2)
+            : [];
+
+    if (
+        images.length !== 2 ||
+        images.some(image => !validQuery(image))
+    ) {
+        throw new Error(
+            `Invalid image queries: chapter ${target.number}`
+        );
     }
 
-    chapter.images = found.images.slice(0, 2);
+    chapter.images = images.map(image => ({
+        ...image,
+        query: image.query.trim()
+    }));
 }
 
 fs.writeFileSync(
