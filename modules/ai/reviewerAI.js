@@ -270,7 +270,13 @@ function historyMetadataMatches(candidate, scene){
         "rescue","military","navy","ship","fleet","scene","eruption","volcano",
         "people","victim","ruin","painting","illustration","mount"
     ]);
-    const distinctive = [...new Set(tokens.filter(w => !generic.has(w)))];
+    const narrativeOnly = new Set([
+        "mystery","mysterious","secret","secrets","unknown","hidden",
+        "shocking","surprising","tragic","tragedy","story","stories",
+        "truth","fact","facts","discovery","discover","revealed",
+        "dramatic","terrifying","horrifying","moment","last","final"
+    ]);
+    const distinctive = [...new Set(tokens.filter(w => !generic.has(w) && !narrativeOnly.has(w)))];
     // One generic tag (e.g. "Roman" or "rescue") cannot verify Pliny the Elder.
     // Require every distinctive identity word for named subjects. Reject if absent;
     // never silently substitute unrelated stock assets for History.
