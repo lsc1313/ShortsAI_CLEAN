@@ -263,7 +263,11 @@ function historyMetadataMatches(candidate, scene){
     if(!metadata.trim()) return false;
     const tokens = getCoreWords(core).filter(w => !["historical","ancient","medieval","history","scene"].includes(w));
     if(!tokens.length) return true;
-    return tokens.some(word => metadata.includes(word));
+    // Require a meaningful subject token, not generic words such as 'doctor' alone.
+    const generic = new Set(["doctor","person","people","man","woman","old","world","war","city","photo","image","mask"]);
+    const distinctive = tokens.filter(w => !generic.has(w));
+    if(!distinctive.length) return tokens.some(word => metadata.includes(word));
+    return distinctive.some(word => metadata.includes(word));
 }
 
 export async function reviewImage(
