@@ -275,7 +275,7 @@ function historyMetadataMatches(candidate, scene){
         "photo","image","roman","ancient","historical","history",
         "scene","painting","illustration","mount"
     ]);
-    const required = coreWords.filter(w => !/^\\d{3,4}$/.test(w) && !descriptive.has(w) && !generic.has(w));
+    const required = coreWords.filter(w => !/^[0-9]{3,4}$/.test(w) && !descriptive.has(w) && !generic.has(w));
     if(!required.length) return false;
     const words = new Set(metadata.match(/[a-z0-9]+/g) || []);
     const singular = w => w.endsWith("ies") ? w.slice(0,-3)+"y" :
@@ -283,7 +283,18 @@ function historyMetadataMatches(candidate, scene){
         w.endsWith("s") && !w.endsWith("ss") ? w.slice(0,-1) : w;
     const present = w => words.has(w) || [...words].some(other => singular(other) === singular(w));
     // "Pompeii Secret Cabinet" must be identifiable; matching Pompeii alone is insufficient.
-    return required.every(present);
+    const missing = required.filter(w => !present(w));
+    if(missing.length){
+        console.log("[HISTORY IMAGE DIAGNOSTIC]", JSON.stringify({
+            provider: candidate?.provider,
+            coreSubject: core,
+            required,
+            missing,
+            sourceUrl: candidate?.sourceUrl || "",
+            metadata: metadata.slice(0, 320)
+        }));
+    }
+    return missing.length === 0;
 }
 
 export async function reviewImage(
