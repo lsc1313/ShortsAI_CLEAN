@@ -357,35 +357,27 @@ continue;
             else targetScene = i + 1;             // 상품2부터 순서대로
         }
 
-        const imageList = sceneImages.get(targetScene) || sceneImages.get(i + 1) || sceneImages.get(i) || [];
+        // History scenes must not silently borrow media from another scene.
+        const imageList = channel === "history"
+            ? (sceneImages.get(targetScene) || [])
+            : (sceneImages.get(targetScene) || sceneImages.get(i + 1) || sceneImages.get(i) || []);
 
         
 
 let videoFile = null;
 
 
-const selectedVideo =
-    imageList.find(
-        img =>
-            img?.mediaType === "video" &&
-            img?.file &&
-            fs.existsSync(img.file)
-    );
+// sceneImages contains file paths, not media metadata objects.
+// Preserve the string representation expected by makeScene().
+const selectedVideo = imageList.find(file =>
+    typeof file === "string" &&
+    /\\.(mp4|mov|webm|m4v)$/i.test(file) &&
+    fs.existsSync(file)
+);
 
-if(
-    selectedVideo
-){
-
-    videoFile =
-        selectedVideo.file;
-
-    debug(
-        `Scene ${i+1}`,
-        "VIDEO SELECTED BY MEDIA REVIEWER",
-        selectedVideo.provider,
-        selectedVideo.score
-    );
-
+if(selectedVideo){
+    videoFile = selectedVideo;
+    debug(`Scene ${i+1}`, "VIDEO SELECTED", videoFile);
 }
 if(
     videoFile &&
@@ -450,7 +442,13 @@ if(
 
 }
 
-        if(imageList.length===0){
+        // Never send video paths into the multi-image motion renderer.
+        const stillImages = imageList.filter(file =>
+            typeof file === "string" &&
+            !/\\.(mp4|mov|webm|m4v)$/i.test(file)
+        );
+
+        if(stillImages.length===0){
 
             throw new Error(
                 `[VIDEO] Scene ${i+1} FAILED : VIDEO AND IMAGE BOTH UNAVAILABLE / CORE SUBJECT : ${item?.coreSubject || "UNKNOWN"}`
@@ -484,7 +482,7 @@ if(
         debug(
             `Scene ${i+1}`,
             sceneType,
-            `${imageList.length} images`,
+            `${stillImages.length} images`,
             `${totalTime.toFixed(2)} sec`
         );
 
@@ -492,7 +490,7 @@ if(
 scenes.push(
 
     makeScene(
-        imageList,
+        stillImages,
         totalTime,
         scenes.length,
         {
@@ -530,8 +528,8 @@ transitions.push(
         */
 
         lastImage =
-            imageList[
-                imageList.length - 1
+            stillImages[
+                stillImages.length - 1
             ];
 
     }
