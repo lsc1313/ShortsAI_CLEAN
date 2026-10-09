@@ -251,6 +251,16 @@ const GLOBAL_PROMPT = `
 imageQueries는 해당 Scene을 실제 이미지 또는 영상 검색으로
 확보할 수 있는 구체적인 영어 검색어로 작성한다.
 
+[역사 아카이브 자료 중심 장면 설계]
+- coreSubject는 대본에 등장하는 전체 사건의 재현 문장이 아니라, 실제 박물관·위키미디어 아카이브에서 검색 가능한 단일 시각 자료의 대상명으로 지정한다.
+- 한 이미지에 서로 다른 대상과 행동과 연도를 합치지 않는다. 예를 들어 "Roman warships sailing towards erupting Mount Vesuvius 79 AD"를 coreSubject로 쓰지 않는다.
+- 로마 군함을 보여줄 장면이면 coreSubject="Roman galley" 또는 "Roman bireme"처럼 선박 자체를 지정하고, imageQueries는 "Roman galley illustration", "Roman bireme relief"처럼 실존 자료 유형을 검색한다.
+- 베수비오 화산을 보여줄 장면이면 coreSubject="Mount Vesuvius"를 사용하고 imageQueries는 "Mount Vesuvius painting", "Mount Vesuvius eruption historical painting"처럼 작성한다.
+- 특정 사건의 실제 기록 사진이 존재하지 않는 경우, 시대를 설명하는 유물·부조·지도·후대 삽화를 사용하되 그것을 사건 당시의 실제 장면이나 직접 증거라고 설명하지 않는다.
+- coreSubject에 towards, watching, sailing, erupting 등 동작이나 연출 문구, "79 AD"처럼 장면 설명용 연도를 덧붙이지 않는다. 이런 내용은 direction에만 작성한다.
+- 역사적 대상과 무관한 일반 풍경·동전·다른 시대 선박·인물 초상은 검색 대체재로 사용하지 않는다.
+- 자료 검색 가능성을 이유로 사실과 대본 내용을 변경하지 않는다.
+
 같은 의미의 검색어를 반복하지 않는다.
 
 역사적 사실과 시대적 맥락을 정확하게 유지한다.
@@ -296,6 +306,7 @@ Ending은
 
 imageQueries는 각 Scene의 핵심 내용을 실제 이미지 또는 영상으로
 찾을 수 있는 구체적인 영어 검색어로 작성한다.
+coreSubject는 전체 사건을 묘사하는 문장이 아니라 실제 역사 아카이브에서 찾을 수 있는 유물·인물 초상·지도·회화 등의 단일 시각 대상명으로 작성한다. 연도·행동·감정·연출은 coreSubject에 섞지 않는다.
 
 같은 의미의 검색어를 반복하지 않는다.
 
@@ -534,8 +545,7 @@ completedTopic을 그대로 반복하는 것이 아니라
 특히 모든 Scene에는 반드시
 coreSubject를 포함한다.
 
-모든 imageQueries에는
-해당 Scene의 coreSubject가 반드시 포함되어야 한다.
+모든 imageQueries는 해당 Scene의 coreSubject가 가리키는 실제 역사 자료를 찾는 영어 검색어로 작성한다. 핵심 대상명 또는 통용되는 동의어를 포함하되 전체 사건을 한 장의 그림으로 요구하지 않는다.
 
 coreSubject가 없거나
 imageQueries가 비어 있는 Scene을 만들지 않는다.
