@@ -258,31 +258,32 @@ function historyMetadataMatches(candidate, scene){
     const channel = String(scene?.category || scene?.channel || "").toLowerCase();
     if(channel !== "history") return true;
     const core = normalizeSubject(scene?.coreSubject || "");
-    if(!core) return true;
+    if(!core) return false;
     const metadata = getProviderText(candidate);
     if(!metadata.trim()) return false;
-    const tokens = getCoreWords(core).filter(w => !["historical","ancient","medieval","history","scene"].includes(w));
-    if(!tokens.length) return true;
-    // Require a meaningful subject token, not generic words such as 'doctor' alone.
+
+    // Preserve proper names: "Secret Cabinet" is a collection name, not an adjective.
+    // An event date or a staging verb must not become a mandatory image label.
+    const coreWords = core.match(/[a-z0-9]+/g) || [];
+    const descriptive = new Set([
+        "mystery","mysterious","unknown","hidden","shocking","surprising",
+        "tragic","tragedy","story","stories","truth","facts","revealed",
+        "dramatic","terrifying","horrifying","moment","last","final",
+        "seal","sealed","sealing","watching","closeup","view","detail"
+    ]);
     const generic = new Set([
-        "doctor","person","people","man","woman","old","world","war","city",
-        "photo","image","mask","roman","ancient","historical","history",
-        "rescue","military","navy","ship","fleet","scene","eruption","volcano",
-        "people","victim","ruin","painting","illustration","mount"
+        "photo","image","roman","ancient","historical","history",
+        "scene","painting","illustration","mount"
     ]);
-    const narrativeOnly = new Set([
-        "mystery","mysterious","secret","secrets","unknown","hidden",
-        "shocking","surprising","tragic","tragedy","story","stories",
-        "truth","fact","facts","discovery","discover","revealed",
-        "dramatic","terrifying","horrifying","moment","last","final"
-    ]);
-    const distinctive = [...new Set(tokens.filter(w => !generic.has(w) && !narrativeOnly.has(w)))];
-    // One generic tag (e.g. "Roman" or "rescue") cannot verify Pliny the Elder.
-    // Require every distinctive identity word for named subjects. Reject if absent;
-    // never silently substitute unrelated stock assets for History.
-    if(!distinctive.length) return false;
+    const required = coreWords.filter(w => !/^\\d{3,4}$/.test(w) && !descriptive.has(w) && !generic.has(w));
+    if(!required.length) return false;
     const words = new Set(metadata.match(/[a-z0-9]+/g) || []);
-    return distinctive.every(word => words.has(word));
+    const singular = w => w.endsWith("ies") ? w.slice(0,-3)+"y" :
+        w.endsWith("es") && /(ches|shes|sses|xes|zes)$/.test(w) ? w.slice(0,-2) :
+        w.endsWith("s") && !w.endsWith("ss") ? w.slice(0,-1) : w;
+    const present = w => words.has(w) || [...words].some(other => singular(other) === singular(w));
+    // "Pompeii Secret Cabinet" must be identifiable; matching Pompeii alone is insufficient.
+    return required.every(present);
 }
 
 export async function reviewImage(
