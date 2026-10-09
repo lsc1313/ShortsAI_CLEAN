@@ -362,7 +362,7 @@ export async function searchImage(
 
 
     const directorImageQueries =
-        scene?.mediaMode === "image" &&
+        (scene?.mediaMode === "image" || scene?.category === "history") &&
         Array.isArray(scene.imageQueries) && scene.imageQueries.length > 0;
 
     const primaryQueries = directorImageQueries ? [] :
@@ -404,7 +404,7 @@ export async function searchImage(
 
 
     const activeProviders =
-    scene?.mediaMode === "image"
+    (scene?.mediaMode === "image" || scene?.category === "history")
         ? providers.filter(
             provider => provider.name !== "Pollinations"
         )
