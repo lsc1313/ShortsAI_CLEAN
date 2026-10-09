@@ -264,10 +264,19 @@ function historyMetadataMatches(candidate, scene){
     const tokens = getCoreWords(core).filter(w => !["historical","ancient","medieval","history","scene"].includes(w));
     if(!tokens.length) return true;
     // Require a meaningful subject token, not generic words such as 'doctor' alone.
-    const generic = new Set(["doctor","person","people","man","woman","old","world","war","city","photo","image","mask"]);
-    const distinctive = tokens.filter(w => !generic.has(w));
-    if(!distinctive.length) return tokens.some(word => metadata.includes(word));
-    return distinctive.some(word => metadata.includes(word));
+    const generic = new Set([
+        "doctor","person","people","man","woman","old","world","war","city",
+        "photo","image","mask","roman","ancient","historical","history",
+        "rescue","military","navy","ship","fleet","scene","eruption","volcano",
+        "people","victim","ruin","painting","illustration","mount"
+    ]);
+    const distinctive = [...new Set(tokens.filter(w => !generic.has(w)))];
+    // One generic tag (e.g. "Roman" or "rescue") cannot verify Pliny the Elder.
+    // Require every distinctive identity word for named subjects. Reject if absent;
+    // never silently substitute unrelated stock assets for History.
+    if(!distinctive.length) return false;
+    const words = new Set(metadata.match(/[a-z0-9]+/g) || []);
+    return distinctive.every(word => words.has(word));
 }
 
 export async function reviewImage(
