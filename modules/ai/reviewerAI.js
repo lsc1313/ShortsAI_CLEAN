@@ -252,6 +252,20 @@ export function selectBestMedia(candidates = []){
     );
 }
 
+// Conservative History metadata gate: never treat a search query alone as proof
+// that an asset actually depicts the narrated historical subject.
+function historyMetadataMatches(candidate, scene){
+    const channel = String(scene?.category || scene?.channel || "").toLowerCase();
+    if(channel !== "history") return true;
+    const core = normalizeSubject(scene?.coreSubject || "");
+    if(!core) return true;
+    const metadata = getProviderText(candidate);
+    if(!metadata.trim()) return false;
+    const tokens = getCoreWords(core).filter(w => !["historical","ancient","medieval","history","scene"].includes(w));
+    if(!tokens.length) return true;
+    return tokens.some(word => metadata.includes(word));
+}
+
 export async function reviewImage(
     candidate,
     scene
@@ -300,6 +314,11 @@ export async function reviewImage(
         getProviderText(
             candidate
         );
+
+    if(!historyMetadataMatches(candidate, scene)){
+        console.log(`[${candidate.provider}] Reject : History metadata mismatch`);
+        return null;
+    }
 
 
     /*
