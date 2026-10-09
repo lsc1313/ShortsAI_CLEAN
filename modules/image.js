@@ -438,6 +438,9 @@ mediaType:
 
     catch(e){
 
+        if(item.category === "history"){
+            console.error(`[HISTORY IMAGE ERROR] Scene ${sceneNo} attempt=${reviewAttempts} :`, e?.stack || e);
+        }
         debug(
             `[IMAGE] Scene ${sceneNo} REVIEW ERROR ${reviewAttempts}/${MAX_REVIEW_ATTEMPTS} : ${e.message}`
         );
@@ -446,6 +449,9 @@ mediaType:
 
 }
 
+if(item.category === "history"){
+    console.log(`[HISTORY IMAGE SUMMARY] Scene ${sceneNo} accepted=${imageNo - 1} required=${imageLimit} attempts=${reviewAttempts}`);
+}
 if(
     imageNo === 1
 ){
