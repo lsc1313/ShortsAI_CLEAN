@@ -18,6 +18,7 @@ Branch: history-quality-v1. Do not merge into main before validation.
 7. Confirm automatic publishing remains disabled during tests.
 
 ## Known limitations
-- Media relevance is not yet validated semantically; stock footage may still be unrelated.
+- History now rejects candidates whose provider metadata does not mention the scene core subject, but this is only metadata-level filtering, not visual recognition. Some valid images with sparse metadata may be rejected; stock footage may still be unrelated when metadata is misleading.
+- Verify the History category flag reaches reviewImage through createShort -> createImage -> searchImage/searchVideo.
 - No live rendering test has run from this GitHub-only edit.
 - Existing production branch remains unchanged.
