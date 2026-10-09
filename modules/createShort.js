@@ -31,6 +31,7 @@ import { createShoppingDirector } from "./shopping/director.js";
 import { createHotdealDirector } from "./hotdeal/director.js";
 import { createHotdealCards } from "./hotdeal/card.js";
 import { createHistoryDirector } from "./history/director.js";
+import { validateHistoryProduction } from "./history/qualityGate.js";
 import { createAnimalDirector } from "./animal/director.js";
 import { createAIDirector } from "./ai/director.js";
 import { createScienceDirector } from "./science/director.js";
@@ -469,6 +470,10 @@ const voices =
         director
     );
 
+if (channelName === "history") {
+    validateHistoryProduction(director, images, voices);
+}
+
 success(
     "TTS 완료"
 );
@@ -506,6 +511,10 @@ debug(video);
 
 if(!video){
     throw new Error("createVideo() returned undefined");
+}
+
+if (channelName === "history") {
+    validateHistoryProduction(director, images, voices, video);
 }
 
 success(
