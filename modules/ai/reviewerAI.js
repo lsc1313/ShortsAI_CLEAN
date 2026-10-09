@@ -283,7 +283,12 @@ function historyMetadataMatches(candidate, scene){
         w.endsWith("s") && !w.endsWith("ss") ? w.slice(0,-1) : w;
     const present = w => words.has(w) || [...words].some(other => singular(other) === singular(w));
     // "Pompeii Secret Cabinet" must be identifiable; matching Pompeii alone is insufficient.
-    const missing = required.filter(w => !present(w));
+    // A Pompeii victim cast is a plaster cast even when the catalog omits
+    // the material word "plaster". Require BOTH place and artifact type.
+    const pompeiiCast = required.includes("pompeii") &&
+        required.includes("plaster") && required.includes("cast") &&
+        present("pompeii") && present("cast");
+    const missing = required.filter(w => !(pompeiiCast && w === "plaster") && !present(w));
     if(missing.length){
         console.log("[HISTORY IMAGE DIAGNOSTIC]", JSON.stringify({
             provider: candidate?.provider,
