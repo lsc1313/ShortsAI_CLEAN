@@ -1,3 +1,4 @@
+import { searchCommonsHistory, searchMetHistory, searchAicHistory } from "../providers/historyArchives.js";
 import {
     reviewImage
 } from "../ai/reviewerAI.js";
@@ -404,11 +405,15 @@ export async function searchImage(
 
 
     const activeProviders =
-    (scene?.mediaMode === "image" || scene?.category === "history")
-        ? providers.filter(
-            provider => provider.name !== "Pollinations"
-        )
-        : providers;
+        scene?.category === "history"
+            ? [
+                { name: "WikimediaCommons", search: searchCommonsHistory },
+                { name: "MetMuseum", search: searchMetHistory },
+                { name: "ArtInstituteChicago", search: searchAicHistory }
+            ]
+            : scene?.mediaMode === "image"
+                ? providers.filter(provider => provider.name !== "Pollinations")
+                : providers;
 
 debug(
     `[IMAGE PROVIDERS] MODE=${scene?.mediaMode || "default"} : ${activeProviders.map(p => p.name).join(", ")}`
