@@ -169,7 +169,7 @@ else{
 }
 
 // Longform keeps the Director's two queries in their original order.
-if(item.mediaMode !== "image") keywords.sort(
+if(item.mediaMode !== "image" && item.category !== "history") keywords.sort(
     (a,b)=>
         keywordScore(b)-
         keywordScore(a)
@@ -212,7 +212,8 @@ const imageResults =
 
 const imageOnly =
     item.mediaMode === "image" ||
-    item.imageOnly === true;
+    item.imageOnly === true ||
+    item.category === "history";
 
 const videoResults =
     imageOnly
@@ -262,9 +263,12 @@ debug(
     `TOTAL=${mediaCandidates.length}`
 );
 
+// History uses only reviewed still images; generic stock clips must not win.
 const result =
     selectBestMedia(
-        mediaCandidates
+        item.category === "history"
+            ? mediaCandidates.filter(candidate => candidate.mediaType === "image")
+            : mediaCandidates
     );
 
 console.log(
