@@ -521,6 +521,13 @@ success(
     "VIDEO 완료"
 );
 
+// History preview exits before metadata, YouTube, Instagram, Threads and cleanup.
+// Never enable preview for a different channel by accident.
+if (options?.previewOnly === true && channelName === "history") {
+    console.log("[HISTORY PREVIEW] RENDER COMPLETE - ALL UPLOADS SKIPPED");
+    return { success: true, previewOnly: true, topic, video: video.file, director, images };
+}
+
 debug(video.file);
 
             /*
