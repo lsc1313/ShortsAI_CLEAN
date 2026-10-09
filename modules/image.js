@@ -346,7 +346,8 @@ if(
 
     await downloadVideo(
         result.url,
-        file
+        file,
+        item.category === "history" ? { historyArchive: true, provider: result.provider } : {}
     );
 
 }
