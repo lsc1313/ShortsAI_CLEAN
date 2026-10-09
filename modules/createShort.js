@@ -305,6 +305,8 @@ else {
 
 for (const scene of director.scenes) {
     scene.product = product;
+    // Reviewer policy is channel-specific; never apply History checks to shopping.
+    if (channelName === "history") scene.category = "history";
 }
 
 success(
