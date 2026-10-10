@@ -1,3 +1,4 @@
+import { checkHistoryEvidence } from "./history/factEvidence.js";
 import { updateShopPage } from "./hotdeal/shopUpdater.js";
 
 
@@ -313,6 +314,7 @@ for (const scene of director.scenes) {
 if (channelName === "history") {
     validateHistoryStoryPlan(topic, director);
     validateHistoryClaimRisk(director);
+    await checkHistoryEvidence(topic, director);
     await validateHistoryVisualSimilarity(director);
 }
 
