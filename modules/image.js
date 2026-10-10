@@ -1,5 +1,6 @@
 import axios from "axios";
 import { callAI } from "./ai/index.js";
+import { searchCommonsHistory, searchAicHistory } from "./providers/historyArchives.js";
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
@@ -460,6 +461,30 @@ if(imageNo > 1 || item.category !== "history" || historyVisualRound > 0){
 }
 
 try {
+    // Supply actual public-domain archive metadata; do not let the AI invent a target.
+    const archiveResults = [];
+    for(const query of [...new Set(keywords)].slice(0, 3)){
+        const [commons, aic] = await Promise.all([
+            searchCommonsHistory(query),
+            searchAicHistory(query)
+        ]);
+        archiveResults.push(...commons, ...aic);
+    }
+    const seenSources = new Set();
+    const archiveEvidence = archiveResults.filter(c => {
+        const key = c.sourceUrl || c.url;
+        if(!key || seenSources.has(key)) return false;
+        seenSources.add(key);
+        return true;
+    }).slice(0, 20).map(c => ({
+        provider:c.provider, title:String(c.tags || "").slice(0,180),
+        sourceUrl:c.sourceUrl
+    }));
+    console.log("[HISTORY VISUAL REPLAN EVIDENCE]", JSON.stringify({scene:sceneNo, count:archiveEvidence.length}));
+    if(!archiveEvidence.length){
+        console.log("[HISTORY VISUAL REPLAN] No archive evidence");
+        break;
+    }
     const prompt = [
         "You are repairing the VISUAL SEARCH PLAN for one History Shorts scene.",
         "The original image searches found no historically accurate licensed archive image.",
@@ -472,6 +497,10 @@ try {
         "Do NOT change or invent any historical facts, narration, subtitles, names, dates or scene order.",
         "If the narration specifically requires unavailable scientific imagery, choose an accurate contextual artifact and clearly describe it as a contextual visual in direction, never as the actual scientific result.",
         "If no truthful visual is possible, return JSON with imageQueries: [].",
+        "Use ONLY the listed actual archive evidence. Do not invent image titles or locations.",
+        "Return chosenSourceUrl matching exactly one sourceUrl from evidence, along with coreSubject, imageQueries, direction.",
+        "If none of the listed images honestly illustrates the narration, return imageQueries: [].",
+        "Archive evidence: " + JSON.stringify(archiveEvidence),
         "Scene narration: " + String(item.tts || item.script || ""),
         "Current visual subject: " + String(item.coreSubject || ""),
         "Current queries: " + JSON.stringify(keywords)
@@ -479,6 +508,11 @@ try {
     const response = String(await callAI(prompt));
     const match = response.match(/\{[\s\S]*\}/);
     const plan = match ? JSON.parse(match[0]) : null;
+    const chosenSource = String(plan?.chosenSourceUrl || "");
+    if(!archiveEvidence.some(c => c.sourceUrl === chosenSource)) {
+        console.log("[HISTORY VISUAL REPLAN] Rejected ungrounded source");
+        break;
+    }
     const nextCore = String(plan?.coreSubject || "").trim();
     const nextQueries = Array.isArray(plan?.imageQueries)
         ? plan.imageQueries.map(q => String(q || "").trim()).filter(Boolean).slice(0,3)
