@@ -513,22 +513,24 @@ const judgeResult =
             : GLOBAL_PROMPT;
 
 
-    // Download before writing narration; metadata alone is not a usable asset.
-    const archiveQueries = [...new Set([
-        String(topic || "").trim(),
-        completedTopic,
-        ...String(completedTopic).split(/[,，:：]/).map(q => q.trim())
-    ])].filter(Boolean);
-    const archiveAssets = await collectHistoryAssets(archiveQueries);
+    // Topic-agnostic research planner: search distinct evidence types before writing.
+    const researchPrompt = `
+You are a historical archive research planner.
+Requested topic: ${completedTopic}
+Return ONLY JSON with {"queries":[{"query":"English archive search terms","category":"distinct evidence type"}]}.
+Provide 6 to 8 specific, searchable English queries spanning at least 3 meaningful
+visual evidence categories appropriate to THIS topic (e.g. primary documents,
+artifacts, photographs, ruins, maps, portraits, excavation records).
+Do not assume any item exists. Do not change the topic.
+Category names must be short lowercase English words. Avoid broad generic terms.
+Do not use a specific list of categories for every historical topic.
+`;
+    const researchPlan = parseJSON(await callAI(researchPrompt));
+    const plannedQueries = Array.isArray(researchPlan?.queries) ? researchPlan.queries : [];
+    const archiveAssets = await collectHistoryAssets(plannedQueries);
     const visualCategories = new Set(archiveAssets.map(a => a.category));
-    const pompeiiEvent = /폼페이|pompeii|베수비오|vesuvius/i.test(completedTopic);
-    const coreCategories = ["ruins", "casts", "fresco", "volcano", "artifacts", "excavation", "map"];
-    const coreCount = coreCategories.filter(c => visualCategories.has(c)).length;
-    if (pompeiiEvent && coreCount < 3) {
-        throw new Error(`[HISTORY ASSET PREFLIGHT] Pompeii requires 3 distinct historical visual categories; found ${coreCount}`);
-    }
-    if (archiveAssets.length < 3) {
-        throw new Error("[HISTORY ASSET PREFLIGHT] Not enough downloaded archive images (minimum 3).");
+    if (archiveAssets.length < 3 || visualCategories.size < 3) {
+        throw new Error("[HISTORY ASSET PREFLIGHT] Fewer than 3 downloaded assets across 3 visual categories");
     }
     const archiveGuidance = [
         "The following archive assets have ALREADY BEEN DOWNLOADED.",
@@ -537,7 +539,7 @@ const judgeResult =
         "Keep the EXACT requested historical event as the central story. Do not pivot to a later legend, tourist anecdote or unrelated artifact merely because its image is available.",
         "Do not invent assets or describe an asset as a photo of an event it does not show.",
         "Use at most one scene per assetId. The scene narration must match the selected artifact/site.",
-        "For Pompeii eruption, use at least three distinct categories from ruins, casts, fresco, volcano, artifacts, excavation, map. Paintings, novels, stamps, and films are supplemental only.",
+        "Use at least three distinct topic-relevant evidence categories actually available in the asset list. Later artworks or fiction cannot replace primary evidence of the requested event.",
         "Images are not historical fact verification. Do not invent facts.",
         JSON.stringify(archiveAssets.map(({ id, title, category, provider, sourceUrl, license }) =>
             ({ id, title, category, provider, sourceUrl, license })))
@@ -658,6 +660,10 @@ JSON 외에는 절대 출력하지 않는다.
             file: asset.file, provider: asset.provider, sourceUrl: asset.sourceUrl,
             license: asset.license, title: asset.title, category: asset.category
         };
+    }
+
+    if (selectedCategories.size < 3) {
+        throw new Error("[HISTORY ASSET PLAN] Director must select at least 3 distinct topic-relevant visual categories");
     }
 
     /*
