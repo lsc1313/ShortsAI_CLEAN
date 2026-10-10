@@ -472,9 +472,9 @@ try {
         "Scene narration: " + String(item.tts || item.script || ""),
         "Current visual subject: " + String(item.coreSubject || ""),
         "Current queries: " + JSON.stringify(keywords)
-    ].join("\\n");
+    ].join("\n");
     const response = String(await callAI(prompt));
-    const match = response.match(/\\{[\\s\\S]*\\}/);
+    const match = response.match(/\{[\s\S]*\}/);
     const plan = match ? JSON.parse(match[0]) : null;
     const nextCore = String(plan?.coreSubject || "").trim();
     const nextQueries = Array.isArray(plan?.imageQueries)
