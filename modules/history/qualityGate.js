@@ -138,3 +138,56 @@ export function validateHistoryProduction(director, images, voices, video = null
     console.log(`[HISTORY QC] PASS: ${scenes.length} scenes, ${images.length} media`);
     return true;
 }
+
+/**
+ * Topic-independent editorial and visual-metadata QC.
+ * Archive metadata alone cannot establish what an image actually depicts.
+ * This gate rejects obvious mismatches; pixel-level semantic vision is still needed.
+ */
+export async function validateHistoryEditorialPlan(topic, director) {
+    const scenes = director?.scenes || [];
+    if (scenes.length < 3) throw new Error("[HISTORY EDITORIAL QC] Too few scenes");
+    const payload = scenes.map((scene, index) => ({
+        scene: index + 1,
+        narration: scene.tts || scene.script || "",
+        subtitle: scene.subtitle || "",
+        coreSubject: scene.coreSubject || "",
+        assetTitle: scene.preflightAsset?.title || "",
+        assetCategory: scene.preflightAsset?.category || "",
+        assetSource: scene.preflightAsset?.sourceUrl || ""
+    }));
+    const raw = await callAI(`You are a strict editor of a short educational history video.
+Topic: ${JSON.stringify(topic)}
+Title: ${JSON.stringify(director.title)}
+Scenes in playback order: ${JSON.stringify(payload)}
+Review ALL of these:
+1) Is each scene's specific historical narration genuinely relevant to the named archival asset,
+based on its TITLE and CATEGORY only? Do not claim to have seen image pixels.
+2) Does the narrative move forward without repeating the same collision, death toll, or
+timeline information in different scenes?
+3) Is the sequence chronological or deliberately structured and coherent?
+4) Does the final scene provide a meaningful conclusion rather than repeat the opening?
+5) Does the TITLE promise a factual detail absent from or unsupported by the narration?
+6) Do subtitles faithfully reflect the corresponding narration?
+Reject unrelated generic buildings, legislative chambers, later adaptations or
+artwork that do not actually illustrate the scene's narration.
+A scene about a disaster's physical moment cannot be illustrated by an unrelated
+political chamber merely because a subsequent inquiry took place there.
+When asset metadata is too vague to establish relevance, mark it uncertain and fail.
+Return JSON ONLY:
+{"pass":false,"issues":[{"scene":1,"type":"visual|repetition|sequence|title|subtitle|ending","reason":"specific explanation"}]}
+Set pass=true and issues=[] only when all criteria are satisfied.
+Do not rewrite or hallucinate missing evidence.`);
+    let report;
+    try {
+        report = JSON.parse(String(raw).replace(/^\`\`\`(?:json)?/i, "").replace(/\`\`\`$/i, "").trim());
+    } catch {
+        throw new Error("[HISTORY EDITORIAL QC] Invalid JSON response");
+    }
+    if (report?.pass !== true || !Array.isArray(report.issues) || report.issues.length) {
+        throw new Error("[HISTORY EDITORIAL QC] " + JSON.stringify(report?.issues || [{ reason: "Review failed" }]));
+    }
+    console.log("[HISTORY EDITORIAL QC] PASS: narrative, title, subtitles and asset metadata");
+    return true;
+}
+
