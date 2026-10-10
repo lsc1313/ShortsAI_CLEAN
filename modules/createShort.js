@@ -32,7 +32,7 @@ import { createShoppingDirector } from "./shopping/director.js";
 import { createHotdealDirector } from "./hotdeal/director.js";
 import { createHotdealCards } from "./hotdeal/card.js";
 import { createHistoryDirector } from "./history/director.js";
-import { validateHistoryProduction, validateHistoryStoryPlan, validateHistoryVisualSimilarity, validateHistoryClaimRisk } from "./history/qualityGate.js";
+import { validateHistoryProduction, validateHistoryStoryPlan, validateHistoryVisualSimilarity, validateHistoryClaimRisk, validateHistoryEditorialPlan } from "./history/qualityGate.js";
 import { createAnimalDirector } from "./animal/director.js";
 import { createAIDirector } from "./ai/director.js";
 import { createScienceDirector } from "./science/director.js";
@@ -315,6 +315,7 @@ if (channelName === "history") {
     await validateHistoryStoryPlan(topic, director);
     validateHistoryClaimRisk(director);
     await checkHistoryEvidence(topic, director, director.factSources);
+    await validateHistoryEditorialPlan(topic, director);
     await validateHistoryVisualSimilarity(director);
 }
 
