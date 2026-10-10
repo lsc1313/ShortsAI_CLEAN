@@ -431,6 +431,10 @@ export async function createHistoryDirector(
     );
 
 
+    if (pompeiiEvent && coreCategories.filter(c => selectedCategories.has(c)).length < 3) {
+        throw new Error("[HISTORY ASSET PLAN] Director did not select 3 distinct core Pompeii visual categories");
+    }
+
     /*
     =================================================
     1.
@@ -516,6 +520,13 @@ const judgeResult =
         ...String(completedTopic).split(/[,，:：]/).map(q => q.trim())
     ])].filter(Boolean);
     const archiveAssets = await collectHistoryAssets(archiveQueries);
+    const visualCategories = new Set(archiveAssets.map(a => a.category));
+    const pompeiiEvent = /폼페이|pompeii|베수비오|vesuvius/i.test(completedTopic);
+    const coreCategories = ["ruins", "casts", "fresco", "volcano", "artifacts", "excavation", "map"];
+    const coreCount = coreCategories.filter(c => visualCategories.has(c)).length;
+    if (pompeiiEvent && coreCount < 3) {
+        throw new Error(`[HISTORY ASSET PREFLIGHT] Pompeii requires 3 distinct historical visual categories; found ${coreCount}`);
+    }
     if (archiveAssets.length < 3) {
         throw new Error("[HISTORY ASSET PREFLIGHT] Not enough downloaded archive images (minimum 3).");
     }
@@ -526,9 +537,10 @@ const judgeResult =
         "Keep the EXACT requested historical event as the central story. Do not pivot to a later legend, tourist anecdote or unrelated artifact merely because its image is available.",
         "Do not invent assets or describe an asset as a photo of an event it does not show.",
         "Use at most one scene per assetId. The scene narration must match the selected artifact/site.",
+        "For Pompeii eruption, use at least three distinct categories from ruins, casts, fresco, volcano, artifacts, excavation, map. Paintings, novels, stamps, and films are supplemental only.",
         "Images are not historical fact verification. Do not invent facts.",
-        JSON.stringify(archiveAssets.map(({ id, title, provider, sourceUrl, license }) =>
-            ({ id, title, provider, sourceUrl, license })))
+        JSON.stringify(archiveAssets.map(({ id, title, category, provider, sourceUrl, license }) =>
+            ({ id, title, category, provider, sourceUrl, license })))
     ].join("\\n");
 
     const finalPrompt = `
@@ -633,6 +645,7 @@ JSON 외에는 절대 출력하지 않는다.
         proposedScenes.length > archiveAssets.length) {
         throw new Error("[HISTORY ASSET PLAN] Invalid scene count for downloaded assets");
     }
+    const selectedCategories = new Set();
     for (const [index, scene] of proposedScenes.entries()) {
         const id = scene.assetId;
         const asset = assetById.get(id);
@@ -640,9 +653,10 @@ JSON 외에는 절대 출력하지 않는다.
             throw new Error(`[HISTORY ASSET PLAN] Scene ${index + 1} has missing, duplicate or ungrounded assetId`);
         }
         selectedIds.add(id);
+        selectedCategories.add(asset.category);
         scene.preflightAsset = {
             file: asset.file, provider: asset.provider, sourceUrl: asset.sourceUrl,
-            license: asset.license, title: asset.title
+            license: asset.license, title: asset.title, category: asset.category
         };
     }
 
