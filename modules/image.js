@@ -1,4 +1,5 @@
 import axios from "axios";
+import { callAI } from "./ai/index.js";
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
@@ -181,6 +182,10 @@ let imageNo = 1;
 let reviewAttempts = 0;
 
 const MAX_REVIEW_ATTEMPTS = 5;
+
+// History-only: allow one bounded AI re-plan of the visual search target.
+// Narration, subtitles and scene order are never changed here.
+for(let historyVisualRound = 0; historyVisualRound < (item.category === "history" ? 2 : 1); historyVisualRound++){
 
 for(const keyword of keywords){
 
@@ -447,6 +452,48 @@ mediaType:
         );
 
     }
+
+}
+
+if(imageNo > 1 || item.category !== "history" || historyVisualRound > 0){
+    break;
+}
+
+try {
+    const prompt = [
+        "You are repairing the VISUAL SEARCH PLAN for one History Shorts scene.",
+        "The original image searches found no historically accurate licensed archive image.",
+        "Return ONLY JSON with coreSubject (English string), imageQueries (2-3 English strings), direction (Korean string).",
+        "Choose a specific, readily searchable historical artifact, museum object, site or documented archival photograph directly relevant to the scene.",
+        "Do NOT claim a plaster cast is a skeleton, or a photograph is a CT scan.",
+        "Do NOT change or invent any historical facts, narration, subtitles, names, dates or scene order.",
+        "If the narration specifically requires unavailable scientific imagery, choose an accurate contextual artifact and clearly describe it as a contextual visual in direction, never as the actual scientific result.",
+        "If no truthful visual is possible, return JSON with imageQueries: [].",
+        "Scene narration: " + String(item.tts || item.script || ""),
+        "Current visual subject: " + String(item.coreSubject || ""),
+        "Current queries: " + JSON.stringify(keywords)
+    ].join("\\n");
+    const response = String(await callAI(prompt));
+    const match = response.match(/\\{[\\s\\S]*\\}/);
+    const plan = match ? JSON.parse(match[0]) : null;
+    const nextCore = String(plan?.coreSubject || "").trim();
+    const nextQueries = Array.isArray(plan?.imageQueries)
+        ? plan.imageQueries.map(q => String(q || "").trim()).filter(Boolean).slice(0,3)
+        : [];
+    if(!nextCore || !nextQueries.length) {
+        console.log("[HISTORY VISUAL REPLAN] No safe replacement found");
+        break;
+    }
+    item.coreSubject = nextCore;
+    item.imageQueries = nextQueries;
+    if(typeof plan.direction === "string" && plan.direction.trim()) item.direction = plan.direction.trim();
+    keywords.splice(0, keywords.length, ...nextQueries);
+    reviewAttempts = 0;
+    console.log("[HISTORY VISUAL REPLAN]", JSON.stringify({scene:sceneNo, coreSubject:nextCore, imageQueries:nextQueries}));
+} catch(error) {
+    console.error("[HISTORY VISUAL REPLAN ERROR]", error.message);
+    break;
+}
 
 }
 
