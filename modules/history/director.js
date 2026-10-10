@@ -260,6 +260,11 @@ imageQueries는 해당 Scene을 실제 이미지 또는 영상 검색으로
 - coreSubject에 towards, watching, sailing, erupting 등 동작이나 연출 문구, "79 AD"처럼 장면 설명용 연도를 덧붙이지 않는다. 이런 내용은 direction에만 작성한다.
 - 역사적 대상과 무관한 일반 풍경·동전·다른 시대 선박·인물 초상은 검색 대체재로 사용하지 않는다.
 - 자료 검색 가능성을 이유로 사실과 대본 내용을 변경하지 않는다.
+- CT·X-ray·MRI·DNA 분석·현미경·복원 영상처럼 특정 연구 결과 자체를 요구하는 coreSubject는 공개 아카이브에 실제로 해당 자료가 있을 때만 사용한다.
+- 해당 연구 자료의 공개 여부를 확인할 수 없다면 coreSubject를 사건과 직접 관련된 실존 유물·유적·역사 사진으로 지정한다. 예: "Pompeii cast CT scan" 대신 "Pompeii plaster cast"를 사용하고 imageQueries에는 "Pompeii victim plaster cast", "Pompeii cast of human victim"처럼 실제 자료를 찾는 검색어를 넣는다.
+- 이 경우 대본에서 CT 연구 사실을 언급할 수는 있지만, direction에서 유물 사진은 CT 촬영 결과가 아니라 관련 유물의 참고 화면임을 분명히 한다. 유물 사진을 CT 영상·내부 구조·검사 결과처럼 연출하거나 자막으로 주장하지 않는다.
+- 단, 해당 Scene의 주된 정보가 CT 이미지의 구체적인 판독 결과이고 이를 보여줄 근거 자료가 없다면 다른 검증 가능한 사실 중심으로 Scene을 다시 구성한다. 연구 결과나 사실을 임의로 만들어내지 않는다.
+
 
 같은 의미의 검색어를 반복하지 않는다.
 
