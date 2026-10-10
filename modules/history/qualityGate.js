@@ -8,13 +8,17 @@ export function validateHistoryStoryPlan(topic, director) {
     if (!scenes.length) throw new Error("[HISTORY STORY QC] No scenes");
     const narration = scenes.map(s => String(s.tts || s.script || "")).join(" ");
     const title = String(director?.title || "");
-    const input = String(topic || "").replace(/\\s+/g, "");
-    // A named event must remain the story, not a loosely related tourist anecdote.
-    if (/폼페이/.test(input) && /(최후|멸망|폭발|79년)/.test(input)) {
-        if (!/폼페이/.test(title + narration) ||
-            !/(베수비오|화산|폭발|화산재|서기\\s*79|79년|매몰|분화)/.test(narration)) {
-            throw new Error("[HISTORY STORY QC] Requested Pompeii eruption topic drifted to a different story");
-        }
+    // Generic topic anchoring: require at least one meaningful proper-name token
+    // from the requested topic to appear in title or narration.
+    // This is a lexical safety check, not semantic fact verification.
+    const tokens = String(topic || "")
+        .toLowerCase()
+        .split(/[\\s,.:;!?()[\\]{}·—–-]+/)
+        .map(t => t.trim())
+        .filter(t => t.length >= 3 && !/^(역사|사건|이야기|최후|진실|비밀|전쟁|시대|문명|발견|대해서|알려줘)$/.test(t));
+    const output = (title + " " + narration).toLowerCase();
+    if (tokens.length && !tokens.some(token => output.includes(token))) {
+        throw new Error("[HISTORY STORY QC] Requested topic is absent from title and narration");
     }
     const seenWorks = new Map();
     for (const [index, scene] of scenes.entries()) {
@@ -81,17 +85,18 @@ export async function validateHistoryVisualSimilarity(director) {
     console.log(`[HISTORY VISUAL QC] PASS: ${seen.length} distinct image fingerprints`);
 }
 export function validateHistoryClaimRisk(director) {
+    // Broad language-level warning signs, not topic-specific historical rules.
+    // These patterns flag sweeping claims about groups, not verified facts.
     const patterns = [
-        { re: /화산(이라는)?\\s*(개념|단어).{0,25}(없었|몰랐|생소|존재하지)/, label: "unsupported ancient volcano knowledge claim" },
-        { re: /(주민|시민|사람들).{0,35}(단지|그저|모두|아무도).{0,35}(여겼|생각했|몰랐)/, label: "unsupported collective psychology" },
-        { re: /하룻밤\\s*사이에?\\s*.{0,30}(매몰|사라졌)/, label: "oversimplified eruption timeline" }
+        { re: /(모든|전부|아무도|누구도|항상|절대로).{0,28}(알지 못|몰랐|믿었|생각했|도망|살아남|죽었)/, label: "sweeping historical claim" },
+        { re: /(everyone|nobody|no one|all citizens|all people).{0,55}(believed|knew|escaped|survived|died)/i, label: "sweeping historical claim" }
     ];
     for (const [index, scene] of (director?.scenes || []).entries()) {
         const narration = String(scene.tts || scene.script || "");
         const hit = patterns.find(p => p.re.test(narration));
-        if (hit) throw new Error(`[HISTORY CLAIM QC] Scene ${index + 1}: ${hit.label}. Verify sources and rewrite before production.`);
+        if (hit) throw new Error(`[HISTORY CLAIM QC] Scene ${index + 1}: ${hit.label}; needs independent source verification`);
     }
-    console.log("[HISTORY CLAIM QC] PASS: no known high-risk phrasing (not independent fact verification)");
+    console.log("[HISTORY CLAIM QC] PASS: generic phrasing checks only; facts NOT independently verified");
 }
 
 // Local, zero-API-call safety gate for History Shorts.
