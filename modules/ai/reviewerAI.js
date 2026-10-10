@@ -273,7 +273,9 @@ function historyMetadataMatches(candidate, scene){
     ]);
     const generic = new Set([
         "photo","image","roman","ancient","historical","history",
-        "scene","painting","illustration","mount"
+        "scene","painting","illustration","mount",
+        "and","or","of","the","a","an","in","at","with","for","from",
+        "archaeological","archaeology","site","sites","remains"
     ]);
     const required = coreWords.filter(w => !/^[0-9]{3,4}$/.test(w) && !descriptive.has(w) && !generic.has(w));
     if(!required.length) return false;
