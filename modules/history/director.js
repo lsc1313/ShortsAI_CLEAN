@@ -1,6 +1,6 @@
 import { callAI } from "../ai/index.js";
 import { getRecentDuplicates } from "../services/duplicateService.js";
-import { searchCommonsHistory, searchAicHistory } from "../providers/historyArchives.js";
+import { collectHistoryAssets } from "./assetPreflight.js";
 
 /*
 =====================================================
@@ -512,36 +512,26 @@ const judgeResult =
             : GLOBAL_PROMPT;
 
 
-    // Evidence-first archive discovery, History-only. Candidate metadata is
-    // visual availability evidence, NOT verification of historical claims.
-    const archiveQueries = [...new Set([String(topic || "").trim(), completedTopic])].filter(Boolean);
-    const archiveCandidates = [];
-    for (const query of archiveQueries) {
-        const [commons, aic] = await Promise.all([
-            searchCommonsHistory(query),
-            searchAicHistory(query)
-        ]);
-        archiveCandidates.push(...commons, ...aic);
+    // Download before writing narration; metadata alone is not a usable asset.
+    const archiveQueries = [...new Set([
+        String(topic || "").trim(),
+        completedTopic,
+        ...String(completedTopic).split(/[,，:：]/).map(q => q.trim())
+    ])].filter(Boolean);
+    const archiveAssets = await collectHistoryAssets(archiveQueries);
+    if (archiveAssets.length < 3) {
+        throw new Error("[HISTORY ASSET PREFLIGHT] Not enough downloaded archive images (minimum 3).");
     }
-    const archiveSeen = new Set();
-    const archiveEvidence = archiveCandidates.filter(item => {
-        const key = item.sourceUrl || item.url;
-        if (!key || archiveSeen.has(key)) return false;
-        archiveSeen.add(key);
-        return true;
-    }).slice(0, 18).map(item => ({
-        provider: item.provider,
-        title: String(item.tags || "").slice(0, 200),
-        sourceUrl: item.sourceUrl,
-        license: item.license
-    }));
-    console.log("[HISTORY ARCHIVE PREFLIGHT]", JSON.stringify({
-        topic: completedTopic, candidates: archiveEvidence.length
-    }));
-    const archiveGuidance = archiveEvidence.length
-        ? "실제 공개 아카이브에서 발견한 시각 자료 후보:\\n" + JSON.stringify(archiveEvidence) +
-          "\\n위 목록은 시각자료 후보이지 역사적 사실의 검증 근거가 아니다. 목록의 대상과 직접 관련된 장면을 우선 구성하라. 실제 자료와 대본이 다른 의미가 되지 않게 하고, 특정 자료가 실제 사건 당시 촬영된 것처럼 표현하지 마라. 목록에 없는 자료는 확보되었다고 가정하지 마라."
-        : "사전 아카이브 검색에서 공개 자료를 확보하지 못했다. 이미지가 확보되었다고 가정하거나 역사적 주장을 만들어내지 마라.";
+    const archiveGuidance = [
+        "The following archive assets have ALREADY BEEN DOWNLOADED.",
+        "Every scene MUST select exactly one assetId (integer) from this list.",
+        "Choose scenes that can truthfully be illustrated by these actual assets.",
+        "Do not invent assets or describe an asset as a photo of an event it does not show.",
+        "Use at most one scene per assetId. The scene narration must match the selected artifact/site.",
+        "Images are not historical fact verification. Do not invent facts.",
+        JSON.stringify(archiveAssets.map(({ id, title, provider, sourceUrl, license }) =>
+            ({ id, title, provider, sourceUrl, license })))
+    ].join("\\n");
 
     const finalPrompt = `
 
@@ -582,7 +572,7 @@ ${format}
 completedTopic을 그대로 반복하는 것이 아니라
 실제 영상에서 사용할 수 있도록 대본과 장면을 구성한다.
 
-모든 Scene에는 필수 필드를 빠짐없이 넣는다.
+모든 Scene에는 필수 필드를 빠짐없이 넣는다.\n모든 Scene에는 위 다운로드된 이미지 목록 중 하나의 정수 assetId를 반드시 넣는다. 목록에 없는 assetId를 생성하지 않는다.
 
 출력 JSON의 work_instructions.scenes 배열에 있는 모든 Scene은 imageQueries를
 반드시 문자열 2~3개로 구성된 배열로 출력한다. 빈 배열, null, 필드 생략 금지.
@@ -635,6 +625,28 @@ JSON 외에는 절대 출력하지 않는다.
             result
         );
 
+
+    // Fail closed: do not silently search unrelated images after Director output.
+    const selectedIds = new Set();
+    const assetById = new Map(archiveAssets.map(asset => [asset.id, asset]));
+    const proposedScenes = director?.work_instructions?.scenes ||
+        director?.director_analysis?.work_instructions?.scenes || [];
+    if (!Array.isArray(proposedScenes) || proposedScenes.length < 3 ||
+        proposedScenes.length > archiveAssets.length) {
+        throw new Error("[HISTORY ASSET PLAN] Invalid scene count for downloaded assets");
+    }
+    for (const [index, scene] of proposedScenes.entries()) {
+        const id = scene.assetId;
+        const asset = assetById.get(id);
+        if (!Number.isInteger(id) || !asset || selectedIds.has(id)) {
+            throw new Error(`[HISTORY ASSET PLAN] Scene ${index + 1} has missing, duplicate or ungrounded assetId`);
+        }
+        selectedIds.add(id);
+        scene.preflightAsset = {
+            file: asset.file, provider: asset.provider, sourceUrl: asset.sourceUrl,
+            license: asset.license, title: asset.title
+        };
+    }
 
     /*
     =================================================
