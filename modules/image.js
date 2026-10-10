@@ -476,8 +476,8 @@ try {
         if(!key || seenSources.has(key)) return false;
         seenSources.add(key);
         return true;
-    }).slice(0, 20).map(c => ({
-        provider:c.provider, title:String(c.tags || "").slice(0,180),
+    }).slice(0, 20).map((c, id) => ({
+        id, provider:c.provider, title:String(c.tags || "").slice(0,180),
         sourceUrl:c.sourceUrl
     }));
     console.log("[HISTORY VISUAL REPLAN EVIDENCE]", JSON.stringify({scene:sceneNo, count:archiveEvidence.length}));
@@ -498,7 +498,8 @@ try {
         "If the narration specifically requires unavailable scientific imagery, choose an accurate contextual artifact and clearly describe it as a contextual visual in direction, never as the actual scientific result.",
         "If no truthful visual is possible, return JSON with imageQueries: [].",
         "Use ONLY the listed actual archive evidence. Do not invent image titles or locations.",
-        "Return chosenSourceUrl matching exactly one sourceUrl from evidence, along with coreSubject, imageQueries, direction.",
+        "Return chosenEvidenceId (integer id from Archive evidence), coreSubject, imageQueries, direction. Do not reproduce or invent source URLs.",
+        "Required JSON shape: {\\\"chosenEvidenceId\\\":0,\\\"coreSubject\\\":\\\"...\\\",\\\"imageQueries\\\":[\\\"...\\\",\\\"...\\\"],\\\"direction\\\":\\\"...\\\"}.",
         "If none of the listed images honestly illustrates the narration, return imageQueries: [].",
         "Archive evidence: " + JSON.stringify(archiveEvidence),
         "Scene narration: " + String(item.tts || item.script || ""),
@@ -508,8 +509,9 @@ try {
     const response = String(await callAI(prompt));
     const match = response.match(/\{[\s\S]*\}/);
     const plan = match ? JSON.parse(match[0]) : null;
-    const chosenSource = String(plan?.chosenSourceUrl || "");
-    if(!archiveEvidence.some(c => c.sourceUrl === chosenSource)) {
+    const chosenId = plan?.chosenEvidenceId;
+    const chosenEvidence = Number.isInteger(chosenId) ? archiveEvidence.find(c => c.id === chosenId) : null;
+    if(!chosenEvidence) {
         console.log("[HISTORY VISUAL REPLAN] Rejected ungrounded source");
         break;
     }
