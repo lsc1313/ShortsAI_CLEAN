@@ -7,7 +7,16 @@ export async function downloadImage(
     options = {}
 ){
 
-    const res = await axios.get(
+    if(options.historyArchive){
+        console.log("[HISTORY IMAGE REQUEST]", JSON.stringify({
+            provider: options.provider || "unknown",
+            url
+        }));
+    }
+
+    let res;
+    try {
+        res = await axios.get(
 
         url,
 
@@ -23,6 +32,18 @@ export async function downloadImage(
         }
 
     );
+
+    } catch(error) {
+        if(options.historyArchive){
+            console.error("[HISTORY IMAGE HTTP ERROR]", JSON.stringify({
+                provider: options.provider || "unknown",
+                status: error.response?.status || null,
+                url,
+                message: error.message
+            }));
+        }
+        throw error;
+    }
 
     fs.writeFileSync(
         file,
