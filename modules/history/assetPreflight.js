@@ -10,25 +10,21 @@ import { downloadImage } from "../image/download.js";
  */
 // Search different visual categories rather than filling the pool with the first painting.
 function buildResearchQueries(queries) {
-    const original = [...new Set((queries || []).map(q => String(q || "").trim()).filter(Boolean))];
-    const joined = original.join(" ").toLowerCase();
-    if (/폼페이|pompeii|vesuvius|베수비오/.test(joined)) {
-        return [
-            { query: "Pompeii archaeological ruins", category: "ruins" },
-            { query: "Pompeii plaster casts", category: "casts" },
-            { query: "Pompeii Roman fresco", category: "fresco" },
-            { query: "Mount Vesuvius volcano", category: "volcano" },
-            { query: "Pompeii ancient Roman artifacts", category: "artifacts" },
-            { query: "Pompeii excavation", category: "excavation" },
-            { query: "Pompeii archaeological site map", category: "map" },
-            { query: "The Last Day of Pompeii painting", category: "artwork" }
-        ];
-    }
-    return original.slice(0, 8).map((query, i) => ({ query, category: `query-${i + 1}` }));
+    return [...new Map((queries || [])
+        .filter(item => item && typeof item === "object")
+        .map(item => ({
+            query: String(item.query || "").trim(),
+            category: String(item.category || "").trim().toLowerCase()
+        }))
+        .filter(item => item.query.length >= 4 && item.category.length >= 3)
+        .map(item => [item.query.toLowerCase(), item])).values()].slice(0, 8);
 }
 
 export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir = "media/history-preflight" } = {}) {
     const research = buildResearchQueries(queries);
+    if (research.length < 4 || new Set(research.map(q => q.category)).size < 3) {
+        throw new Error("[HISTORY ASSET PREFLIGHT] Research plan needs 4 searches across 3 categories");
+    }
     fs.mkdirSync(outputDir, { recursive: true });
     const results = [];
     const seen = new Set();
