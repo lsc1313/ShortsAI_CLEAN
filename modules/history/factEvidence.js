@@ -46,9 +46,9 @@ export async function checkHistoryEvidence(topic, director, referenceSources = n
     const scenes = director?.scenes || [];
     if (!scenes.length) throw new Error("[HISTORY FACT QC] No scenes");
     const sources = referenceSources || await collectHistoryEvidence(topic);
-    // Repair unsupported narration once, then independently audit again.
+    // Bounded evidence-only repairs followed by independent re-audits.
     // Never bypass the evidence gate or fabricate references.
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
     const prompt = `You are a strict historical evidence auditor, not a scriptwriter.
 Only the reference excerpts below may support a claim. Do not use your memory.
 Check every factual assertion in every scene, including dates, quantities, causes, and
@@ -81,19 +81,26 @@ Never invent URLs or facts.`;
         console.log(`[HISTORY FACT QC] PASS: ${scenes.length} scenes verified against ${sources.length} retrieved excerpts`);
         return true;
     }
-    if (attempt === 1) {
-        throw new Error(`[HISTORY FACT QC] Unverified after one repair: ${JSON.stringify(failures)}`);
+    if (attempt === 2) {
+        throw new Error(`[HISTORY FACT QC] Unverified after two evidence-based repairs: ${JSON.stringify(failures)}`);
     }
-    console.log("[HISTORY FACT QC] Rewriting unsupported scene narration once:", JSON.stringify(failures));
+    console.log(`[HISTORY FACT QC] Evidence-only repair ${attempt + 1}/2:`, JSON.stringify(failures));
     const repairPrompt = `You are revising a historical video script based ONLY on supplied reference excerpts.
 Topic: ${JSON.stringify(topic)}
 References: ${JSON.stringify(sources)}
 Scene scripts: ${JSON.stringify(scenes.map((scene, i) => ({ scene: i + 1, tts: scene.tts || scene.script, assetTitle: scene.preflightAsset?.title })))}
 Unsupported scenes and reasons: ${JSON.stringify(failures)}
 Return ONLY JSON {"scenes":[{"scene":1,"tts":"revised Korean narration","subtitle":"matching concise Korean subtitle"}]} for exactly the unsupported scenes.
-Keep the requested historical subject and the same selected images. Remove all unsupported
-claims, including the unsinkable-ship slogan if it is not in the references.
-Use only specific facts stated in references, not remembered facts or dramatic invented details.
+Keep the requested historical subject and the same selected images.
+For EACH failed scene: identify every unsupported claim mentioned in its failure reason;
+REMOVE that claim entirely or replace it with the precise weaker statement explicitly
+present in the provided reference. Do NOT substitute a synonym that makes the same
+unsupported claim. For example, if a source says "one of the largest", do not write
+"the largest"; if the source describes a remaining passenger count, do not infer what
+each passenger did next. This rule applies to ANY historical topic.
+Write 1-2 short factual Korean sentences per scene. Use only facts explicitly stated
+in the references; no dramatic embellishment, unverified numbers, or invented causes.
+If necessary, change the angle of the scene to a different source-supported fact.
 Each revised scene must remain coherent with its assigned image. Do not change image selections.`;
     const revised = parseJson(await callAI(repairPrompt));
     if (!Array.isArray(revised?.scenes) || revised.scenes.length !== failures.length) {
@@ -110,5 +117,5 @@ Each revised scene must remain coherent with its assigned image. Do not change i
         delete scenes[failed.scene - 1].factReferences;
     }
     }
-
+    throw new Error("[HISTORY FACT QC] Audit did not complete");
 }
