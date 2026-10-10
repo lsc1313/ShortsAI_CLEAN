@@ -46,6 +46,9 @@ export async function checkHistoryEvidence(topic, director, referenceSources = n
     const scenes = director?.scenes || [];
     if (!scenes.length) throw new Error("[HISTORY FACT QC] No scenes");
     const sources = referenceSources || await collectHistoryEvidence(topic);
+    // Repair unsupported narration once, then independently audit again.
+    // Never bypass the evidence gate or fabricate references.
+    for (let attempt = 0; attempt < 2; attempt++) {
     const prompt = `You are a strict historical evidence auditor, not a scriptwriter.
 Only the reference excerpts below may support a claim. Do not use your memory.
 Check every factual assertion in every scene, including dates, quantities, causes, and
@@ -64,13 +67,48 @@ Never invent URLs or facts.`;
         throw new Error("[HISTORY FACT QC] Invalid audit response");
     }
     const allowed = new Set(sources.map(s => s.url));
+    const failures = [];
     for (let i = 0; i < scenes.length; i++) {
         const check = assessments.find(x => x.scene === i + 1);
         if (!check || check.supported !== true || !Array.isArray(check.sourceUrls) ||
             !check.sourceUrls.length || !check.sourceUrls.every(url => allowed.has(url))) {
-            throw new Error(`[HISTORY FACT QC] Scene ${i + 1} lacks supporting retrieved evidence: ${check?.reason || "missing assessment"}`);
+            failures.push({ scene: i + 1, reason: check?.reason || "missing assessment" });
+        } else {
+            scenes[i].factReferences = check.sourceUrls;
         }
-        scenes[i].factReferences = check.sourceUrls;
     }
-    console.log(`[HISTORY FACT QC] PASS: ${scenes.length} scenes cross-checked against ${sources.length} retrieved encyclopedia excerpts (not definitive historical proof)`);
+    if (!failures.length) {
+        console.log(`[HISTORY FACT QC] PASS: ${scenes.length} scenes verified against ${sources.length} retrieved excerpts`);
+        return true;
+    }
+    if (attempt === 1) {
+        throw new Error(`[HISTORY FACT QC] Unverified after one repair: ${JSON.stringify(failures)}`);
+    }
+    console.log("[HISTORY FACT QC] Rewriting unsupported scene narration once:", JSON.stringify(failures));
+    const repairPrompt = `You are revising a historical video script based ONLY on supplied reference excerpts.
+Topic: ${JSON.stringify(topic)}
+References: ${JSON.stringify(sources)}
+Scene scripts: ${JSON.stringify(scenes.map((scene, i) => ({ scene: i + 1, tts: scene.tts || scene.script, assetTitle: scene.preflightAsset?.title })))}
+Unsupported scenes and reasons: ${JSON.stringify(failures)}
+Return ONLY JSON {"scenes":[{"scene":1,"tts":"revised Korean narration","subtitle":"matching concise Korean subtitle"}]} for exactly the unsupported scenes.
+Keep the requested historical subject and the same selected images. Remove all unsupported
+claims, including the unsinkable-ship slogan if it is not in the references.
+Use only specific facts stated in references, not remembered facts or dramatic invented details.
+Each revised scene must remain coherent with its assigned image. Do not change image selections.`;
+    const revised = parseJson(await callAI(repairPrompt));
+    if (!Array.isArray(revised?.scenes) || revised.scenes.length !== failures.length) {
+        throw new Error("[HISTORY FACT QC] Invalid repair response");
+    }
+    for (const failed of failures) {
+        const fix = revised.scenes.find(x => x.scene === failed.scene);
+        if (!fix || typeof fix.tts !== "string" || !fix.tts.trim() ||
+            typeof fix.subtitle !== "string" || !fix.subtitle.trim()) {
+            throw new Error(`[HISTORY FACT QC] Missing valid repair for scene ${failed.scene}`);
+        }
+        scenes[failed.scene - 1].tts = fix.tts.trim();
+        scenes[failed.scene - 1].subtitle = fix.subtitle.trim();
+        delete scenes[failed.scene - 1].factReferences;
+    }
+    }
+
 }
