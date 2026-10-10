@@ -8,19 +8,47 @@ import { downloadImage } from "../image/download.js";
  * Archives are visual references, NOT sources proving narration claims.
  * Downloads must succeed before an asset can be offered to the Director.
  */
+// Search different visual categories rather than filling the pool with the first painting.
+function buildResearchQueries(queries) {
+    const original = [...new Set((queries || []).map(q => String(q || "").trim()).filter(Boolean))];
+    const joined = original.join(" ").toLowerCase();
+    if (/폼페이|pompeii|vesuvius|베수비오/.test(joined)) {
+        return [
+            { query: "Pompeii archaeological ruins", category: "ruins" },
+            { query: "Pompeii plaster casts", category: "casts" },
+            { query: "Pompeii Roman fresco", category: "fresco" },
+            { query: "Mount Vesuvius volcano", category: "volcano" },
+            { query: "Pompeii ancient Roman artifacts", category: "artifacts" },
+            { query: "Pompeii excavation", category: "excavation" },
+            { query: "Pompeii archaeological site map", category: "map" },
+            { query: "The Last Day of Pompeii painting", category: "artwork" }
+        ];
+    }
+    return original.slice(0, 8).map((query, i) => ({ query, category: `query-${i + 1}` }));
+}
+
 export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir = "media/history-preflight" } = {}) {
-    const uniqueQueries = [...new Set((queries || []).map(q => String(q || "").trim()).filter(Boolean))].slice(0, 8);
+    const research = buildResearchQueries(queries);
     fs.mkdirSync(outputDir, { recursive: true });
     const results = [];
     const seen = new Set();
-    for (const query of uniqueQueries) {
-        const groups = await Promise.all([
-            searchCommonsHistory(query),
-            searchMetHistory(query),
-            searchAicHistory(query)
-        ]);
+    // Limit each category to two assets, leaving room for distinct visual evidence.
+    for (const { query, category } of research) {
+        if (results.length >= maxAssets) break;
+        let groups;
+        try {
+            groups = await Promise.all([
+                searchCommonsHistory(query),
+                searchMetHistory(query),
+                searchAicHistory(query)
+            ]);
+        } catch (error) {
+            console.log("[HISTORY ASSET PREFLIGHT] Archive query failed:", query, error.message);
+            continue;
+        }
+        let acceptedInCategory = 0;
         for (const candidate of groups.flat()) {
-            if (results.length >= maxAssets) break;
+            if (results.length >= maxAssets || acceptedInCategory >= 2) break;
             const key = candidate.sourceUrl || candidate.url;
             if (!key || seen.has(key) || !candidate.url) continue;
             seen.add(key);
@@ -34,22 +62,23 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
                     continue;
                 }
                 results.push({
-                    id: results.length + 1,
-                    query,
-                    file,
+                    id: results.length + 1, query, category, file,
                     provider: candidate.provider,
                     title: String(candidate.tags || "").slice(0, 240),
                     sourceUrl: candidate.sourceUrl,
                     license: candidate.license,
                     url: candidate.url
                 });
+                acceptedInCategory++;
             } catch (error) {
                 console.log("[HISTORY ASSET PREFLIGHT] Download rejected:", candidate.provider, error.message);
                 if (fs.existsSync(file)) fs.unlinkSync(file);
             }
         }
-        if (results.length >= maxAssets) break;
     }
-    console.log("[HISTORY ASSET PREFLIGHT]", JSON.stringify({ searched: uniqueQueries.length, downloaded: results.length }));
+    console.log("[HISTORY ASSET PREFLIGHT]", JSON.stringify({
+        searched: research.length, downloaded: results.length,
+        categories: [...new Set(results.map(a => a.category))]
+    }));
     return results;
 }
