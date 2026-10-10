@@ -431,10 +431,6 @@ export async function createHistoryDirector(
     );
 
 
-    if (pompeiiEvent && coreCategories.filter(c => selectedCategories.has(c)).length < 3) {
-        throw new Error("[HISTORY ASSET PLAN] Director did not select 3 distinct core Pompeii visual categories");
-    }
-
     /*
     =================================================
     1.
