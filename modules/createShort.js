@@ -390,7 +390,24 @@ step("IMAGE");
 
 let images = [];
 
-if (
+if (channelName === "history") {
+    // History uses only pre-downloaded, licensed archive files selected by Director.
+    // Never fall back to unreviewed image searches.
+    images = director.scenes.map((scene, index) => {
+        const asset = scene.preflightAsset;
+        if (!asset?.file || !fs.existsSync(asset.file) || fs.statSync(asset.file).size < 5000) {
+            throw new Error(`[HISTORY ASSET PLAN] Scene ${index + 1} has no valid downloaded image`);
+        }
+        return {
+            scene: index + 1, sceneType: scene.sceneType,
+            keyword: scene.coreSubject, coreSubject: scene.coreSubject,
+            file: asset.file, provider: asset.provider, sourceUrl: asset.sourceUrl,
+            license: asset.license, mediaType: "image", score: 100
+        };
+    });
+    console.log("[HISTORY ASSET PLAN] mapped", images.length, "downloaded files");
+}
+else if (
     channelName === "shopping" &&
     options?.hotdeal === true
 ) {
