@@ -1,5 +1,6 @@
 import { callAI } from "../ai/index.js";
 import { getRecentDuplicates } from "../services/duplicateService.js";
+import { searchCommonsHistory, searchAicHistory } from "../providers/historyArchives.js";
 
 /*
 =====================================================
@@ -511,6 +512,37 @@ const judgeResult =
             : GLOBAL_PROMPT;
 
 
+    // Evidence-first archive discovery, History-only. Candidate metadata is
+    // visual availability evidence, NOT verification of historical claims.
+    const archiveQueries = [...new Set([String(topic || "").trim(), completedTopic])].filter(Boolean);
+    const archiveCandidates = [];
+    for (const query of archiveQueries) {
+        const [commons, aic] = await Promise.all([
+            searchCommonsHistory(query),
+            searchAicHistory(query)
+        ]);
+        archiveCandidates.push(...commons, ...aic);
+    }
+    const archiveSeen = new Set();
+    const archiveEvidence = archiveCandidates.filter(item => {
+        const key = item.sourceUrl || item.url;
+        if (!key || archiveSeen.has(key)) return false;
+        archiveSeen.add(key);
+        return true;
+    }).slice(0, 18).map(item => ({
+        provider: item.provider,
+        title: String(item.tags || "").slice(0, 200),
+        sourceUrl: item.sourceUrl,
+        license: item.license
+    }));
+    console.log("[HISTORY ARCHIVE PREFLIGHT]", JSON.stringify({
+        topic: completedTopic, candidates: archiveEvidence.length
+    }));
+    const archiveGuidance = archiveEvidence.length
+        ? "실제 공개 아카이브에서 발견한 시각 자료 후보:\\n" + JSON.stringify(archiveEvidence) +
+          "\\n위 목록은 시각자료 후보이지 역사적 사실의 검증 근거가 아니다. 목록의 대상과 직접 관련된 장면을 우선 구성하라. 실제 자료와 대본이 다른 의미가 되지 않게 하고, 특정 자료가 실제 사건 당시 촬영된 것처럼 표현하지 마라. 목록에 없는 자료는 확보되었다고 가정하지 마라."
+        : "사전 아카이브 검색에서 공개 자료를 확보하지 못했다. 이미지가 확보되었다고 가정하거나 역사적 주장을 만들어내지 마라.";
+
     const finalPrompt = `
 
 ${COMMON_PROMPT}
@@ -531,6 +563,11 @@ ${topic}
 Director Completed Topic:
 
 ${completedTopic}
+
+=====================================================
+ARCHIVE PREFLIGHT (VISUAL EVIDENCE ONLY)
+=====================================================
+${archiveGuidance}
 
 
 선택된 콘텐츠 형식:
