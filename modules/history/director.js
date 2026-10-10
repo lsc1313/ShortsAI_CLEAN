@@ -483,11 +483,8 @@ const judgeResult =
 
 
     const completedTopic =
-        String(
-            judge?.completedTopic ||
-            topic ||
-            ""
-        ).trim();
+        String(topic || judge?.completedTopic || "").trim();
+    // An explicitly requested History topic must not be replaced by a different story.
 
 
     console.log(
@@ -526,6 +523,7 @@ const judgeResult =
         "The following archive assets have ALREADY BEEN DOWNLOADED.",
         "Every scene MUST select exactly one assetId (integer) from this list.",
         "Choose scenes that can truthfully be illustrated by these actual assets.",
+        "Keep the EXACT requested historical event as the central story. Do not pivot to a later legend, tourist anecdote or unrelated artifact merely because its image is available.",
         "Do not invent assets or describe an asset as a photo of an event it does not show.",
         "Use at most one scene per assetId. The scene narration must match the selected artifact/site.",
         "Images are not historical fact verification. Do not invent facts.",
@@ -565,7 +563,7 @@ ${archiveGuidance}
 ${format}
 
 
-위 정보를 바탕으로 최종 Shorts Director 결과를 만든다.
+위 정보를 바탕으로 최종 Shorts Director 결과를 만든다.\n사용자가 지정한 주제 \"${topic}\"의 중심 사건을 반드시 설명한다. 이미지가 다른 이야기를 유도하더라도 주제를 바꾸지 않는다. 주제에 맞는 자료가 없으면 사실을 꾸미지 말고 제작이 실패하도록 한다.
 
 중요:
 
