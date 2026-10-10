@@ -42,10 +42,10 @@ export async function collectHistoryEvidence(topic) {
  * Wikipedia is a secondary reference, not conclusive historical proof.
  * Fail closed when references are missing or claims are not supported.
  */
-export async function checkHistoryEvidence(topic, director) {
+export async function checkHistoryEvidence(topic, director, referenceSources = null) {
     const scenes = director?.scenes || [];
     if (!scenes.length) throw new Error("[HISTORY FACT QC] No scenes");
-    const sources = await collectHistoryEvidence(topic);
+    const sources = referenceSources || await collectHistoryEvidence(topic);
     const prompt = `You are a strict historical evidence auditor, not a scriptwriter.
 Only the reference excerpts below may support a claim. Do not use your memory.
 Check every factual assertion in every scene, including dates, quantities, causes, and
