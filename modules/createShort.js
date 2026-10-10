@@ -312,7 +312,7 @@ for (const scene of director.scenes) {
 }
 
 if (channelName === "history") {
-    validateHistoryStoryPlan(topic, director);
+    await validateHistoryStoryPlan(topic, director);
     validateHistoryClaimRisk(director);
     await checkHistoryEvidence(topic, director);
     await validateHistoryVisualSimilarity(director);
