@@ -27,6 +27,16 @@ async function fetchWikiExtract(topic, lang) {
     } finally { clearTimeout(timer); }
 }
 
+export async function collectHistoryEvidence(topic) {
+    const sources = [];
+    for (const lang of ["ko", "en"]) {
+        try { sources.push(...await fetchWikiExtract(topic, lang)); }
+        catch (error) { console.log("[HISTORY FACT QC] Source unavailable:", lang, error.message); }
+    }
+    if (!sources.length) throw new Error("[HISTORY FACT QC] No independent text references found");
+    return sources;
+}
+
 /**
  * Independent retrieved-text cross-check for History narration.
  * Wikipedia is a secondary reference, not conclusive historical proof.
@@ -35,12 +45,7 @@ async function fetchWikiExtract(topic, lang) {
 export async function checkHistoryEvidence(topic, director) {
     const scenes = director?.scenes || [];
     if (!scenes.length) throw new Error("[HISTORY FACT QC] No scenes");
-    const sources = [];
-    for (const lang of ["ko", "en"]) {
-        try { sources.push(...await fetchWikiExtract(topic, lang)); }
-        catch (error) { console.log("[HISTORY FACT QC] Source unavailable:", lang, error.message); }
-    }
-    if (!sources.length) throw new Error("[HISTORY FACT QC] No independent text references found");
+    const sources = await collectHistoryEvidence(topic);
     const prompt = `You are a strict historical evidence auditor, not a scriptwriter.
 Only the reference excerpts below may support a claim. Do not use your memory.
 Check every factual assertion in every scene, including dates, quantities, causes, and
