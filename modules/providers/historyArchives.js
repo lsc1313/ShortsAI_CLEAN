@@ -56,6 +56,8 @@ export async function searchCommonsHistory(query) {
         } });
         const pages = Object.values(data.query?.pages || {});
         const eligible = pages.flatMap(p => {
+            // Archive PDFs and book scans are not still-image assets for Shorts.
+            if (/\.(pdf|djvu|tiff?|svg)$/i.test(String(p.title || ""))) return [];
             const info = p.imageinfo?.[0];
             const meta = info?.extmetadata || {};
             const license = text(meta.LicenseShortName?.value);
