@@ -1,4 +1,5 @@
 import fs from "fs";
+import { Jimp } from "jimp";
 
 
 // Conservative topic/visual preflight. This is NOT independent fact checking.
@@ -32,6 +33,65 @@ export function validateHistoryStoryPlan(topic, director) {
     }
     console.log("[HISTORY STORY QC] PASS: topic anchor and basic artwork duplication checks");
     return true;
+}
+
+
+/**
+ * Fast visual similarity gate, History only.
+ * 9x8 difference hash detects resized/re-encoded versions of the same artwork.
+ * This does not establish historical accuracy or semantic visual relevance.
+ */
+async function imageDifferenceHash(file) {
+    const image = await Jimp.read(file);
+    image.resize({ w: 9, h: 8 }).greyscale();
+    let bits = 0n;
+    for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+            const left = image.getPixelColor(x, y) >>> 24;
+            const right = image.getPixelColor(x + 1, y) >>> 24;
+            bits = (bits << 1n) | (left > right ? 1n : 0n);
+        }
+    }
+    return bits;
+}
+function bitDistance(a, b) {
+    let value = a ^ b;
+    let count = 0;
+    while (value) { count++; value &= value - 1n; }
+    return count;
+}
+export async function validateHistoryVisualSimilarity(director) {
+    const seen = [];
+    for (const [index, scene] of (director?.scenes || []).entries()) {
+        const file = scene?.preflightAsset?.file;
+        if (!file || !fs.existsSync(file)) {
+            throw new Error(`[HISTORY VISUAL QC] Scene ${index + 1}: missing downloaded image`);
+        }
+        let hash;
+        try { hash = await imageDifferenceHash(file); }
+        catch (error) { throw new Error(`[HISTORY VISUAL QC] Scene ${index + 1}: cannot inspect image: ${error.message}`); }
+        for (const previous of seen) {
+            const distance = bitDistance(hash, previous.hash);
+            if (distance <= 5) {
+                throw new Error(`[HISTORY VISUAL QC] Scene ${index + 1} visually repeats scene ${previous.scene} (dHash distance=${distance})`);
+            }
+        }
+        seen.push({ scene: index + 1, hash });
+    }
+    console.log(`[HISTORY VISUAL QC] PASS: ${seen.length} distinct image fingerprints`);
+}
+export function validateHistoryClaimRisk(director) {
+    const patterns = [
+        { re: /화산(이라는)?\\s*(개념|단어).{0,25}(없었|몰랐|생소|존재하지)/, label: "unsupported ancient volcano knowledge claim" },
+        { re: /(주민|시민|사람들).{0,35}(단지|그저|모두|아무도).{0,35}(여겼|생각했|몰랐)/, label: "unsupported collective psychology" },
+        { re: /하룻밤\\s*사이에?\\s*.{0,30}(매몰|사라졌)/, label: "oversimplified eruption timeline" }
+    ];
+    for (const [index, scene] of (director?.scenes || []).entries()) {
+        const narration = String(scene.tts || scene.script || "");
+        const hit = patterns.find(p => p.re.test(narration));
+        if (hit) throw new Error(`[HISTORY CLAIM QC] Scene ${index + 1}: ${hit.label}. Verify sources and rewrite before production.`);
+    }
+    console.log("[HISTORY CLAIM QC] PASS: no known high-risk phrasing (not independent fact verification)");
 }
 
 // Local, zero-API-call safety gate for History Shorts.
