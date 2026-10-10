@@ -1,3 +1,4 @@
+import { checkHistoryEvidence } from "./history/factEvidence.js";
 import { updateShopPage } from "./hotdeal/shopUpdater.js";
 
 
@@ -31,6 +32,7 @@ import { createShoppingDirector } from "./shopping/director.js";
 import { createHotdealDirector } from "./hotdeal/director.js";
 import { createHotdealCards } from "./hotdeal/card.js";
 import { createHistoryDirector } from "./history/director.js";
+import { validateHistoryProduction, validateHistoryStoryPlan, validateHistoryVisualSimilarity, validateHistoryClaimRisk, validateHistoryEditorialPlan } from "./history/qualityGate.js";
 import { createAnimalDirector } from "./animal/director.js";
 import { createAIDirector } from "./ai/director.js";
 import { createScienceDirector } from "./science/director.js";
@@ -305,6 +307,16 @@ else {
 
 for (const scene of director.scenes) {
     scene.product = product;
+    // Reviewer policy is channel-specific; never apply History checks to shopping.
+    if (channelName === "history") scene.category = "history";
+}
+
+if (channelName === "history") {
+    await validateHistoryStoryPlan(topic, director);
+    validateHistoryClaimRisk(director);
+    await checkHistoryEvidence(topic, director, director.factSources);
+    await validateHistoryEditorialPlan(topic, director);
+    await validateHistoryVisualSimilarity(director);
 }
 
 success(
@@ -387,7 +399,24 @@ step("IMAGE");
 
 let images = [];
 
-if (
+if (channelName === "history") {
+    // History uses only pre-downloaded, licensed archive files selected by Director.
+    // Never fall back to unreviewed image searches.
+    images = director.scenes.map((scene, index) => {
+        const asset = scene.preflightAsset;
+        if (!asset?.file || !fs.existsSync(asset.file) || fs.statSync(asset.file).size < 5000) {
+            throw new Error(`[HISTORY ASSET PLAN] Scene ${index + 1} has no valid downloaded image`);
+        }
+        return {
+            scene: index + 1, sceneType: scene.sceneType,
+            keyword: scene.coreSubject, coreSubject: scene.coreSubject,
+            file: asset.file, provider: asset.provider, sourceUrl: asset.sourceUrl,
+            license: asset.license, mediaType: "image", score: 100
+        };
+    });
+    console.log("[HISTORY ASSET PLAN] mapped", images.length, "downloaded files");
+}
+else if (
     channelName === "shopping" &&
     options?.hotdeal === true
 ) {
@@ -467,6 +496,10 @@ const voices =
         director
     );
 
+if (channelName === "history") {
+    validateHistoryProduction(director, images, voices);
+}
+
 success(
     "TTS 완료"
 );
@@ -506,9 +539,20 @@ if(!video){
     throw new Error("createVideo() returned undefined");
 }
 
+if (channelName === "history") {
+    validateHistoryProduction(director, images, voices, video);
+}
+
 success(
     "VIDEO 완료"
 );
+
+// History preview exits before metadata, YouTube, Instagram, Threads and cleanup.
+// Never enable preview for a different channel by accident.
+if (options?.previewOnly === true && channelName === "history") {
+    console.log("[HISTORY PREVIEW] RENDER COMPLETE - ALL UPLOADS SKIPPED");
+    return { success: true, previewOnly: true, topic, video: video.file, director, images };
+}
 
 debug(video.file);
 
