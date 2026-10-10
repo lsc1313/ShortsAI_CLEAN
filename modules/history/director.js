@@ -1,3 +1,4 @@
+import { collectHistoryEvidence } from "./factEvidence.js";
 import { callAI } from "../ai/index.js";
 import { getRecentDuplicates } from "../services/duplicateService.js";
 import { collectHistoryAssets } from "./assetPreflight.js";
@@ -541,6 +542,10 @@ Do not use a specific list of categories for every historical topic.
             ({ id, title, category, provider, sourceUrl, license })))
     ].join("\\n");
 
+    // Retrieve reference text BEFORE script generation to avoid unsupported hooks.
+    const factSources = await collectHistoryEvidence(completedTopic);
+    const factGuidance = JSON.stringify(factSources.map(({ title, url, excerpt }) => ({ title, url, excerpt })));
+
     const finalPrompt = `
 
 ${COMMON_PROMPT}
@@ -567,6 +572,16 @@ ARCHIVE PREFLIGHT (VISUAL EVIDENCE ONLY)
 =====================================================
 ${archiveGuidance}
 
+=====================================================
+HISTORICAL TEXT EVIDENCE (REQUIRED)
+=====================================================
+${factGuidance}
+
+Every factual claim in every scene must be directly supported by the historical
+text evidence above. Avoid unsupported slogans, invented lists, quotations,
+dramatic metaphors that imply specific facts, and unverified numbers.
+If an attention-grabbing hook cannot be supported, use a factual hook instead.
+Never claim the images themselves prove historical facts.
 
 선택된 콘텐츠 형식:
 
@@ -683,6 +698,8 @@ JSON 외에는 절대 출력하지 않는다.
     director.format =
         format;
 
+
+    director.factSources = factSources;
 
     director.scenes =
         director
