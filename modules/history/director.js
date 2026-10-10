@@ -542,6 +542,13 @@ completedTopic을 그대로 반복하는 것이 아니라
 
 모든 Scene에는 필수 필드를 빠짐없이 넣는다.
 
+출력 JSON의 work_instructions.scenes 배열에 있는 모든 Scene은 imageQueries를
+반드시 문자열 2~3개로 구성된 배열로 출력한다. 빈 배열, null, 필드 생략 금지.
+imageQueries는 direction이나 imageQuery가 아니라 정확히 imageQueries 필드여야 한다.
+예시: "coreSubject": "Pompeii plaster cast", "imageQueries": ["Pompeii victim cast", "Pompeii plaster casts museum"].
+이미지 자료를 찾기 어려우면 그 Scene을 실제 검색 가능한 역사 자료 중심으로 다시 설계한다.
+검증되지 않은 검색어를 자동 생성해서 오류를 숨기지 않는다.
+
 특히 모든 Scene에는 반드시
 coreSubject를 포함한다.
 
