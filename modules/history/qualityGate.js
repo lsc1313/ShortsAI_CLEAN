@@ -1,24 +1,32 @@
 import fs from "fs";
 import { Jimp } from "jimp";
+import { callAI } from "../ai/index.js";
 
 
 // Conservative topic/visual preflight. This is NOT independent fact checking.
-export function validateHistoryStoryPlan(topic, director) {
+export async function validateHistoryStoryPlan(topic, director) {
     const scenes = director?.scenes || [];
     if (!scenes.length) throw new Error("[HISTORY STORY QC] No scenes");
     const narration = scenes.map(s => String(s.tts || s.script || "")).join(" ");
     const title = String(director?.title || "");
-    // Generic topic anchoring: require at least one meaningful proper-name token
-    // from the requested topic to appear in title or narration.
-    // This is a lexical safety check, not semantic fact verification.
-    const tokens = String(topic || "")
-        .toLowerCase()
-        .split(/[\\s,.:;!?()[\\]{}·—–-]+/)
-        .map(t => t.trim())
-        .filter(t => t.length >= 3 && !/^(역사|사건|이야기|최후|진실|비밀|전쟁|시대|문명|발견|대해서|알려줘)$/.test(t));
-    const output = (title + " " + narration).toLowerCase();
-    if (tokens.length && !tokens.some(token => output.includes(token))) {
-        throw new Error("[HISTORY STORY QC] Requested topic is absent from title and narration");
+    // Multilingual narration may use translated names or synonyms.
+    // Assess the actual subject semantically rather than matching Korean tokens.
+    const response = await callAI(`Assess whether this History Shorts script stays focused on the USER-REQUESTED historical subject.
+Requested subject: ${JSON.stringify(topic)}
+Title: ${JSON.stringify(title)}
+Narration: ${JSON.stringify(narration)}
+Accept equivalent names/translations (e.g. Titanic/타이타닉), but reject stories
+that merely mention the requested subject and mainly discuss unrelated adaptations,
+tourism, myths, or other events. Respond ONLY JSON:
+{"onTopic":true,"reason":"short explanation"}`);
+    let assessment;
+    try {
+        assessment = JSON.parse(String(response).replace(/^\`\`\`(?:json)?/i, "").replace(/\`\`\`$/i, "").trim());
+    } catch {
+        throw new Error("[HISTORY STORY QC] Topic audit response is not valid JSON");
+    }
+    if (assessment?.onTopic !== true) {
+        throw new Error(`[HISTORY STORY QC] Subject drift: ${assessment?.reason || "semantic topic audit failed"}`);
     }
     const seenWorks = new Map();
     for (const [index, scene] of scenes.entries()) {
@@ -35,7 +43,7 @@ export function validateHistoryStoryPlan(topic, director) {
         }
         if (normalized.length >= 12) seenWorks.set(normalized, index + 1);
     }
-    console.log("[HISTORY STORY QC] PASS: topic anchor and basic artwork duplication checks");
+    console.log("[HISTORY STORY QC] PASS: semantic topic audit and basic artwork duplication checks");
     return true;
 }
 
