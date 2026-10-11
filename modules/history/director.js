@@ -569,7 +569,7 @@ Do not use a specific list of categories for every historical topic.
 
     // Match sourced facts to real downloaded assets BEFORE writing narration.
     const candidatePrompt = [
-        "Plan 3 to 8 historical video scene candidates. Return JSON only.",
+        "Plan 3 to 8 historical video scene candidates. Return JSON only. Prefer 4-6 when available evidence supports distinct narrative beats; never pad with unrelated imagery.",
         "Topic: " + completedTopic,
         "Text evidence: " + factGuidance,
         "Downloaded assets: " + JSON.stringify(rankedAssets.map(a => ({id:a.id,title:a.title,category:a.category,sourceUrl:a.sourceUrl}))),
@@ -584,7 +584,9 @@ Do not use a specific list of categories for every historical topic.
         "When using a generic analogous scene, keep the historical fact grounded in text and label the visual as illustrative, not an authentic record.",
         "Do not infer from pictures or invent dates, causes, actions, superlatives or quotes.",
         "Exclude unrelated generic rooms, landscapes, institutions or misleading reenactments.",
-        "Use at least 3 unique downloaded asset IDs that meaningfully depict the chosen facts. Category labels are not a quality requirement. Return empty candidates if impossible."
+        "Use at least 3 unique downloaded asset IDs that meaningfully depict the chosen facts. Category labels are not a quality requirement. Return empty candidates if impossible.",
+        "Avoid packing collision, sinking, lifeboats, casualties and safety reforms into one narrated scene: split into distinct beats ONLY when each beat has both sourced facts and a matching image.",
+        "If a claimed mechanical damage detail or casualty count is not directly supported by text evidence, omit it rather than embellish."
     ].join("\n");
     const sourceUrls = new Set(factSources.map(x => x.url));
     const assetMap = new Map(archiveAssets.map(x => [x.id, x]));
@@ -620,7 +622,8 @@ Do not use a specific list of categories for every historical topic.
         "You are the story-structure editor for a history short. Do NOT write narration.",
         "Requested topic: " + completedTopic,
         "Grounded scene candidates: " + JSON.stringify(candidates),
-        "Choose at least 3 candidates, using unique assetIds, and return them in playback order.",
+        "Choose at least 3 candidates, using unique assetIds, and return them in playback order. Prefer 4-6 concise beats when genuinely supported; do not force extra scenes.",
+        "Each beat should have one primary visible action or outcome. Do not combine the impact, sinking, rescue, death toll and reforms into a single scene.",
         "Before choosing candidates, identify the central event/action explicitly requested by the topic.",
         "Require at least one candidate whose sourced FACT explicitly describes that central event/action itself; background, departure, rescue, casualties or aftermath alone are NOT sufficient.",
         "If the central event itself is missing from grounded candidates, return empty assetIds. Do not change the topic to match available pictures.",
@@ -687,7 +690,7 @@ assetId and state ONLY its explicitly sourced historical fact, without adding
 new claims. Build a non-repetitive coherent story from the candidates.
 If impossible, output empty scenes and allow preflight to fail.
 
-Every factual claim in every scene must be directly supported by the historical
+Do not invent precise structural damage, casualty counts, survivor totals or treaty dates. Use such details only when explicitly verified by the supplied text evidence.\nEvery factual claim in every scene must be directly supported by the historical
 text evidence above. Avoid unsupported slogans, invented lists, quotations,
 dramatic metaphors that imply specific facts, and unverified numbers.
 If an attention-grabbing hook cannot be supported, use a factual hook instead.
