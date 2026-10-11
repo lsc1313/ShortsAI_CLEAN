@@ -22,13 +22,13 @@ function buildResearchQueries(queries) {
 
 export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir = "media/history-preflight" } = {}) {
     const research = buildResearchQueries(queries);
-    if (research.length < 4 || new Set(research.map(q => q.category)).size < 3) {
-        throw new Error("[HISTORY ASSET PREFLIGHT] Research plan needs 4 searches across 3 categories");
+    if (research.length < 3) {
+        throw new Error("[HISTORY ASSET PREFLIGHT] Research plan needs at least 3 searches");
     }
     fs.mkdirSync(outputDir, { recursive: true });
     const results = [];
     const seen = new Set();
-    // Limit each category to two assets, leaving room for distinct visual evidence.
+    // Keep multiple candidates per query; do not require arbitrary category diversity.
     for (const { query, category } of research) {
         if (results.length >= maxAssets) break;
         let groups;
@@ -42,9 +42,9 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
             console.log("[HISTORY ASSET PREFLIGHT] Archive query failed:", query, error.message);
             continue;
         }
-        let acceptedInCategory = 0;
+        let acceptedForQuery = 0;
         for (const candidate of groups.flat()) {
-            if (results.length >= maxAssets || acceptedInCategory >= 2) break;
+            if (results.length >= maxAssets || acceptedForQuery >= 2) break;
             const key = candidate.sourceUrl || candidate.url;
             if (!key || seen.has(key) || !candidate.url) continue;
             seen.add(key);
@@ -65,7 +65,7 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
                     license: candidate.license,
                     url: candidate.url
                 });
-                acceptedInCategory++;
+                acceptedForQuery++;
             } catch (error) {
                 console.log("[HISTORY ASSET PREFLIGHT] Download rejected:", candidate.provider, error.message);
                 if (fs.existsSync(file)) fs.unlinkSync(file);
