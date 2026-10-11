@@ -266,7 +266,7 @@ let lastImage = null;
         =================================================
         */
 
-        if(sceneType === "ending"){
+        if(sceneType === "ending" && channel !== "history"){
 
             if(!lastImage){
 
