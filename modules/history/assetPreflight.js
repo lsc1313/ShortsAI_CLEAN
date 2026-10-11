@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { searchCommonsHistory, searchMetHistory, searchAicHistory } from "../providers/historyArchives.js";
+import { searchCommonsHistory } from "../providers/historyArchives.js";
 import { downloadImage } from "../image/download.js";
 
 /**
@@ -31,21 +31,23 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
     const tried = new Set();
     const stats = { queries: 0, candidates: 0, duplicate: 0, downloadFailed: 0, tooSmall: 0, accepted: 0 };
     const searchAll = async query => {
-        const groups = await Promise.allSettled([
-            searchCommonsHistory(query), searchMetHistory(query), searchAicHistory(query)
-        ]);
-        return groups.flatMap((group, index) => {
-            if (group.status === "fulfilled") return group.value;
-            console.log("[HISTORY ASSET PREFLIGHT] Provider failed:", query, index, group.reason?.message);
-            return [];
-        });
+        // Wikimedia Commons is the only currently working archive provider.
+        // Met returns 410 and Art Institute image downloads return 403 in the observed run.
+        return searchCommonsHistory(query);
+    };
+    const unsuitableMetadata = candidate => {
+        const title = String(candidate.tags || "").toLowerCase();
+        // A map/chart/diagram or unrelated administrative material is not a visual
+        // depiction of a physical historical action. This is a conservative filter,
+        // not a substitute for the editorial semantic gate.
+        return /\\b(map of|location map|chart of|diagram of|inquiry|committee|courtroom|hearing|investigation|portrait of)\\b/i.test(title);
     };
     const collectQuery = async ({ query, category }, limit = 3) => {
         const normalized = query.toLowerCase().trim();
         if (!normalized || tried.has(normalized) || results.length >= maxAssets) return;
         tried.add(normalized);
         stats.queries++;
-        const candidates = await searchAll(query);
+        const candidates = (await searchAll(query)).filter(candidate => !unsuitableMetadata(candidate));
         stats.candidates += candidates.length;
         let accepted = 0;
         for (const candidate of candidates) {
