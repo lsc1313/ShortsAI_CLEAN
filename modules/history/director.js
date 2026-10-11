@@ -575,6 +575,28 @@ Do not use a specific list of categories for every historical topic.
     }
     if (new Set(candidates.map(c => assetMap.get(c.assetId).category)).size < 3) throw new Error("[HISTORY JOINT PLAN] Fewer than 3 matched visual categories");
     console.log("[HISTORY JOINT PLAN] Matched candidates:", candidates.length);
+    // Plan story order using ONLY candidates that already have both sourced facts and downloaded images.
+    // Never introduce a new historical claim or substitute an unrelated image to fill the ending.
+    const storyPrompt = [
+        "You are the story-structure editor for a history short. Do NOT write narration.",
+        "Requested topic: " + completedTopic,
+        "Grounded scene candidates: " + JSON.stringify(candidates),
+        "Choose at least 3 candidates, using unique assetIds, and return them in playback order.",
+        "The central requested historical event must be explained, not just its background.",
+        "Use a coherent chronological progression; an opening flash-forward is allowed ONLY if the next scene explicitly bridges back in time.",
+        "The last candidate MUST provide a meaningful conclusion about the requested subject, not a return to earlier construction/background.",
+        "Never invent additional facts, visual assets, or event outcomes. If the available candidates cannot form a complete story, return an empty assetIds array.",
+        'Return ONLY JSON: {"assetIds":[1,2,3],"reason":"brief story arc explanation"}'
+    ].join("\\n");
+    const storyPlan = parseJSON(await callAI(storyPrompt));
+    const storyIds = storyPlan?.assetIds;
+    if (!Array.isArray(storyIds) || storyIds.length < 3 ||
+        new Set(storyIds).size !== storyIds.length ||
+        !storyIds.every(id => candidateIds.has(id))) {
+        throw new Error("[HISTORY STORY PLAN] No coherent story from verified fact-and-image candidates");
+    }
+    console.log("[HISTORY STORY PLAN] Ordered grounded assets:", storyIds.join(", "));
+    const storyOrder = new Map(storyIds.map((id, index) => [id, index]));
     const candidateGuidance = JSON.stringify(candidates);
     const candidateById = new Map(candidates.map(c => [c.assetId, c]));
 
@@ -611,6 +633,11 @@ ${factGuidance}
 
 MANDATORY FACT-AND-IMAGE MATCHED SCENE CANDIDATES:
 ${candidateGuidance}
+
+MANDATORY STORY ORDER (assetIds in playback order): ${JSON.stringify(storyIds)}
+Use exactly these assetIds in this exact order. Do not add or omit scenes.
+The final scene must conclude the requested historical event, not end with
+its construction or earlier background. Keep a coherent narrative timeline.
 
 Select scenes ONLY from these candidates. Each scene must use the matching
 assetId and state ONLY its explicitly sourced historical fact, without adding
@@ -713,6 +740,11 @@ JSON 외에는 절대 출력하지 않는다.
             file: asset.file, provider: asset.provider, sourceUrl: asset.sourceUrl,
             license: asset.license, title: asset.title, category: asset.category
         };
+    }
+
+    if (proposedScenes.length !== storyIds.length ||
+        proposedScenes.some((scene, index) => scene.assetId !== storyIds[index])) {
+        throw new Error("[HISTORY STORY PLAN] Director deviated from pre-approved story order");
     }
 
     if (selectedCategories.size < 3) {
