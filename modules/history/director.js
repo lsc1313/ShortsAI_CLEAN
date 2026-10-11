@@ -576,6 +576,8 @@ Do not use a specific list of categories for every historical topic.
         "JSON schema: {\"candidates\":[{\"assetId\":1,\"fact\":\"short Korean sourced fact\",\"sourceUrls\":[\"exact text source URL\"],\"visualReason\":\"why asset title directly depicts fact\"}]}",
         "Every narrated historical fact must be explicitly present in text evidence. An image may illustrate the same visible action or physical result even if it depicts another subject or era; it must NOT be presented as an authentic image of the named event.",
         "Assets are ordered by a rough metadata relevance heuristic, NOT by verified visual content. Independently assess each asset title.",
+        "For volcanic eruptions, a photograph of the quiet mountain, skyline, or landscape is background only. It does NOT depict an eruption. Require an eruption depiction for narration about erupting, and ruins/casts for the destruction and aftermath.",
+        "Do not create two adjacent candidates that merely restate the same event and date; each candidate must advance the story with a distinct verified fact.",
         "Prioritize authentic event image, then event-specific illustration, then an illustrative image showing the SAME ACTION or physical result. Reject merely thematic or atmospheric associations.",
         "Do not select different versions of the same artwork (colorized, cropped, recolored, reprinted) as separate scenes.",
         "For a scene about rescue, select an image visibly depicting rescue or lifeboats, not a sinking image or a later hearing. For a sinking, prefer a sinking depiction, not an unrelated shipwreck map.",
@@ -588,6 +590,17 @@ Do not use a specific list of categories for every historical topic.
         "Avoid packing collision, sinking, lifeboats, casualties and safety reforms into one narrated scene: split into distinct beats ONLY when each beat has both sourced facts and a matching image.",
         "If a claimed mechanical damage detail or casualty count is not directly supported by text evidence, omit it rather than embellish."
     ].join("\n");
+    // Reject obvious action-versus-static-image mismatches BEFORE story/narration generation.
+    // Conservative metadata guard: cannot prove what pixels depict; final editorial QC remains mandatory.
+    function isStaticActionMismatch(candidate) {
+        const title = String(assetMap.get(candidate.assetId)?.title || "").toLowerCase();
+        const fact = String(candidate.fact || "");
+        const eruption = /분화|폭발|분출|화산재가? (?:뿜|솟)|erupt/i.test(fact);
+        const staticVolcano = /(?:mount|mt\.?|volcano|vesuvius|베수비오|화산)/i.test(title) &&
+            /(?:view|vista|landscape|panorama|scenery|from |seen from|풍경|전경|전망)/i.test(title) &&
+            !/(?:eruption|erupting|explosion|ash cloud|volcanic ash|분화|폭발|분출)/i.test(title);
+        return eruption && staticVolcano;
+    }
     const sourceUrls = new Set(factSources.map(x => x.url));
     const assetMap = new Map(archiveAssets.map(x => [x.id, x]));
     function inspectJointCandidates(value) {
@@ -602,6 +615,9 @@ Do not use a specific list of categories for every historical topic.
                 !Array.isArray(c.sourceUrls) || !c.sourceUrls.length ||
                 !c.sourceUrls.every(url => sourceUrls.has(url))) {
                 return { ok: false, reason: "invalid fact/image/source mapping", candidates: list };
+            }
+            if (isStaticActionMismatch(c)) {
+                return { ok: false, reason: "static volcano landscape assigned to eruption action; image-first plan rejected before story generation", candidates: list };
             }
             ids.add(c.assetId);
         }
