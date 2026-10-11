@@ -526,8 +526,8 @@ Do not use a specific list of categories for every historical topic.
     const plannedQueries = Array.isArray(researchPlan?.queries) ? researchPlan.queries : [];
     const archiveAssets = await collectHistoryAssets(plannedQueries);
     const visualCategories = new Set(archiveAssets.map(a => a.category));
-    if (archiveAssets.length < 3 || visualCategories.size < 3) {
-        throw new Error("[HISTORY ASSET PREFLIGHT] Fewer than 3 downloaded assets across 3 visual categories");
+    if (archiveAssets.length < 3) {
+        throw new Error("[HISTORY ASSET PREFLIGHT] Fewer than 3 downloaded assets");
     }
     const archiveGuidance = [
         "The following archive assets have ALREADY BEEN DOWNLOADED.",
@@ -536,7 +536,8 @@ Do not use a specific list of categories for every historical topic.
         "Keep the EXACT requested historical event as the central story. Do not pivot to a later legend, tourist anecdote or unrelated artifact merely because its image is available.",
         "Do not invent assets or describe an asset as a photo of an event it does not show.",
         "Use at most one scene per assetId. The scene narration must match the selected artifact/site.",
-        "Use at least three distinct topic-relevant evidence categories actually available in the asset list. Later artworks or fiction cannot replace primary evidence of the requested event.",
+        "Prefer historically authentic images; when unavailable, a clearly relevant depiction of the SAME ACTION or PHYSICAL RESULT is acceptable as an illustrative example, never as claimed original evidence.",
+        "A sinking scene can use a sinking vessel or submerged wreck; generic sea, clouds, intact ships or a different disaster recovery are not suitable substitutes.",
         "Images are not historical fact verification. Do not invent facts.",
         JSON.stringify(archiveAssets.map(({ id, title, category, provider, sourceUrl, license }) =>
             ({ id, title, category, provider, sourceUrl, license })))
@@ -553,10 +554,12 @@ Do not use a specific list of categories for every historical topic.
         "Text evidence: " + factGuidance,
         "Downloaded assets: " + JSON.stringify(archiveAssets.map(a => ({id:a.id,title:a.title,category:a.category,sourceUrl:a.sourceUrl}))),
         "JSON schema: {\"candidates\":[{\"assetId\":1,\"fact\":\"short Korean sourced fact\",\"sourceUrls\":[\"exact text source URL\"],\"visualReason\":\"why asset title directly depicts fact\"}]}",
-        "Every fact must be explicitly present in text evidence. Each image must directly illustrate that fact based on its metadata.",
+        "Every narrated historical fact must be explicitly present in text evidence. An image may illustrate the same visible action or physical result even if it depicts another subject or era; it must NOT be presented as an authentic image of the named event.",
+        "Prioritize authentic event image, then event-specific illustration, then an illustrative image showing the SAME ACTION or physical result. Reject merely thematic or atmospheric associations.",
+        "An image of an unrelated incident must never be used as documentary evidence for the requested incident.",
         "Do not infer from pictures or invent dates, causes, actions, superlatives or quotes.",
         "Exclude unrelated generic rooms, landscapes, institutions or misleading reenactments.",
-        "Use unique downloaded asset IDs across at least 3 relevant categories. Return empty candidates if impossible."
+        "Use at least 3 unique downloaded asset IDs that meaningfully depict the chosen facts. Category labels are not a quality requirement. Return empty candidates if impossible."
     ].join("\n");
     const sourceUrls = new Set(factSources.map(x => x.url));
     const assetMap = new Map(archiveAssets.map(x => [x.id, x]));
@@ -575,37 +578,13 @@ Do not use a specific list of categories for every historical topic.
             }
             ids.add(c.assetId);
         }
-        const categories = new Set(list.map(c => assetMap.get(c.assetId).category));
-        if (categories.size < 3) {
-            return { ok: false, reason: "fewer than 3 matched visual categories", candidates: list };
-        }
         return { ok: true, candidates: list };
     }
-    let joint = inspectJointCandidates(parseJSON(await callAI(candidatePrompt)));
+    // One selection pass only: no extra Gemini retry to satisfy arbitrary category counts.
+    const joint = inspectJointCandidates(parseJSON(await callAI(candidatePrompt)));
     if (!joint.ok) {
-        const available = [...new Set(archiveAssets.map(a => a.category))];
-        const selected = joint.candidates.filter(c => assetMap.has(c.assetId))
-            .map(c => ({ id: c.assetId, category: assetMap.get(c.assetId).category }));
-        console.log("[HISTORY JOINT PLAN] First selection insufficient:", joint.reason,
-            "selected:", JSON.stringify(selected), "available categories:", JSON.stringify(available));
-        // One bounded repair, using the same already downloaded assets and text evidence.
-        // No fabricated mappings and no additional archive requests.
-        const retryPrompt = candidatePrompt + "\\nPrevious candidate selection failed: " + joint.reason +
-            "\\nPrevious selection: " + JSON.stringify(joint.candidates) +
-            "\\nAvailable asset categories: " + JSON.stringify(available) +
-            "\\nReconsider ALL downloaded assets and sourced facts. Select at least 3 genuinely relevant" +
-            " distinct categories if evidence supports them. Do not pad with unrelated assets." +
-            " If that is impossible, return empty candidates. Return only the original JSON schema.";
-        joint = inspectJointCandidates(parseJSON(await callAI(retryPrompt)));
-    }
-    if (!joint.ok) {
-        const available = [...new Set(archiveAssets.map(a => a.category))];
-        const selected = joint.candidates.filter(c => assetMap.has(c.assetId))
-            .map(c => ({ id: c.assetId, category: assetMap.get(c.assetId).category }));
         throw new Error("[HISTORY JOINT PLAN] " + joint.reason +
-            "; selected=" + JSON.stringify(selected) +
-            "; availableCategories=" + JSON.stringify(available) +
-            "; no evidence-safe 3-category plan after one retry");
+            "; selected=" + JSON.stringify(joint.candidates.map(c => c.assetId)));
     }
     const candidates = joint.candidates;
     const candidateIds = new Set(candidates.map(c => c.assetId));
@@ -764,7 +743,6 @@ JSON 외에는 절대 출력하지 않는다.
         proposedScenes.length > archiveAssets.length) {
         throw new Error("[HISTORY ASSET PLAN] Invalid scene count for downloaded assets");
     }
-    const selectedCategories = new Set();
     for (const [index, scene] of proposedScenes.entries()) {
         const id = scene.assetId;
         const asset = assetById.get(id);
@@ -772,7 +750,6 @@ JSON 외에는 절대 출력하지 않는다.
             throw new Error(`[HISTORY ASSET PLAN] Scene ${index + 1} has missing, duplicate or ungrounded assetId`);
         }
         selectedIds.add(id);
-        selectedCategories.add(asset.category);
         scene.groundedFact = candidateById.get(id).fact;
         scene.groundedFactReferences = candidateById.get(id).sourceUrls;
         scene.preflightAsset = {
@@ -784,10 +761,6 @@ JSON 외에는 절대 출력하지 않는다.
     if (proposedScenes.length !== storyIds.length ||
         proposedScenes.some((scene, index) => scene.assetId !== storyIds[index])) {
         throw new Error("[HISTORY STORY PLAN] Director deviated from pre-approved story order");
-    }
-
-    if (selectedCategories.size < 3) {
-        throw new Error("[HISTORY ASSET PLAN] Director must select at least 3 distinct topic-relevant visual categories");
     }
 
     /*
