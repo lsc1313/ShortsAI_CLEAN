@@ -533,6 +533,22 @@ Do not use a specific list of categories for every historical topic.
     if (archiveAssets.length < 3) {
         throw new Error("[HISTORY ASSET PREFLIGHT] Fewer than 3 downloaded assets");
     }
+    // Rank authentic event material before generic visual analogues. Keep the full
+    // downloaded pool: editorial selection still decides what matches narration.
+    const topicTokens = completedTopic.toLowerCase().match(/[a-z0-9]{3,}|[가-힣]{2,}/g) || [];
+    const rankedAssets = [...archiveAssets].sort((a, b) => {
+        const score = asset => {
+            const label = String(asset.title || "").toLowerCase();
+            const query = String(asset.query || "").toLowerCase();
+            const overlap = topicTokens.filter(token => label.includes(token)).length;
+            const named = topicTokens.some(token => query.includes(token));
+            const category = String(asset.category || "").toLowerCase();
+            return overlap * 20 + (named ? 8 : 0) +
+                (/event|depiction|illustration|action/.test(category) ? 3 : 0) -
+                (/map of|chart of|diagram of|inquiry|hearing|portrait/.test(label) ? 100 : 0);
+        };
+        return score(b) - score(a) || a.id - b.id;
+    });
     const archiveGuidance = [
         "The following archive assets have ALREADY BEEN DOWNLOADED.",
         "Every scene MUST select exactly one assetId (integer) from this list.",
@@ -543,7 +559,7 @@ Do not use a specific list of categories for every historical topic.
         "Prefer historically authentic images; when unavailable, a clearly relevant depiction of the SAME ACTION or PHYSICAL RESULT is acceptable as an illustrative example, never as claimed original evidence.",
         "A sinking scene can use a sinking vessel or submerged wreck; generic sea, clouds, intact ships or a different disaster recovery are not suitable substitutes.",
         "Images are not historical fact verification. Do not invent facts.",
-        JSON.stringify(archiveAssets.map(({ id, title, category, provider, sourceUrl, license }) =>
+        JSON.stringify(rankedAssets.map(({ id, title, category, provider, sourceUrl, license }) =>
             ({ id, title, category, provider, sourceUrl, license })))
     ].join("\\n");
 
@@ -556,10 +572,13 @@ Do not use a specific list of categories for every historical topic.
         "Plan 3 to 8 historical video scene candidates. Return JSON only.",
         "Topic: " + completedTopic,
         "Text evidence: " + factGuidance,
-        "Downloaded assets: " + JSON.stringify(archiveAssets.map(a => ({id:a.id,title:a.title,category:a.category,sourceUrl:a.sourceUrl}))),
+        "Downloaded assets: " + JSON.stringify(rankedAssets.map(a => ({id:a.id,title:a.title,category:a.category,sourceUrl:a.sourceUrl}))),
         "JSON schema: {\"candidates\":[{\"assetId\":1,\"fact\":\"short Korean sourced fact\",\"sourceUrls\":[\"exact text source URL\"],\"visualReason\":\"why asset title directly depicts fact\"}]}",
         "Every narrated historical fact must be explicitly present in text evidence. An image may illustrate the same visible action or physical result even if it depicts another subject or era; it must NOT be presented as an authentic image of the named event.",
+        "Assets are ordered by a rough metadata relevance heuristic, NOT by verified visual content. Independently assess each asset title.",
         "Prioritize authentic event image, then event-specific illustration, then an illustrative image showing the SAME ACTION or physical result. Reject merely thematic or atmospheric associations.",
+        "Do not select different versions of the same artwork (colorized, cropped, recolored, reprinted) as separate scenes.",
+        "For a scene about rescue, select an image visibly depicting rescue or lifeboats, not a sinking image or a later hearing. For a sinking, prefer a sinking depiction, not an unrelated shipwreck map.",
         "An image of an unrelated incident must never be used as documentary evidence for the requested incident.",
         "Reject mere topical association: an inquiry portrait does NOT illustrate sinking, rescue or deaths; select images that visibly express the stated action or result.",
         "When using a generic analogous scene, keep the historical fact grounded in text and label the visual as illustrative, not an authentic record.",
