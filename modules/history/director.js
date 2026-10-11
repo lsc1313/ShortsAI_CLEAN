@@ -582,6 +582,9 @@ Do not use a specific list of categories for every historical topic.
         "Requested topic: " + completedTopic,
         "Grounded scene candidates: " + JSON.stringify(candidates),
         "Choose at least 3 candidates, using unique assetIds, and return them in playback order.",
+        "Before choosing candidates, identify the central event/action explicitly requested by the topic.",
+        "Require at least one candidate whose sourced FACT explicitly describes that central event/action itself; background, departure, rescue, casualties or aftermath alone are NOT sufficient.",
+        "If the central event itself is missing from grounded candidates, return empty assetIds. Do not change the topic to match available pictures.",
         "The central requested historical event must be explained, not just its background.",
         "Use a coherent chronological progression; an opening flash-forward is allowed ONLY if the next scene explicitly bridges back in time.",
         "The last candidate MUST provide a meaningful conclusion about the requested subject, not a return to earlier construction/background.",
@@ -596,7 +599,6 @@ Do not use a specific list of categories for every historical topic.
         throw new Error("[HISTORY STORY PLAN] No coherent story from verified fact-and-image candidates");
     }
     console.log("[HISTORY STORY PLAN] Ordered grounded assets:", storyIds.join(", "));
-    const storyOrder = new Map(storyIds.map((id, index) => [id, index]));
     const candidateGuidance = JSON.stringify(candidates);
     const candidateById = new Map(candidates.map(c => [c.assetId, c]));
 
@@ -636,6 +638,8 @@ ${candidateGuidance}
 
 MANDATORY STORY ORDER (assetIds in playback order): ${JSON.stringify(storyIds)}
 Use exactly these assetIds in this exact order. Do not add or omit scenes.
+The narration MUST describe the central event itself in at least one scene; do not jump from departure directly to aftermath.
+The title MUST accurately describe the user's requested topic, not switch focus to background design or construction.
 The final scene must conclude the requested historical event, not end with
 its construction or earlier background. Keep a coherent narrative timeline.
 
