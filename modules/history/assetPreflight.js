@@ -88,10 +88,21 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
             query, found: candidates.length, accepted, total: results.length
         }));
     };
-    for (const item of research) {
+    // Give the central visible action first access to the bounded archive pool.
+    // Broad mountain/landscape searches must not crowd out eruption depictions.
+    const actionPattern = /\\b(eruption|erupting|explosion|ash cloud|buried|destroyed|sinking|collision|rescue|fire|burning|earthquake|collapse|battle|flood|evacuation)\\b/i;
+    const orderedResearch = [...research].sort((a, b) =>
+        Number(actionPattern.test(b.query)) - Number(actionPattern.test(a.query))
+    );
+    // Two assets per query on the first pass preserves coverage across distinct
+    // events, physical outcomes and aftermath, instead of saturating on scenery.
+    for (const item of orderedResearch) {
         if (results.length >= maxAssets) break;
-        await collectQuery(item);
+        await collectQuery(item, 2);
     }
+    // Spend remaining slots on other results from the same queries, without
+    // adding Gemini calls. collectQuery normally deduplicates attempted queries,
+    // so explicitly request alternate search phrases only when inventory is low.
     // Bounded no-AI fallback: shorten archive-index queries only when inventory is low.
     // Keep the original search terms; never synthesize a new historical claim.
     if (results.length < 3) {
