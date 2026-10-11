@@ -546,6 +546,38 @@ Do not use a specific list of categories for every historical topic.
     const factSources = await collectHistoryEvidence(completedTopic);
     const factGuidance = JSON.stringify(factSources.map(({ title, url, excerpt }) => ({ title, url, excerpt })));
 
+    // Match sourced facts to real downloaded assets BEFORE writing narration.
+    const candidatePrompt = [
+        "Plan 3 to 8 historical video scene candidates. Return JSON only.",
+        "Topic: " + completedTopic,
+        "Text evidence: " + factGuidance,
+        "Downloaded assets: " + JSON.stringify(archiveAssets.map(a => ({id:a.id,title:a.title,category:a.category,sourceUrl:a.sourceUrl}))),
+        "JSON schema: {\"candidates\":[{\"assetId\":1,\"fact\":\"short Korean sourced fact\",\"sourceUrls\":[\"exact text source URL\"],\"visualReason\":\"why asset title directly depicts fact\"}]}",
+        "Every fact must be explicitly present in text evidence. Each image must directly illustrate that fact based on its metadata.",
+        "Do not infer from pictures or invent dates, causes, actions, superlatives or quotes.",
+        "Exclude unrelated generic rooms, landscapes, institutions or misleading reenactments.",
+        "Use unique downloaded asset IDs across at least 3 relevant categories. Return empty candidates if impossible."
+    ].join("\n");
+    const candidateResult = parseJSON(await callAI(candidatePrompt));
+    const candidates = candidateResult?.candidates;
+    const sourceUrls = new Set(factSources.map(x => x.url));
+    const assetMap = new Map(archiveAssets.map(x => [x.id, x]));
+    if (!Array.isArray(candidates) || candidates.length < 3 || candidates.length > 8) throw new Error("[HISTORY JOINT PLAN] Insufficient matched candidates");
+    const candidateIds = new Set();
+    for (const c of candidates) {
+        if (!Number.isInteger(c.assetId) || !assetMap.has(c.assetId) || candidateIds.has(c.assetId) ||
+            !String(c.fact || "").trim() || !String(c.visualReason || "").trim() ||
+            !Array.isArray(c.sourceUrls) || !c.sourceUrls.length ||
+            !c.sourceUrls.every(url => sourceUrls.has(url))) {
+            throw new Error("[HISTORY JOINT PLAN] Invalid fact-to-image mapping");
+        }
+        candidateIds.add(c.assetId);
+    }
+    if (new Set(candidates.map(c => assetMap.get(c.assetId).category)).size < 3) throw new Error("[HISTORY JOINT PLAN] Fewer than 3 matched visual categories");
+    console.log("[HISTORY JOINT PLAN] Matched candidates:", candidates.length);
+    const candidateGuidance = JSON.stringify(candidates);
+    const candidateById = new Map(candidates.map(c => [c.assetId, c]));
+
     const finalPrompt = `
 
 ${COMMON_PROMPT}
@@ -576,6 +608,14 @@ ${archiveGuidance}
 HISTORICAL TEXT EVIDENCE (REQUIRED)
 =====================================================
 ${factGuidance}
+
+MANDATORY FACT-AND-IMAGE MATCHED SCENE CANDIDATES:
+${candidateGuidance}
+
+Select scenes ONLY from these candidates. Each scene must use the matching
+assetId and state ONLY its explicitly sourced historical fact, without adding
+new claims. Build a non-repetitive coherent story from the candidates.
+If impossible, output empty scenes and allow preflight to fail.
 
 Every factual claim in every scene must be directly supported by the historical
 text evidence above. Avoid unsupported slogans, invented lists, quotations,
@@ -662,11 +702,13 @@ JSON 외에는 절대 출력하지 않는다.
     for (const [index, scene] of proposedScenes.entries()) {
         const id = scene.assetId;
         const asset = assetById.get(id);
-        if (!Number.isInteger(id) || !asset || selectedIds.has(id)) {
+        if (!Number.isInteger(id) || !asset || !candidateById.has(id) || selectedIds.has(id)) {
             throw new Error(`[HISTORY ASSET PLAN] Scene ${index + 1} has missing, duplicate or ungrounded assetId`);
         }
         selectedIds.add(id);
         selectedCategories.add(asset.category);
+        scene.groundedFact = candidateById.get(id).fact;
+        scene.groundedFactReferences = candidateById.get(id).sourceUrls;
         scene.preflightAsset = {
             file: asset.file, provider: asset.provider, sourceUrl: asset.sourceUrl,
             license: asset.license, title: asset.title, category: asset.category
