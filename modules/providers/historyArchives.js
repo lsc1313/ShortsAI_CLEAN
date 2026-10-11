@@ -4,11 +4,11 @@ import axios from "axios";
 // Fail closed: missing rights/metadata means the image is not returned.
 const client = axios.create({ timeout: 15000, headers: { "User-Agent": "ShortsAI-History/1.0 (educational video metadata lookup)" } });
 const text = value => String(value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-const terms = q => String(q || "").replace(/\b(watching|citizens|dramatic|cinematic|close up|rescue|scene|under|during|historical|illustration)\b/gi, " ").trim();
+const terms = q => String(q || "").replace(/\b(watching|citizens|dramatic|cinematic|close up|scene|under|during|historical)\b/gi, " ").trim();
 const archiveQuery = q => {
     const words = terms(q).split(/\s+/).filter(Boolean);
     // Archive search indexes artifact names, not full cinematic descriptions.
-    return words.slice(0, 3).join(" ");
+    return words.slice(0, 5).join(" ");
 };
 const candidate = (provider, url, title, description, width, height, source, license) => ({
     provider, url, tags: [title, description].filter(Boolean).join(" "), description: text(description),
