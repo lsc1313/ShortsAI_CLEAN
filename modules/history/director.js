@@ -558,22 +558,57 @@ Do not use a specific list of categories for every historical topic.
         "Exclude unrelated generic rooms, landscapes, institutions or misleading reenactments.",
         "Use unique downloaded asset IDs across at least 3 relevant categories. Return empty candidates if impossible."
     ].join("\n");
-    const candidateResult = parseJSON(await callAI(candidatePrompt));
-    const candidates = candidateResult?.candidates;
     const sourceUrls = new Set(factSources.map(x => x.url));
     const assetMap = new Map(archiveAssets.map(x => [x.id, x]));
-    if (!Array.isArray(candidates) || candidates.length < 3 || candidates.length > 8) throw new Error("[HISTORY JOINT PLAN] Insufficient matched candidates");
-    const candidateIds = new Set();
-    for (const c of candidates) {
-        if (!Number.isInteger(c.assetId) || !assetMap.has(c.assetId) || candidateIds.has(c.assetId) ||
-            !String(c.fact || "").trim() || !String(c.visualReason || "").trim() ||
-            !Array.isArray(c.sourceUrls) || !c.sourceUrls.length ||
-            !c.sourceUrls.every(url => sourceUrls.has(url))) {
-            throw new Error("[HISTORY JOINT PLAN] Invalid fact-to-image mapping");
+    function inspectJointCandidates(value) {
+        const list = value?.candidates;
+        if (!Array.isArray(list) || list.length < 3 || list.length > 8) {
+            return { ok: false, reason: "need 3-8 matched candidates", candidates: list || [] };
         }
-        candidateIds.add(c.assetId);
+        const ids = new Set();
+        for (const c of list) {
+            if (!Number.isInteger(c.assetId) || !assetMap.has(c.assetId) || ids.has(c.assetId) ||
+                !String(c.fact || "").trim() || !String(c.visualReason || "").trim() ||
+                !Array.isArray(c.sourceUrls) || !c.sourceUrls.length ||
+                !c.sourceUrls.every(url => sourceUrls.has(url))) {
+                return { ok: false, reason: "invalid fact/image/source mapping", candidates: list };
+            }
+            ids.add(c.assetId);
+        }
+        const categories = new Set(list.map(c => assetMap.get(c.assetId).category));
+        if (categories.size < 3) {
+            return { ok: false, reason: "fewer than 3 matched visual categories", candidates: list };
+        }
+        return { ok: true, candidates: list };
     }
-    if (new Set(candidates.map(c => assetMap.get(c.assetId).category)).size < 3) throw new Error("[HISTORY JOINT PLAN] Fewer than 3 matched visual categories");
+    let joint = inspectJointCandidates(parseJSON(await callAI(candidatePrompt)));
+    if (!joint.ok) {
+        const available = [...new Set(archiveAssets.map(a => a.category))];
+        const selected = joint.candidates.filter(c => assetMap.has(c.assetId))
+            .map(c => ({ id: c.assetId, category: assetMap.get(c.assetId).category }));
+        console.log("[HISTORY JOINT PLAN] First selection insufficient:", joint.reason,
+            "selected:", JSON.stringify(selected), "available categories:", JSON.stringify(available));
+        // One bounded repair, using the same already downloaded assets and text evidence.
+        // No fabricated mappings and no additional archive requests.
+        const retryPrompt = candidatePrompt + "\\nPrevious candidate selection failed: " + joint.reason +
+            "\\nPrevious selection: " + JSON.stringify(joint.candidates) +
+            "\\nAvailable asset categories: " + JSON.stringify(available) +
+            "\\nReconsider ALL downloaded assets and sourced facts. Select at least 3 genuinely relevant" +
+            " distinct categories if evidence supports them. Do not pad with unrelated assets." +
+            " If that is impossible, return empty candidates. Return only the original JSON schema.";
+        joint = inspectJointCandidates(parseJSON(await callAI(retryPrompt)));
+    }
+    if (!joint.ok) {
+        const available = [...new Set(archiveAssets.map(a => a.category))];
+        const selected = joint.candidates.filter(c => assetMap.has(c.assetId))
+            .map(c => ({ id: c.assetId, category: assetMap.get(c.assetId).category }));
+        throw new Error("[HISTORY JOINT PLAN] " + joint.reason +
+            "; selected=" + JSON.stringify(selected) +
+            "; availableCategories=" + JSON.stringify(available) +
+            "; no evidence-safe 3-category plan after one retry");
+    }
+    const candidates = joint.candidates;
+    const candidateIds = new Set(candidates.map(c => c.assetId));
     console.log("[HISTORY JOINT PLAN] Matched candidates:", candidates.length);
     // Plan story order using ONLY candidates that already have both sourced facts and downloaded images.
     // Never introduce a new historical claim or substitute an unrelated image to fill the ending.
