@@ -28,25 +28,33 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
     fs.mkdirSync(outputDir, { recursive: true });
     const results = [];
     const seen = new Set();
-    // Keep multiple candidates per query; do not require arbitrary category diversity.
-    for (const { query, category } of research) {
-        if (results.length >= maxAssets) break;
-        let groups;
-        try {
-            groups = await Promise.all([
-                searchCommonsHistory(query),
-                searchMetHistory(query),
-                searchAicHistory(query)
-            ]);
-        } catch (error) {
-            console.log("[HISTORY ASSET PREFLIGHT] Archive query failed:", query, error.message);
-            continue;
-        }
-        let acceptedForQuery = 0;
-        for (const candidate of groups.flat()) {
-            if (results.length >= maxAssets || acceptedForQuery >= 2) break;
+    const tried = new Set();
+    const stats = { queries: 0, candidates: 0, duplicate: 0, downloadFailed: 0, tooSmall: 0, accepted: 0 };
+    const searchAll = async query => {
+        const groups = await Promise.allSettled([
+            searchCommonsHistory(query), searchMetHistory(query), searchAicHistory(query)
+        ]);
+        return groups.flatMap((group, index) => {
+            if (group.status === "fulfilled") return group.value;
+            console.log("[HISTORY ASSET PREFLIGHT] Provider failed:", query, index, group.reason?.message);
+            return [];
+        });
+    };
+    const collectQuery = async ({ query, category }, limit = 3) => {
+        const normalized = query.toLowerCase().trim();
+        if (!normalized || tried.has(normalized) || results.length >= maxAssets) return;
+        tried.add(normalized);
+        stats.queries++;
+        const candidates = await searchAll(query);
+        stats.candidates += candidates.length;
+        let accepted = 0;
+        for (const candidate of candidates) {
+            if (results.length >= maxAssets || accepted >= limit) break;
             const key = candidate.sourceUrl || candidate.url;
-            if (!key || seen.has(key) || !candidate.url) continue;
+            if (!key || !candidate.url || seen.has(key)) {
+                stats.duplicate++;
+                continue;
+            }
             seen.add(key);
             const file = path.join(outputDir, `asset_${results.length + 1}.jpg`);
             try {
@@ -54,6 +62,7 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
                     historyArchive: true, provider: candidate.provider
                 });
                 if (!fs.existsSync(file) || fs.statSync(file).size < 5000) {
+                    stats.tooSmall++;
                     if (fs.existsSync(file)) fs.unlinkSync(file);
                     continue;
                 }
@@ -65,15 +74,36 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
                     license: candidate.license,
                     url: candidate.url
                 });
-                acceptedForQuery++;
+                accepted++;
+                stats.accepted++;
             } catch (error) {
+                stats.downloadFailed++;
                 console.log("[HISTORY ASSET PREFLIGHT] Download rejected:", candidate.provider, error.message);
                 if (fs.existsSync(file)) fs.unlinkSync(file);
             }
         }
+        console.log("[HISTORY ASSET QUERY]", JSON.stringify({
+            query, found: candidates.length, accepted, total: results.length
+        }));
+    };
+    for (const item of research) {
+        if (results.length >= maxAssets) break;
+        await collectQuery(item);
+    }
+    // Bounded no-AI fallback: shorten archive-index queries only when inventory is low.
+    // Keep the original search terms; never synthesize a new historical claim.
+    if (results.length < 3) {
+        for (const item of research) {
+            if (results.length >= 3) break;
+            const words = item.query.trim().split(/\\s+/);
+            const shorter = words.slice(0, Math.min(2, words.length)).join(" ");
+            if (shorter.length >= 4 && shorter.toLowerCase() !== item.query.toLowerCase()) {
+                await collectQuery({ query: shorter, category: item.category }, 3);
+            }
+        }
     }
     console.log("[HISTORY ASSET PREFLIGHT]", JSON.stringify({
-        searched: research.length, downloaded: results.length,
+        searched: stats.queries, downloaded: results.length, stats,
         categories: [...new Set(results.map(a => a.category))]
     }));
     return results;
