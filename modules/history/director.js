@@ -629,7 +629,9 @@ Do not use a specific list of categories for every historical topic.
         "If the central event itself is missing from grounded candidates, return empty assetIds. Do not change the topic to match available pictures.",
         "The central requested historical event must be explained, not just its background.",
         "Use a coherent chronological progression; an opening flash-forward is allowed ONLY if the next scene explicitly bridges back in time.",
+        "For historical disasters, do not narrate deaths from the aftermath before the scene showing the main disaster has occurred. A lifeboat or evacuation scene may precede the sinking, but defer casualty totals and final outcomes until after the central event is shown.",
         "The last candidate MUST provide a meaningful conclusion about the requested subject, not a return to earlier construction/background.",
+        "A final casualty figure alone is not a complete conclusion when a sourced consequence, lesson, investigation result or documented policy change is available with a matching image. Prefer that grounded conclusion, but never invent one or use unrelated imagery merely to add an ending.",
         "Never invent additional facts, visual assets, or event outcomes. If the available candidates cannot form a complete story, return an empty assetIds array.",
         'Return ONLY JSON: {"assetIds":[1,2,3],"reason":"brief story arc explanation"}'
     ].join("\\n");
@@ -682,7 +684,7 @@ MANDATORY STORY ORDER (assetIds in playback order): ${JSON.stringify(storyIds)}
 Use exactly these assetIds in this exact order. Do not add or omit scenes.
 The narration MUST describe the central event itself in at least one scene; do not jump from departure directly to aftermath.
 The title MUST accurately describe the user's requested topic, not switch focus to background design or construction.
-The final scene must conclude the requested historical event, not end with
+Do not narrate the aftermath or death toll before showing and explaining the central event, unless a deliberate flash-forward is explicitly signposted and then resolved.\nIf supported by both textual evidence and a relevant asset, finish with a concrete documented consequence rather than casualty numbers alone. Never fabricate a policy change or force an unrelated visual.\nThe final scene must conclude the requested historical event, not end with
 its construction or earlier background. Keep a coherent narrative timeline.
 
 Select scenes ONLY from these candidates. Each scene must use the matching
