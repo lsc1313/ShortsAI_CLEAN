@@ -161,6 +161,8 @@ Topic: ${JSON.stringify(topic)}
 Title: ${JSON.stringify(director.title)}
 Scenes in playback order: ${JSON.stringify(payload)}
 Review ALL of these:
+0) CENTRAL EVENT COVERAGE (MANDATORY): Identify the specific historical event/action named in Topic. Does at least one scene explicitly narrate that event itself? Context, preparations, departures, rescues, casualties and aftermath do NOT substitute for the event. If the narrative skips directly from before to after the event, FAIL with type "coverage", even if the scenes are individually accurate. Do not change the requested topic to match the available assets.
+0b) TOPIC/TITLE ALIGNMENT (MANDATORY): Does the title preserve the requested topic's central event, rather than switching to a related but different subject (such as ship design when the topic is a sinking)? FAIL with type "title" if it changes focus.
 1) Is each scene's specific historical narration genuinely relevant to the named archival asset,
 based on its TITLE and CATEGORY only? Do not claim to have seen image pixels.
 2) Does the narrative move forward without repeating the same collision, death toll, or
@@ -175,7 +177,7 @@ A scene about a disaster's physical moment cannot be illustrated by an unrelated
 political chamber merely because a subsequent inquiry took place there.
 When asset metadata is too vague to establish relevance, mark it uncertain and fail.
 Return JSON ONLY:
-{"pass":false,"issues":[{"scene":1,"type":"visual|repetition|sequence|title|subtitle|ending","reason":"specific explanation"}]}
+{"pass":false,"issues":[{"scene":1,"type":"coverage|visual|repetition|sequence|title|subtitle|ending","reason":"specific explanation"}]}
 Set pass=true and issues=[] only when all criteria are satisfied.
 Do not rewrite or hallucinate missing evidence.`);
     let report;
