@@ -515,9 +515,14 @@ const judgeResult =
 You are a historical archive research planner.
 Requested topic: ${completedTopic}
 Return ONLY JSON with {"queries":[{"query":"English archive search terms","category":"distinct evidence type"}]}.
-Provide 6 to 8 specific, searchable English queries spanning at least 3 meaningful
-visual evidence categories appropriate to THIS topic (e.g. primary documents,
-artifacts, photographs, ruins, maps, portraits, excavation records).
+Provide 6 to 8 specific, searchable English queries. Prioritize visual depictions of
+what HAPPENS in the central event (actions and visible physical results), not merely
+people, hearings, buildings or places associated with the topic.
+Include at least two searches for the central action/result: one named-event search,
+and one generic visual analogue search that explicitly depicts the same action/result
+(e.g. a sinking vessel or submerged shipwreck for a sinking event).
+Use diverse evidence types when helpful, but category diversity is not a requirement.
+Use concise archive-index-friendly keywords rather than cinematic descriptions.
 Do not assume any item exists. Do not change the topic.
 Category names must be short lowercase English words. Avoid broad generic terms.
 Do not use a specific list of categories for every historical topic.
@@ -525,7 +530,6 @@ Do not use a specific list of categories for every historical topic.
     const researchPlan = parseJSON(await callAI(researchPrompt));
     const plannedQueries = Array.isArray(researchPlan?.queries) ? researchPlan.queries : [];
     const archiveAssets = await collectHistoryAssets(plannedQueries);
-    const visualCategories = new Set(archiveAssets.map(a => a.category));
     if (archiveAssets.length < 3) {
         throw new Error("[HISTORY ASSET PREFLIGHT] Fewer than 3 downloaded assets");
     }
@@ -557,6 +561,8 @@ Do not use a specific list of categories for every historical topic.
         "Every narrated historical fact must be explicitly present in text evidence. An image may illustrate the same visible action or physical result even if it depicts another subject or era; it must NOT be presented as an authentic image of the named event.",
         "Prioritize authentic event image, then event-specific illustration, then an illustrative image showing the SAME ACTION or physical result. Reject merely thematic or atmospheric associations.",
         "An image of an unrelated incident must never be used as documentary evidence for the requested incident.",
+        "Reject mere topical association: an inquiry portrait does NOT illustrate sinking, rescue or deaths; select images that visibly express the stated action or result.",
+        "When using a generic analogous scene, keep the historical fact grounded in text and label the visual as illustrative, not an authentic record.",
         "Do not infer from pictures or invent dates, causes, actions, superlatives or quotes.",
         "Exclude unrelated generic rooms, landscapes, institutions or misleading reenactments.",
         "Use at least 3 unique downloaded asset IDs that meaningfully depict the chosen facts. Category labels are not a quality requirement. Return empty candidates if impossible."
