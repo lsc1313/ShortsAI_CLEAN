@@ -40,7 +40,7 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
         // A map/chart/diagram or unrelated administrative material is not a visual
         // depiction of a physical historical action. This is a conservative filter,
         // not a substitute for the editorial semantic gate.
-        return /\\b(map of|location map|chart of|diagram of|inquiry|committee|courtroom|hearing|investigation|portrait of)\\b/i.test(title);
+        return /\b(map of|location map|chart of|diagram of|inquiry|committee|courtroom|hearing|investigation|portrait of)\b/i.test(title);
     };
     const collectQuery = async ({ query, category }, limit = 3) => {
         const normalized = query.toLowerCase().trim();
@@ -97,7 +97,7 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
     if (results.length < 3) {
         for (const item of research) {
             if (results.length >= 3) break;
-            const words = item.query.trim().split(/\\s+/);
+            const words = item.query.trim().split(/\s+/);
             const shorter = words.slice(0, Math.min(2, words.length)).join(" ");
             if (shorter.length >= 4 && shorter.toLowerCase() !== item.query.toLowerCase()) {
                 await collectQuery({ query: shorter, category: item.category }, 3);
