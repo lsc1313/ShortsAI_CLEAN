@@ -529,14 +529,14 @@ Do not use a specific list of categories for every historical topic.
 `;
     const researchPlan = parseJSON(await callAI(researchPrompt));
     const plannedQueries = Array.isArray(researchPlan?.queries) ? researchPlan.queries : [];
-    const archiveAssets = await collectHistoryAssets(plannedQueries);
+    let archiveAssets = await collectHistoryAssets(plannedQueries);
     if (archiveAssets.length < 3) {
         throw new Error("[HISTORY ASSET PREFLIGHT] Fewer than 3 downloaded assets");
     }
     // Rank authentic event material before generic visual analogues. Keep the full
     // downloaded pool: editorial selection still decides what matches narration.
     const topicTokens = completedTopic.toLowerCase().match(/[a-z0-9]{3,}|[가-힣]{2,}/g) || [];
-    const rankedAssets = [...archiveAssets].sort((a, b) => {
+    let rankedAssets = [...archiveAssets].sort((a, b) => {
         const score = asset => {
             const label = String(asset.title || "").toLowerCase();
             const query = String(asset.query || "").toLowerCase();
@@ -602,7 +602,7 @@ Do not use a specific list of categories for every historical topic.
         return eruption && staticVolcano;
     }
     const sourceUrls = new Set(factSources.map(x => x.url));
-    const assetMap = new Map(archiveAssets.map(x => [x.id, x]));
+    let assetMap = new Map(archiveAssets.map(x => [x.id, x]));
     function inspectJointCandidates(value) {
         const list = value?.candidates;
         if (!Array.isArray(list) || list.length < 3 || list.length > 8) {
@@ -624,10 +624,54 @@ Do not use a specific list of categories for every historical topic.
         return { ok: true, candidates: list };
     }
     // One selection pass only: no extra Gemini retry to satisfy arbitrary category counts.
-    const joint = inspectJointCandidates(parseJSON(await callAI(candidatePrompt)));
+    let joint = inspectJointCandidates(parseJSON(await callAI(candidatePrompt)));
+    if (!joint.ok) {
+        // Exactly one bounded archive recovery pass. Reuse the same researched
+        // topic/queries and text evidence; never fabricate visual evidence.
+        console.log("[HISTORY JOINT RECOVERY] Initial match failed:", joint.reason);
+        const fallbackQueries = plannedQueries
+            .filter(q => q && typeof q.query === "string")
+            .flatMap(q => {
+                const words = q.query.trim().split(/\\s+/);
+                return [
+                    { query: words.slice(0, Math.min(3, words.length)).join(" "), category: q.category || "event" },
+                    { query: words.slice(0, Math.min(2, words.length)).join(" "), category: q.category || "event" }
+                ];
+            })
+            .filter(q => q.query.length >= 4);
+        // Prefer concise archive terms, excluding exact original queries.
+        const original = new Set(plannedQueries.map(q => String(q.query || "").toLowerCase().trim()));
+        const extra = [...new Map(fallbackQueries
+            .filter(q => !original.has(q.query.toLowerCase()))
+            .map(q => [q.query.toLowerCase(), q])).values()].slice(0, 8);
+        if (extra.length >= 3) {
+            const previousCount = archiveAssets.length;
+            const expanded = await collectHistoryAssets(extra, { maxAssets: 20, existingAssets: archiveAssets });
+            if (expanded.length > archiveAssets.length) {
+                archiveAssets = expanded;
+                assetMap = new Map(archiveAssets.map(a => [a.id, a]));
+                rankedAssets = [...archiveAssets];
+                const originalInventory = JSON.stringify(JSON.parse(candidatePrompt
+                    .split("Downloaded assets: ")[1].split("\\n")[0]));
+                const expandedInventory = JSON.stringify(rankedAssets.map(a => ({
+                    id: a.id, title: a.title, category: a.category, sourceUrl: a.sourceUrl
+                })));
+                const recoveryPrompt = candidatePrompt.replace(
+                    "Downloaded assets: " + originalInventory,
+                    "Downloaded assets: " + expandedInventory
+                );
+                joint = inspectJointCandidates(parseJSON(await callAI(recoveryPrompt)));
+                console.log("[HISTORY JOINT RECOVERY]", JSON.stringify({
+                    addedAssets: expanded.length - previousCount,
+                    matched: joint.ok ? joint.candidates.length : 0,
+                    reason: joint.reason || "ok"
+                }));
+            }
+        }
+    }
     if (!joint.ok) {
         throw new Error("[HISTORY JOINT PLAN] " + joint.reason +
-            "; selected=" + JSON.stringify(joint.candidates.map(c => c.assetId)));
+            "; selected=" + JSON.stringify((joint.candidates || []).map(c => c.assetId)));
     }
     const candidates = joint.candidates;
     const candidateIds = new Set(candidates.map(c => c.assetId));
