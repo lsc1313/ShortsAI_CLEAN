@@ -20,14 +20,14 @@ function buildResearchQueries(queries) {
         .map(item => [item.query.toLowerCase(), item])).values()].slice(0, 8);
 }
 
-export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir = "media/history-preflight" } = {}) {
+export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir = "media/history-preflight", existingAssets = [] } = {}) {
     const research = buildResearchQueries(queries);
     if (research.length < 3) {
         throw new Error("[HISTORY ASSET PREFLIGHT] Research plan needs at least 3 searches");
     }
     fs.mkdirSync(outputDir, { recursive: true });
-    const results = [];
-    const seen = new Set();
+    const results = [...existingAssets];
+    const seen = new Set(results.map(a => a.sourceUrl || a.url).filter(Boolean));
     const tried = new Set();
     const stats = { queries: 0, candidates: 0, duplicate: 0, downloadFailed: 0, tooSmall: 0, accepted: 0 };
     const searchAll = async query => {
@@ -90,7 +90,7 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
     };
     // Give the central visible action first access to the bounded archive pool.
     // Broad mountain/landscape searches must not crowd out eruption depictions.
-    const actionPattern = /\\b(eruption|erupting|explosion|ash cloud|buried|destroyed|sinking|collision|rescue|fire|burning|earthquake|collapse|battle|flood|evacuation)\\b/i;
+    const actionPattern = /\b(eruption|erupting|explosion|ash cloud|buried|destroyed|sinking|collision|rescue|fire|burning|earthquake|collapse|battle|flood|evacuation)\b/i;
     const orderedResearch = [...research].sort((a, b) =>
         Number(actionPattern.test(b.query)) - Number(actionPattern.test(a.query))
     );
