@@ -652,7 +652,7 @@ Do not use a specific list of categories for every historical topic.
                 assetMap = new Map(archiveAssets.map(a => [a.id, a]));
                 rankedAssets = [...archiveAssets];
                 const originalInventory = JSON.stringify(JSON.parse(candidatePrompt
-                    .split("Downloaded assets: ")[1].split("\\n")[0]));
+                    .split("Downloaded assets: ")[1].split("\n")[0]));
                 const expandedInventory = JSON.stringify(rankedAssets.map(a => ({
                     id: a.id, title: a.title, category: a.category, sourceUrl: a.sourceUrl
                 })));
