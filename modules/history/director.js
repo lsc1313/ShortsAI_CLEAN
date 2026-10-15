@@ -2,7 +2,6 @@ import { collectHistoryEvidence } from "./factEvidence.js";
 import { callAI } from "../ai/index.js";
 import { getRecentDuplicates } from "../services/duplicateService.js";
 import { collectHistoryAssets } from "./assetPreflight.js";
-import { isCommonsRateLimited } from "../providers/historyArchives.js";
 
 /*
 =====================================================
@@ -525,7 +524,6 @@ Do not use a specific list of categories for every historical topic.
     const plannedQueries = Array.isArray(researchPlan?.queries) ? researchPlan.queries : [];
     let archiveAssets = await collectHistoryAssets(plannedQueries);
     if (archiveAssets.length < 3) {
-        if (isCommonsRateLimited()) throw new Error("[HISTORY PROVIDER RATE LIMITED] Wikimedia Commons HTTP 429; defer production instead of judging topic suitability");
         throw new Error("[HISTORY ASSET PREFLIGHT] Fewer than 3 downloaded assets");
     }
     // Rank subject relevance without penalizing entire evidence formats. Keep the full
@@ -564,7 +562,7 @@ Do not use a specific list of categories for every historical topic.
         "Plan 3 to 8 historical video scene candidates. Return JSON only. Prefer 4-6 when available evidence supports distinct narrative beats; never pad with unrelated imagery.",
         "Topic: " + completedTopic,
         "Text evidence: " + factGuidance,
-        "Downloaded assets: " + JSON.stringify(rankedAssets.map(a => ({id:a.id,title:a.title,category:a.category,sourceUrl:a.sourceUrl}))),
+        "Downloaded assets: " + JSON.stringify(rankedAssets.map(a => ({id:a.id,title:a.title,category:a.category,sourceUrl:a.sourceUrl,illustrative:!!a.illustrative}))),
         "JSON schema: {\"candidates\":[{\"assetId\":1,\"fact\":\"short Korean sourced fact\",\"sourceUrls\":[\"exact text source URL\"],\"visualReason\":\"why asset title directly depicts fact\"}]}",
         "Every narrated historical fact must be explicitly present in text evidence. An image may illustrate the same visible action or physical result even if it depicts another subject or era; it must NOT be presented as an authentic image of the named event.",
         "Assets are ordered by a rough metadata relevance heuristic, NOT by verified visual content. Independently assess each asset title.",
@@ -575,6 +573,7 @@ Do not use a specific list of categories for every historical topic.
         "When using a generic analogous scene, keep the historical fact grounded in text and label the visual as illustrative, not an authentic record.",
         "The visual must depict the specific action, state, subject, or result narrated; merely sharing a keyword or broad theme is insufficient.",
         "Do not infer from pictures or invent dates, causes, actions, superlatives or quotes.",
+        "Stock-provider assets marked illustrative are modern illustrative images, never historical primary sources. Only match them to visually supported actions or physical states; never use them as evidence of a specific historical person or event.",
         "Exclude unrelated generic rooms, landscapes, institutions or misleading reenactments.",
         "Use at least 3 unique downloaded asset IDs that meaningfully depict the chosen facts. Category labels are not a quality requirement. Return empty candidates if impossible.",
         "If a claimed mechanical damage detail or casualty count is not directly supported by text evidence, omit it rather than embellish."
@@ -605,9 +604,6 @@ Do not use a specific list of categories for every historical topic.
         // topic/queries and text evidence; never fabricate visual evidence.
         console.log("[HISTORY JOINT RECOVERY] Initial match failed:", joint.reason);
         // Generic recovery for ANY historical subject.
-        if (isCommonsRateLimited()) {
-            throw new Error("[HISTORY PROVIDER RATE LIMITED] Wikimedia Commons HTTP 429; defer production and avoid recovery requests");
-        }
         const recoveryQueries = plannedQueries
             .filter(q => q && typeof q.query === "string")
             .flatMap(q => {
@@ -629,15 +625,12 @@ Do not use a specific list of categories for every historical topic.
             });
             if (expanded.length > archiveAssets.length) archiveAssets = expanded;
         }
-        if (isCommonsRateLimited()) {
-            throw new Error("[HISTORY PROVIDER RATE LIMITED] Wikimedia Commons HTTP 429 during recovery; defer production");
-        }
         assetMap = new Map(archiveAssets.map(a => [a.id, a]));
         rankedAssets = [...archiveAssets];
         const originalInventory = candidatePrompt
             .split("Downloaded assets: ")[1].split("\n")[0];
         const expandedInventory = JSON.stringify(rankedAssets.map(a => ({
-            id: a.id, title: a.title, category: a.category, sourceUrl: a.sourceUrl
+            id: a.id, title: a.title, category: a.category, sourceUrl: a.sourceUrl, illustrative: !!a.illustrative
         })));
         const recoveryPrompt = candidatePrompt.replace(
             "Downloaded assets: " + originalInventory,
