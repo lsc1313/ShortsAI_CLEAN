@@ -2,13 +2,11 @@ import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
 import { createShort } from "../modules/createShort.js";
+import { generateTopics } from "../modules/channels/history/index.js";
 
 // Deliberately never loads channels.json: this run must not need credentials.
-const topic = process.argv.slice(2).join(" ").trim();
-if (!topic) {
-    console.error('Usage: node scripts/history-preview.mjs "역사 주제"');
-    process.exitCode = 2;
-} else {
+const requestedTopic = process.argv.slice(2).join(" ").trim();
+{
     const running = path.resolve("media", ".history-preview-running");
     if (fs.existsSync(running)) {
         console.error("[HISTORY PREVIEW] Another preview appears to be running. Check before removing lock.");
@@ -17,6 +15,9 @@ if (!topic) {
         fs.mkdirSync(path.dirname(running), { recursive: true });
         fs.writeFileSync(running, JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }));
         try {
+            const topic = requestedTopic || (await generateTopics({ count: 1 }))[0]?.topic;
+            if (!topic) throw new Error("Autonomous History topic selection returned no candidates");
+            console.log("[HISTORY PREVIEW] Selected topic:", topic);
             const result = await createShort(topic, { name: "history" }, { previewOnly: true });
             if (!result?.previewOnly || !result?.video || !fs.existsSync(result.video)) {
                 throw new Error("History preview did not produce a video");
