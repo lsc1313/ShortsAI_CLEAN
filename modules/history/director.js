@@ -677,7 +677,22 @@ Do not use a specific list of categories for every historical topic.
             " for eruption facts. Do not use images of a DIFFERENT NAMED volcano " +
             "as Vesuvius. Use a genuine eruption depiction for eruption facts; " +
             "if insufficient distinct fact-and-visual matches remain, return empty candidates.";
-        joint = inspectJointCandidates(parseJSON(await callAI(recoveryPrompt)));
+        const recoveryResponse = parseJSON(await callAI(recoveryPrompt));
+        console.log("[HISTORY JOINT RECOVERY DIAGNOSTIC]", JSON.stringify({
+            availableAssets: archiveAssets.map(a => ({
+                id: a.id, title: a.title, category: a.category,
+                provider: a.provider, sourceUrl: a.sourceUrl
+            })),
+            rejectedStaticAssetIds: invalidIds,
+            returnedCandidates: Array.isArray(recoveryResponse?.candidates)
+                ? recoveryResponse.candidates.map(c => ({
+                    assetId: c.assetId, fact: c.fact,
+                    visualReason: c.visualReason, sourceUrls: c.sourceUrls
+                })) : null,
+            responseKeys: recoveryResponse && typeof recoveryResponse === "object"
+                ? Object.keys(recoveryResponse) : []
+        }));
+        joint = inspectJointCandidates(recoveryResponse);
         console.log("[HISTORY JOINT RECOVERY]", JSON.stringify({
             addedAssets: archiveAssets.length - previousCount,
             matched: joint.ok ? joint.candidates.length : 0,
