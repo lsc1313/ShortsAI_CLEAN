@@ -35,19 +35,14 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
         // Met returns 410 and Art Institute image downloads return 403 in the observed run.
         return searchCommonsHistory(query);
     };
-    const unsuitableMetadata = candidate => {
-        const title = String(candidate.tags || "").toLowerCase();
-        // A map/chart/diagram or unrelated administrative material is not a visual
-        // depiction of a physical historical action. This is a conservative filter,
-        // not a substitute for the editorial semantic gate.
-        return /\b(map of|location map|chart of|diagram of|inquiry|committee|courtroom|hearing|investigation|portrait of)\b/i.test(title);
-    };
+    // Do not exclude whole visual formats or historical institutions by keyword.
+    // Relevance depends on the chosen subject and narration, not a global blacklist.
     const collectQuery = async ({ query, category }, limit = 3) => {
         const normalized = query.toLowerCase().trim();
         if (!normalized || tried.has(normalized) || results.length >= maxAssets) return;
         tried.add(normalized);
         stats.queries++;
-        const candidates = (await searchAll(query)).filter(candidate => !unsuitableMetadata(candidate));
+        const candidates = await searchAll(query);
         stats.candidates += candidates.length;
         let accepted = 0;
         for (const candidate of candidates) {
@@ -88,12 +83,9 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
             query, found: candidates.length, accepted, total: results.length
         }));
     };
-    // Give the central visible action first access to the bounded archive pool.
-    // Broad mountain/landscape searches must not crowd out eruption depictions.
-    const actionPattern = /\b(eruption|erupting|explosion|ash cloud|buried|destroyed|sinking|collision|rescue|fire|burning|earthquake|collapse|battle|flood|evacuation)\b/i;
-    const orderedResearch = [...research].sort((a, b) =>
-        Number(actionPattern.test(b.query)) - Number(actionPattern.test(a.query))
-    );
+    // Preserve the research plan's own relevance order. No hard-coded event
+    // vocabulary may reorder which history subjects receive asset slots.
+    const orderedResearch = research;
     // Two assets per query on the first pass preserves coverage across distinct
     // events, physical outcomes and aftermath, instead of saturating on scenery.
     for (const item of orderedResearch) {
