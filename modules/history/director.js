@@ -581,8 +581,9 @@ Do not use a specific list of categories for every historical topic.
         "Prioritize authentic event image, then event-specific illustration, then an illustrative image showing the SAME ACTION or physical result. Reject merely thematic or atmospheric associations.",
         "Do not select different versions of the same artwork (colorized, cropped, recolored, reprinted) as separate scenes.",
         "For a scene about rescue, select an image visibly depicting rescue or lifeboats, not a sinking image or a later hearing. For a sinking, prefer a sinking depiction, not an unrelated shipwreck map.",
-        "An image of an unrelated incident must never be used as documentary evidence for the requested incident.",
+        "Images from other incidents may illustrate the SAME visible action or physical result, but must never be described as authentic documentary evidence of the requested incident.",
         "Reject mere topical association: an inquiry portrait does NOT illustrate sinking, rescue or deaths; select images that visibly express the stated action or result.",
+        "An image of a different named volcano visibly erupting IS suitable to illustrate the physical eruption at Vesuvius, even if its location and era differ. Clearly label it as illustrative footage; never identify the pictured volcano as Vesuvius.",
         "When using a generic analogous scene, keep the historical fact grounded in text and label the visual as illustrative, not an authentic record.",
         "Do not infer from pictures or invent dates, causes, actions, superlatives or quotes.",
         "Exclude unrelated generic rooms, landscapes, institutions or misleading reenactments.",
@@ -643,7 +644,7 @@ Do not use a specific list of categories for every historical topic.
             }))
             .filter(q => q.query.length >= 4 &&
                 !/^(?:mount|mt\\.?|volcano|vesuvius|베수비오|화산)(?:\\s|$)/i.test(q.query));
-        // Named-event, action-specific searches; do not use another named volcano.
+        // Prefer event-specific material; permit other eruptions as clearly labeled illustrative footage.
         if (/vesuvius|pompeii|베수비오|폼페이/i.test(completedTopic)) {
             recoveryQueries.unshift(
                 { query: "Vesuvius eruption painting", category: "eruption" },
@@ -674,8 +675,9 @@ Do not use a specific list of categories for every historical topic.
             "Downloaded assets: " + expandedInventory
         ) + "\nRECOVERY: Reject static landscape assetIds " +
             JSON.stringify(invalidIds) +
-            " for eruption facts. Do not use images of a DIFFERENT NAMED volcano " +
-            "as Vesuvius. Use a genuine eruption depiction for eruption facts; " +
+            " for eruption facts. An eruption image of another named volcano IS allowed " +
+            "as illustrative footage when it visibly depicts eruption, but NEVER claim it " +
+            "is Vesuvius or authentic footage of Pompeii. Use a genuine eruption depiction; " +
             "if insufficient distinct fact-and-visual matches remain, return empty candidates.";
         const recoveryResponse = parseJSON(await callAI(recoveryPrompt));
         console.log("[HISTORY JOINT RECOVERY DIAGNOSTIC]", JSON.stringify({
