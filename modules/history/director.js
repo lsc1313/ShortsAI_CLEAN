@@ -636,22 +636,18 @@ Do not use a specific list of categories for every historical topic.
         const invalidIds = (joint.candidates || [])
             .filter(c => isStaticActionMismatch(c))
             .map(c => c.assetId);
+        // Generic recovery for ANY historical event: retain action-specific
+        // search terms from the researched plan instead of topic-specific branches.
         const recoveryQueries = plannedQueries
             .filter(q => q && typeof q.query === "string")
-            .map(q => ({
-                query: q.query.trim().split(/\s+/).slice(0, 3).join(" "),
-                category: q.category || "event"
-            }))
-            .filter(q => q.query.length >= 4 &&
-                !/^(?:mount|mt\\.?|volcano|vesuvius|베수비오|화산)(?:\\s|$)/i.test(q.query));
-        // Prefer event-specific material; permit other eruptions as clearly labeled illustrative footage.
-        if (/vesuvius|pompeii|베수비오|폼페이/i.test(completedTopic)) {
-            recoveryQueries.unshift(
-                { query: "Vesuvius eruption painting", category: "eruption" },
-                { query: "Pompeii destruction eruption illustration", category: "eruption" },
-                { query: "Pompeii ruins archaeological site", category: "aftermath" }
-            );
-        }
+            .flatMap(q => {
+                const words = q.query.trim().split(/\s+/).filter(Boolean);
+                return [
+                    { query: words.slice(0, 4).join(" "), category: q.category || "event" },
+                    { query: words.slice(0, 3).join(" "), category: q.category || "event" }
+                ];
+            })
+            .filter(q => q.query.length >= 4);
         const original = new Set(plannedQueries.map(q => String(q.query || "").toLowerCase().trim()));
         const extra = [...new Map(recoveryQueries
             .filter(q => !original.has(q.query.toLowerCase()))
@@ -673,12 +669,14 @@ Do not use a specific list of categories for every historical topic.
         const recoveryPrompt = candidatePrompt.replace(
             "Downloaded assets: " + originalInventory,
             "Downloaded assets: " + expandedInventory
-        ) + "\nRECOVERY: Reject static landscape assetIds " +
-            JSON.stringify(invalidIds) +
-            " for eruption facts. An eruption image of another named volcano IS allowed " +
-            "as illustrative footage when it visibly depicts eruption, but NEVER claim it " +
-            "is Vesuvius or authentic footage of Pompeii. Use a genuine eruption depiction; " +
-            "if insufficient distinct fact-and-visual matches remain, return empty candidates.";
+        ) + "\nRECOVERY: Reassess all assets against the visible ACTION or PHYSICAL RESULT " +
+            "of each sourced fact. Reject mismatched static/background images, including " +
+            "previously rejected assetIds " + JSON.stringify(invalidIds) + ". " +
+            "Prioritize images of the actual event, then allow imagery from another " +
+            "place or era that clearly depicts the SAME action/result as illustrative " +
+            "footage. Never present illustrative imagery as authentic evidence of the " +
+            "named historical event. Keep the original topic and sourced facts. " +
+            "If fewer than 3 distinct grounded matches exist, return empty candidates.";
         const recoveryResponse = parseJSON(await callAI(recoveryPrompt));
         console.log("[HISTORY JOINT RECOVERY DIAGNOSTIC]", JSON.stringify({
             availableAssets: archiveAssets.map(a => ({
