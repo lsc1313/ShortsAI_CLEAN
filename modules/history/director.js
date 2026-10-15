@@ -629,45 +629,60 @@ Do not use a specific list of categories for every historical topic.
         // Exactly one bounded archive recovery pass. Reuse the same researched
         // topic/queries and text evidence; never fabricate visual evidence.
         console.log("[HISTORY JOINT RECOVERY] Initial match failed:", joint.reason);
-        const fallbackQueries = plannedQueries
+        // Do not shorten eruption queries into static mountain landscapes.
+        // Retry selection once even if the archive has no additional assets:
+        // the initial candidate list may contain other usable illustrations.
+        const invalidIds = (joint.candidates || [])
+            .filter(c => isStaticActionMismatch(c))
+            .map(c => c.assetId);
+        const recoveryQueries = plannedQueries
             .filter(q => q && typeof q.query === "string")
-            .flatMap(q => {
-                const words = q.query.trim().split(/\\s+/);
-                return [
-                    { query: words.slice(0, Math.min(3, words.length)).join(" "), category: q.category || "event" },
-                    { query: words.slice(0, Math.min(2, words.length)).join(" "), category: q.category || "event" }
-                ];
-            })
-            .filter(q => q.query.length >= 4);
-        // Prefer concise archive terms, excluding exact original queries.
+            .map(q => ({
+                query: q.query.trim().split(/\s+/).slice(0, 3).join(" "),
+                category: q.category || "event"
+            }))
+            .filter(q => q.query.length >= 4 &&
+                !/^(?:mount|mt\\.?|volcano|vesuvius|베수비오|화산)(?:\\s|$)/i.test(q.query));
+        // Named-event, action-specific searches; do not use another named volcano.
+        if (/vesuvius|pompeii|베수비오|폼페이/i.test(completedTopic)) {
+            recoveryQueries.unshift(
+                { query: "Vesuvius eruption painting", category: "eruption" },
+                { query: "Pompeii destruction eruption illustration", category: "eruption" },
+                { query: "Pompeii ruins archaeological site", category: "aftermath" }
+            );
+        }
         const original = new Set(plannedQueries.map(q => String(q.query || "").toLowerCase().trim()));
-        const extra = [...new Map(fallbackQueries
+        const extra = [...new Map(recoveryQueries
             .filter(q => !original.has(q.query.toLowerCase()))
             .map(q => [q.query.toLowerCase(), q])).values()].slice(0, 8);
-        if (extra.length >= 3) {
-            const previousCount = archiveAssets.length;
-            const expanded = await collectHistoryAssets(extra, { maxAssets: 20, existingAssets: archiveAssets });
-            if (expanded.length > archiveAssets.length) {
-                archiveAssets = expanded;
-                assetMap = new Map(archiveAssets.map(a => [a.id, a]));
-                rankedAssets = [...archiveAssets];
-                const originalInventory = JSON.stringify(JSON.parse(candidatePrompt
-                    .split("Downloaded assets: ")[1].split("\n")[0]));
-                const expandedInventory = JSON.stringify(rankedAssets.map(a => ({
-                    id: a.id, title: a.title, category: a.category, sourceUrl: a.sourceUrl
-                })));
-                const recoveryPrompt = candidatePrompt.replace(
-                    "Downloaded assets: " + originalInventory,
-                    "Downloaded assets: " + expandedInventory
-                );
-                joint = inspectJointCandidates(parseJSON(await callAI(recoveryPrompt)));
-                console.log("[HISTORY JOINT RECOVERY]", JSON.stringify({
-                    addedAssets: expanded.length - previousCount,
-                    matched: joint.ok ? joint.candidates.length : 0,
-                    reason: joint.reason || "ok"
-                }));
-            }
+        const previousCount = archiveAssets.length;
+        if (extra.length) {
+            const expanded = await collectHistoryAssets(extra, {
+                maxAssets: 20, existingAssets: archiveAssets
+            });
+            if (expanded.length > archiveAssets.length) archiveAssets = expanded;
         }
+        assetMap = new Map(archiveAssets.map(a => [a.id, a]));
+        rankedAssets = [...archiveAssets];
+        const originalInventory = candidatePrompt
+            .split("Downloaded assets: ")[1].split("\n")[0];
+        const expandedInventory = JSON.stringify(rankedAssets.map(a => ({
+            id: a.id, title: a.title, category: a.category, sourceUrl: a.sourceUrl
+        })));
+        const recoveryPrompt = candidatePrompt.replace(
+            "Downloaded assets: " + originalInventory,
+            "Downloaded assets: " + expandedInventory
+        ) + "\nRECOVERY: Reject static landscape assetIds " +
+            JSON.stringify(invalidIds) +
+            " for eruption facts. Do not use images of a DIFFERENT NAMED volcano " +
+            "as Vesuvius. Use a genuine eruption depiction for eruption facts; " +
+            "if insufficient distinct fact-and-visual matches remain, return empty candidates.";
+        joint = inspectJointCandidates(parseJSON(await callAI(recoveryPrompt)));
+        console.log("[HISTORY JOINT RECOVERY]", JSON.stringify({
+            addedAssets: archiveAssets.length - previousCount,
+            matched: joint.ok ? joint.candidates.length : 0,
+            reason: joint.reason || "ok"
+        }));
     }
     if (!joint.ok) {
         throw new Error("[HISTORY JOINT PLAN] " + joint.reason +
