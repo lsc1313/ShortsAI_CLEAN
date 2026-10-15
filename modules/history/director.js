@@ -65,7 +65,6 @@ Ending의 형태와 연출은
 - '모두', '아무도', '도망치지 않았다', '기뻐했다', '축제를 준비했다', '감상했다', '몰라서 멸망했다'처럼 집단 전체의 생각이나 행동을 단정하지 않는다.
 - 역사적 사실과 해석·가설을 분리한다. 확인되지 않은 인과관계를 제목이나 결말에 넣지 않는다.
 - 언어·문화에 특정 단어가 없었다는 주장은 해당 시대 문헌 근거가 확실하지 않으면 사용하지 않는다.
-- 화산 폭발의 지리적 장소를 구분한다. 폼페이와 헤르쿨라네움의 유물·피해를 혼동하지 않는다.
 - 확인할 수 없는 극적인 일화 대신 발굴 유물, 동시대 기록, 확인된 사건 순서로 흥미를 만든다.
 - 장면별로 검증 가능한 역사적 주장만 쓰고, 검증 근거가 불분명한 주장은 삭제하거나 신중하게 표현한다.
 - AI가 만든 검색어 또는 이미지가 사실의 증거가 되지는 않는다.
@@ -255,15 +254,11 @@ imageQueries는 해당 Scene을 실제 이미지 또는 영상 검색으로
 
 [역사 아카이브 자료 중심 장면 설계]
 - coreSubject는 대본에 등장하는 전체 사건의 재현 문장이 아니라, 실제 박물관·위키미디어 아카이브에서 검색 가능한 단일 시각 자료의 대상명으로 지정한다.
-- 한 이미지에 서로 다른 대상과 행동과 연도를 합치지 않는다. 예를 들어 "Roman warships sailing towards erupting Mount Vesuvius 79 AD"를 coreSubject로 쓰지 않는다.
-- 로마 군함을 보여줄 장면이면 coreSubject="Roman galley" 또는 "Roman bireme"처럼 선박 자체를 지정하고, imageQueries는 "Roman galley illustration", "Roman bireme relief"처럼 실존 자료 유형을 검색한다.
-- 베수비오 화산을 보여줄 장면이면 coreSubject="Mount Vesuvius"를 사용하고 imageQueries는 "Mount Vesuvius painting", "Mount Vesuvius eruption historical painting"처럼 작성한다.
 - 특정 사건의 실제 기록 사진이 존재하지 않는 경우, 시대를 설명하는 유물·부조·지도·후대 삽화를 사용하되 그것을 사건 당시의 실제 장면이나 직접 증거라고 설명하지 않는다.
 - coreSubject에 towards, watching, sailing, erupting 등 동작이나 연출 문구, "79 AD"처럼 장면 설명용 연도를 덧붙이지 않는다. 이런 내용은 direction에만 작성한다.
 - 역사적 대상과 무관한 일반 풍경·동전·다른 시대 선박·인물 초상은 검색 대체재로 사용하지 않는다.
 - 자료 검색 가능성을 이유로 사실과 대본 내용을 변경하지 않는다.
 - CT·X-ray·MRI·DNA 분석·현미경·복원 영상처럼 특정 연구 결과 자체를 요구하는 coreSubject는 공개 아카이브에 실제로 해당 자료가 있을 때만 사용한다.
-- 해당 연구 자료의 공개 여부를 확인할 수 없다면 coreSubject를 사건과 직접 관련된 실존 유물·유적·역사 사진으로 지정한다. 예: "Pompeii cast CT scan" 대신 "Pompeii plaster cast"를 사용하고 imageQueries에는 "Pompeii victim plaster cast", "Pompeii cast of human victim"처럼 실제 자료를 찾는 검색어를 넣는다.
 - 이 경우 대본에서 CT 연구 사실을 언급할 수는 있지만, direction에서 유물 사진은 CT 촬영 결과가 아니라 관련 유물의 참고 화면임을 분명히 한다. 유물 사진을 CT 영상·내부 구조·검사 결과처럼 연출하거나 자막으로 주장하지 않는다.
 - 단, 해당 Scene의 주된 정보가 CT 이미지의 구체적인 판독 결과이고 이를 보여줄 근거 자료가 없다면 다른 검증 가능한 사실 중심으로 Scene을 다시 구성한다. 연구 결과나 사실을 임의로 만들어내지 않는다.
 
@@ -576,19 +571,15 @@ Do not use a specific list of categories for every historical topic.
         "JSON schema: {\"candidates\":[{\"assetId\":1,\"fact\":\"short Korean sourced fact\",\"sourceUrls\":[\"exact text source URL\"],\"visualReason\":\"why asset title directly depicts fact\"}]}",
         "Every narrated historical fact must be explicitly present in text evidence. An image may illustrate the same visible action or physical result even if it depicts another subject or era; it must NOT be presented as an authentic image of the named event.",
         "Assets are ordered by a rough metadata relevance heuristic, NOT by verified visual content. Independently assess each asset title.",
-        "For volcanic eruptions, a photograph of the quiet mountain, skyline, or landscape is background only. It does NOT depict an eruption. Require an eruption depiction for narration about erupting, and ruins/casts for the destruction and aftermath.",
         "Do not create two adjacent candidates that merely restate the same event and date; each candidate must advance the story with a distinct verified fact.",
         "Prioritize authentic event image, then event-specific illustration, then an illustrative image showing the SAME ACTION or physical result. Reject merely thematic or atmospheric associations.",
         "Do not select different versions of the same artwork (colorized, cropped, recolored, reprinted) as separate scenes.",
-        "For a scene about rescue, select an image visibly depicting rescue or lifeboats, not a sinking image or a later hearing. For a sinking, prefer a sinking depiction, not an unrelated shipwreck map.",
         "Images from other incidents may illustrate the SAME visible action or physical result, but must never be described as authentic documentary evidence of the requested incident.",
-        "Reject mere topical association: an inquiry portrait does NOT illustrate sinking, rescue or deaths; select images that visibly express the stated action or result.",
-        "An image of a different named volcano visibly erupting IS suitable to illustrate the physical eruption at Vesuvius, even if its location and era differ. Clearly label it as illustrative footage; never identify the pictured volcano as Vesuvius.",
         "When using a generic analogous scene, keep the historical fact grounded in text and label the visual as illustrative, not an authentic record.",
+        "The visual must depict the specific action, state, subject, or result narrated; merely sharing a keyword or broad theme is insufficient.",
         "Do not infer from pictures or invent dates, causes, actions, superlatives or quotes.",
         "Exclude unrelated generic rooms, landscapes, institutions or misleading reenactments.",
         "Use at least 3 unique downloaded asset IDs that meaningfully depict the chosen facts. Category labels are not a quality requirement. Return empty candidates if impossible.",
-        "Avoid packing collision, sinking, lifeboats, casualties and safety reforms into one narrated scene: split into distinct beats ONLY when each beat has both sourced facts and a matching image.",
         "If a claimed mechanical damage detail or casualty count is not directly supported by text evidence, omit it rather than embellish."
     ].join("\n");
     // Reject obvious action-versus-static-image mismatches BEFORE story/narration generation.
