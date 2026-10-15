@@ -15,7 +15,7 @@ export async function validateHistoryStoryPlan(topic, director) {
 Requested subject: ${JSON.stringify(topic)}
 Title: ${JSON.stringify(title)}
 Narration: ${JSON.stringify(narration)}
-Accept equivalent names/translations (e.g. Titanic/타이타닉), but reject stories
+Accept equivalent names and translations, but reject stories
 that merely mention the requested subject and mainly discuss unrelated adaptations,
 tourism, myths, or other events. Respond ONLY JSON:
 {"onTopic":true,"reason":"short explanation"}`);
@@ -161,21 +161,17 @@ Topic: ${JSON.stringify(topic)}
 Title: ${JSON.stringify(director.title)}
 Scenes in playback order: ${JSON.stringify(payload)}
 Review ALL of these:
-0) CENTRAL EVENT COVERAGE (MANDATORY): Identify the specific historical event/action named in Topic. Does at least one scene explicitly narrate that event itself? Context, preparations, departures, rescues, casualties and aftermath do NOT substitute for the event. If the narrative skips directly from before to after the event, FAIL with type "coverage", even if the scenes are individually accurate. Do not change the requested topic to match the available assets.
-0b) TOPIC/TITLE ALIGNMENT (MANDATORY): Does the title preserve the requested topic's central event, rather than switching to a related but different subject (such as ship design when the topic is a sinking)? FAIL with type "title" if it changes focus.
-1) VISUAL MEANING: Based ONLY on the asset TITLE and CATEGORY (not unseen pixels), does the image depict the narrated action, state, or physical result? Prefer authentic historical depictions, but accept clearly illustrative analogues of the SAME action or result when event-specific images are unavailable. For a sinking, a sinking ship or submerged wreck is meaningful; generic sea, clouds, or an intact ship is NOT. Do not demand the same named vessel or date when an image is clearly an illustration.
-1b) DOCUMENTARY HONESTY: Allow imagery from another event, location, or era IF it clearly depicts the SAME visible action or physical phenomenon being narrated, and is presented as illustrative footage, not original documentary evidence. For example, an erupting Tambora volcano may illustrate a narrated Vesuvius eruption; a static mountain may NOT. A different sinking ship may illustrate sinking, but a later recovery photo may NOT illustrate the act of sinking. Reject only misleading identification as the original event or a mismatch of the actual action.
+0) TOPIC COVERAGE: Identify the core historical subject, claim, question, or development implied by Topic. Does the narration substantively explain it? Do not assume every historical subject is a single dramatic event. Reject unrelated background that replaces the actual subject.
+0b) TOPIC/TITLE ALIGNMENT: The title must describe what the video actually explains, without changing the selected historical subject.
+1) VISUAL MEANING: Based ONLY on the asset TITLE and CATEGORY (not unseen pixels), assess whether it meaningfully illustrates the narrated subject, action, state, context, or result. Prioritize authentic material, then clearly illustrative analogues with the same visible meaning. Maps, diagrams, portraits, documents, artifacts, and buildings are allowed when they directly support the scene. Do not reject imagery solely because its time or location differs.
+1b) DOCUMENTARY HONESTY: Illustrative imagery must not be presented as authentic evidence or footage of the narrated historical subject. Reject misleading identification and semantic mismatches.
 Do not claim to have inspected image pixels.
-2) Does the narrative move forward without repeating the same collision, death toll, or
-timeline information in different scenes?
+2) Does the narrative advance without repeating the same information across scenes?
 3) Is the sequence chronological or deliberately structured and coherent?
 4) Does the final scene provide a meaningful conclusion rather than repeat the opening?
 5) Does the TITLE promise a factual detail absent from or unsupported by the narration?
 6) Do subtitles faithfully reflect the corresponding narration?
-Reject unrelated generic buildings, legislative chambers, later adaptations or
-artwork that do not actually illustrate the scene's narration.
-A scene about a disaster's physical moment cannot be illustrated by an unrelated
-political chamber merely because a subsequent inquiry took place there.
+Reject visuals that are only loosely related to the narration. Evaluate relevance in context, not by globally excluding any visual format or institution.
 When asset metadata is too vague to establish relevance, mark it uncertain and fail.
 Return JSON ONLY:
 {"pass":false,"issues":[{"scene":1,"type":"coverage|visual|repetition|sequence|title|subtitle|ending","reason":"specific explanation"}]}
