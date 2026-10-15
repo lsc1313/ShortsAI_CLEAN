@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { searchCommonsHistory, isCommonsRateLimited } from "../providers/historyArchives.js";
+import { searchPixabay } from "../providers/pixabayProvider.js";
+import { searchPexels } from "../providers/pexelsProvider.js";
 import { downloadImage } from "../image/download.js";
 
 /**
@@ -32,15 +34,26 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
     const tried = new Set();
     const stats = { queries: 0, candidates: 0, duplicate: 0, downloadFailed: 0, tooSmall: 0, accepted: 0 };
     const searchAll = async query => {
-        // Wikimedia Commons is the only currently working archive provider.
-        // Met returns 410 and Art Institute image downloads return 403 in the observed run.
-        return searchCommonsHistory(query);
+        if (!isCommonsRateLimited()) {
+            const archival = await searchCommonsHistory(query);
+            if (archival.length) return archival;
+        }
+        // History-only secondary sources: illustrations, never documentary proof.
+        const [pixabay, pexels] = await Promise.all([
+            searchPixabay(query), searchPexels(query)
+        ]);
+        return [...(pixabay || []), ...(pexels || [])].map(item => ({
+            ...item,
+            sourceUrl: item.sourceUrl || item.url,
+            license: "Provider license - verify usage terms",
+            illustrative: true
+        }));
     };
     // Do not exclude whole visual formats or historical institutions by keyword.
     // Relevance depends on the chosen subject and narration, not a global blacklist.
     const collectQuery = async ({ query, category }, limit = 3) => {
         const normalized = query.toLowerCase().trim();
-        if (!normalized || tried.has(normalized) || results.length >= maxAssets || isCommonsRateLimited()) return;
+        if (!normalized || tried.has(normalized) || results.length >= maxAssets  ) return;
         tried.add(normalized);
         stats.queries++;
         const candidates = await searchAll(query);
@@ -70,7 +83,8 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
                     title: String(candidate.tags || "").slice(0, 240),
                     sourceUrl: candidate.sourceUrl,
                     license: candidate.license,
-                    url: candidate.url
+                    url: candidate.url,
+                    illustrative: Boolean(candidate.illustrative)
                 });
                 accepted++;
                 stats.accepted++;
@@ -90,7 +104,7 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
     // Two assets per query on the first pass preserves coverage across distinct
     // events, physical outcomes and aftermath, instead of saturating on scenery.
     for (const item of orderedResearch) {
-        if (results.length >= maxAssets || isCommonsRateLimited()) break;
+        if (results.length >= maxAssets  ) break;
         await collectQuery(item, 2);
     }
     // Spend remaining slots on other results from the same queries, without
