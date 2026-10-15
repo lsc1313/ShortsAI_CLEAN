@@ -22,8 +22,9 @@ function buildResearchQueries(queries) {
 
 export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir = "media/history-preflight", existingAssets = [] } = {}) {
     const research = buildResearchQueries(queries);
-    if (research.length < 3) {
-        throw new Error("[HISTORY ASSET PREFLIGHT] Research plan needs at least 3 searches");
+    if (!research.length) {
+        console.warn("[HISTORY ASSET PREFLIGHT] No valid research queries");
+        return [...existingAssets];
     }
     fs.mkdirSync(outputDir, { recursive: true });
     const results = [...existingAssets];
