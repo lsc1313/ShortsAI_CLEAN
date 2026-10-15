@@ -63,6 +63,7 @@ export async function checkHistoryEvidence(topic, director, referenceSources = n
     if (!scenes.length) throw new Error("[HISTORY FACT QC] No scenes");
     const sources = referenceSources || await collectHistoryEvidence(topic);
     // Bounded evidence-only repairs followed by independent re-audits.
+    const previousFailedNarrations = new Map();
     // Never bypass the evidence gate or fabricate references.
     for (let attempt = 0; attempt < 3; attempt++) {
     const prompt = `You are a strict historical evidence auditor, not a scriptwriter.
@@ -101,14 +102,22 @@ Never invent URLs or facts.`;
         throw new Error(`[HISTORY FACT QC] Unverified after two evidence-based repairs: ${JSON.stringify(failures)}`);
     }
     console.log(`[HISTORY FACT QC] Evidence-only repair ${attempt + 1}/2:`, JSON.stringify(failures));
+    const repeatedFailures = failures.filter(f => previousFailedNarrations.get(f.scene) === (scenes[f.scene - 1].tts || scenes[f.scene - 1].script));
+    if (repeatedFailures.length) {
+        console.log("[HISTORY FACT QC] Repeated unsupported narration; require source-grounded replacement:", JSON.stringify(repeatedFailures));
+    }
+    for (const failed of failures) previousFailedNarrations.set(failed.scene, scenes[failed.scene - 1].tts || scenes[failed.scene - 1].script);
     const repairPrompt = `You are revising a historical video script based ONLY on supplied reference excerpts.
 Topic: ${JSON.stringify(topic)}
 References: ${JSON.stringify(sources)}
 Scene scripts: ${JSON.stringify(scenes.map((scene, i) => ({ scene: i + 1, tts: scene.tts || scene.script, assetTitle: scene.preflightAsset?.title })))}
 Unsupported scenes and reasons: ${JSON.stringify(failures)}
+Repeated unchanged failures: ${JSON.stringify(repeatedFailures)}
 Return ONLY JSON {"scenes":[{"scene":1,"tts":"revised Korean narration","subtitle":"matching concise Korean subtitle"}]} for exactly the unsupported scenes.
 Keep the requested historical subject and the same selected images.
 For EACH failed scene: identify every unsupported claim mentioned in its failure reason;
+When the auditor rejects a claimed CAUSE, do not retain that cause in any wording. Replace the entire causal sentence with a directly documented event or change, without suggesting why it happened.
+If the prior repair failed or was unchanged, write a completely NEW narration using a different explicitly cited fact from the provided excerpts. Do not paraphrase the rejected narration.
 REMOVE that claim entirely or replace it with the precise weaker statement explicitly
 present in the provided reference. Do NOT substitute a synonym that makes the same
 unsupported claim. For example, if a source says "one of the largest", do not write
@@ -127,6 +136,10 @@ Each revised scene must remain coherent with its assigned image. Do not change i
         if (!fix || typeof fix.tts !== "string" || !fix.tts.trim() ||
             typeof fix.subtitle !== "string" || !fix.subtitle.trim()) {
             throw new Error(`[HISTORY FACT QC] Missing valid repair for scene ${failed.scene}`);
+        }
+        const original = scenes[failed.scene - 1].tts || scenes[failed.scene - 1].script || "";
+        if (fix.tts.trim() === String(original).trim()) {
+            throw new Error(`[HISTORY FACT QC] Repair returned unchanged unsupported narration for scene ${failed.scene}`);
         }
         scenes[failed.scene - 1].tts = fix.tts.trim();
         scenes[failed.scene - 1].subtitle = fix.subtitle.trim();
