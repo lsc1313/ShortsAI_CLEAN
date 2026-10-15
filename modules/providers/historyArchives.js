@@ -42,12 +42,18 @@ export async function searchAicHistory(query) {
                 o.title, [o.thumbnail?.alt_text, o.date_display, o.artist_title].join(" "), 0, 0,
                 `https://www.artic.edu/artworks/${o.id}`, "CC0")
         ).slice(0, 6);
-        console.log(`[ArtInstituteChicago] eligible=${eligible.length} query=${archiveQuery(query)}`);
+        console.log(`[ArtInstituteChicago] eligible=${eligible.length} rejected=${JSON.stringify(rejected)} query=${archiveQuery(query)}`);
         return eligible;
     } catch (e) { console.log("[ArtInstituteChicago] search unavailable:", e.message); return []; }
 }
+let commonsRateLimitedUntil = 0;
+export function isCommonsRateLimited() { return Date.now() < commonsRateLimitedUntil; }
 export async function searchCommonsHistory(query) {
     if (!query) return [];
+    if (isCommonsRateLimited()) {
+        console.warn("[WikimediaCommons] Circuit open after HTTP 429; search skipped");
+        return [];
+    }
     try {
         const { data } = await client.get("https://commons.wikimedia.org/w/api.php", { params: {
             action: "query", generator: "search", gsrsearch: archiveQuery(query),
@@ -55,22 +61,32 @@ export async function searchCommonsHistory(query) {
             iiurlwidth: 1200, format: "json", origin: "*"
         } });
         const pages = Object.values(data.query?.pages || {});
+        const rejected = { format: 0, rights: 0, imageUrl: 0 };
         const eligible = pages.flatMap(p => {
             // Archive PDFs and book scans are not still-image assets for Shorts.
-            if (/\.(pdf|djvu|tiff?|svg)$/i.test(String(p.title || ""))) return [];
+            if (/\.(pdf|djvu|tiff?|svg)$/i.test(String(p.title || ""))) { rejected.format++; return []; }
             const info = p.imageinfo?.[0];
             const meta = info?.extmetadata || {};
             const license = text(meta.LicenseShortName?.value);
             const usage = text(meta.UsageTerms?.value);
             // Conservative: CC BY and CC BY-SA need attribution; accept only PD/CC0 initially.
-            if (!/^(CC0|Public domain|PD[- ]|PDM)/i.test(license) && !/public domain/i.test(usage)) return [];
+            if (!/^(CC0|Public domain|PD[- ]|PDM)/i.test(license) && !/public domain/i.test(usage)) { rejected.rights++; return []; }
             const url = info?.thumburl || info?.url;
-            if (!url || !/\.(jpe?g|png|webp)(\?|$)/i.test(url)) return [];
+            if (!url || !/\.(jpe?g|png|webp)(\?|$)/i.test(url)) { rejected.imageUrl++; return []; }
             return [candidate("WikimediaCommons", url, text(meta.ObjectName?.value || p.title),
                 text(meta.ImageDescription?.value), info.width, info.height,
                 info.descriptionurl, license)];
         }).slice(0, 8);
         console.log(`[WikimediaCommons] results=${pages.length} eligible=${eligible.length} query=${archiveQuery(query)}`);
         return eligible;
-    } catch (e) { console.log("[WikimediaCommons] search unavailable:", e.message); return []; }
+    } catch (e) {
+        if (e.response?.status === 429) {
+            const retryAfter = Number(e.response?.headers?.["retry-after"]);
+            const cooldownMs = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter * 1000, 3600000) : 300000;
+            commonsRateLimitedUntil = Date.now() + cooldownMs;
+            console.warn("[WikimediaCommons] HTTP 429; circuit opened for", Math.ceil(cooldownMs / 1000), "seconds");
+            return [];
+        }
+        console.log("[WikimediaCommons] search unavailable:", e.message); return [];
+    }
 }
