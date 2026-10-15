@@ -510,11 +510,11 @@ const judgeResult =
 You are a historical archive research planner.
 Requested topic: ${completedTopic}
 Return ONLY JSON with {"queries":[{"query":"English archive search terms","category":"distinct evidence type"}]}.
-Provide 6 to 8 specific, searchable English queries. Prioritize visual materials that directly explain the selected historical subject,
+Provide 6 to 8 specific, searchable English queries. Each query must seek a distinct visual role or evidence item rather than alternate copies of one familiar depiction. Prioritize visual materials that directly explain the selected historical subject,
 including its people, documents, places, objects, changes, actions, or results as appropriate.
 Search for authentic subject-specific materials first and meaningful illustrative
 alternatives where direct historical images are unavailable.
-Use diverse evidence types when helpful, but category diversity is not a requirement.
+Avoid repeatedly searching for the same person, artifact, or illustration under different names. Seek independently meaningful visual evidence for different verified aspects of the subject; category diversity alone is not a requirement.
 Use concise archive-index-friendly keywords rather than cinematic descriptions.
 Do not assume any item exists. Do not change the topic.
 Category names must be short lowercase English words. Avoid broad generic terms.
@@ -526,7 +526,7 @@ Do not use a specific list of categories for every historical topic.
     if (archiveAssets.length < 3) {
         throw new Error("[HISTORY ASSET PREFLIGHT] Fewer than 3 downloaded assets");
     }
-    // Rank authentic event material before generic visual analogues. Keep the full
+    // Rank subject relevance without penalizing entire evidence formats. Keep the full
     // downloaded pool: editorial selection still decides what matches narration.
     const topicTokens = completedTopic.toLowerCase().match(/[a-z0-9]{3,}|[가-힣]{2,}/g) || [];
     let rankedAssets = [...archiveAssets].sort((a, b) => {
@@ -536,9 +536,7 @@ Do not use a specific list of categories for every historical topic.
             const overlap = topicTokens.filter(token => label.includes(token)).length;
             const named = topicTokens.some(token => query.includes(token));
             const category = String(asset.category || "").toLowerCase();
-            return overlap * 20 + (named ? 8 : 0) +
-                (/event|depiction|illustration|action/.test(category) ? 3 : 0) -
-                (/map of|chart of|diagram of|inquiry|hearing|portrait/.test(label) ? 100 : 0);
+            return overlap * 20 + (named ? 8 : 0);
         };
         return score(b) - score(a) || a.id - b.id;
     });
@@ -570,7 +568,7 @@ Do not use a specific list of categories for every historical topic.
         "Assets are ordered by a rough metadata relevance heuristic, NOT by verified visual content. Independently assess each asset title.",
         "Do not create two adjacent candidates that merely restate the same event and date; each candidate must advance the story with a distinct verified fact.",
         "Prioritize authentic event image, then event-specific illustration, then an illustrative image showing the SAME ACTION or physical result. Reject merely thematic or atmospheric associations.",
-        "Do not select different versions of the same artwork (colorized, cropped, recolored, reprinted) as separate scenes.",
+        "Do not count alternate reproductions, crops, translations, or depictions of the same artifact as separate meaningful visual beats. Distinct file IDs do not establish distinct scene coverage.",
         "Images from other incidents may illustrate the SAME visible action or physical result, but must never be described as authentic documentary evidence of the requested incident.",
         "When using a generic analogous scene, keep the historical fact grounded in text and label the visual as illustrative, not an authentic record.",
         "The visual must depict the specific action, state, subject, or result narrated; merely sharing a keyword or broad theme is insufficient.",
@@ -604,8 +602,7 @@ Do not use a specific list of categories for every historical topic.
         // Exactly one bounded archive recovery pass. Reuse the same researched
         // topic/queries and text evidence; never fabricate visual evidence.
         console.log("[HISTORY JOINT RECOVERY] Initial match failed:", joint.reason);
-        // Generic recovery for ANY historical subject: retain action-specific
-        // search terms from the researched plan instead of topic-specific branches.
+        // Generic recovery for ANY historical subject.
         const recoveryQueries = plannedQueries
             .filter(q => q && typeof q.query === "string")
             .flatMap(q => {
@@ -644,6 +641,11 @@ Do not use a specific list of categories for every historical topic.
             "footage. Never present illustrative imagery as authentic evidence of the " +
             "named historical event. Keep the original topic and sourced facts. " +
             "If fewer than 3 distinct grounded matches exist, return empty candidates.";
+        // No new evidence and no grounded candidates: a second model call cannot
+        // create a distinct visual scene from an unchanged inventory.
+        if (archiveAssets.length === previousCount && !(joint.candidates || []).length) {
+            throw new Error("[HISTORY VISUAL COVERAGE] No distinct grounded scenes; archive recovery added no assets. Skip this topic without repeating the same model request.");
+        }
         const recoveryResponse = parseJSON(await callAI(recoveryPrompt));
         console.log("[HISTORY JOINT RECOVERY DIAGNOSTIC]", JSON.stringify({
             availableAssets: archiveAssets.map(a => ({
