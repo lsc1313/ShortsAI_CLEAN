@@ -510,12 +510,10 @@ const judgeResult =
 You are a historical archive research planner.
 Requested topic: ${completedTopic}
 Return ONLY JSON with {"queries":[{"query":"English archive search terms","category":"distinct evidence type"}]}.
-Provide 6 to 8 specific, searchable English queries. Prioritize visual depictions of
-what HAPPENS in the central event (actions and visible physical results), not merely
-people, hearings, buildings or places associated with the topic.
-Include at least two searches for the central action/result: one named-event search,
-and one generic visual analogue search that explicitly depicts the same action/result
-(e.g. a sinking vessel or submerged shipwreck for a sinking event).
+Provide 6 to 8 specific, searchable English queries. Prioritize visual materials that directly explain the selected historical subject,
+including its people, documents, places, objects, changes, actions, or results as appropriate.
+Search for authentic subject-specific materials first and meaningful illustrative
+alternatives where direct historical images are unavailable.
 Use diverse evidence types when helpful, but category diversity is not a requirement.
 Use concise archive-index-friendly keywords rather than cinematic descriptions.
 Do not assume any item exists. Do not change the topic.
@@ -552,7 +550,6 @@ Do not use a specific list of categories for every historical topic.
         "Do not invent assets or describe an asset as a photo of an event it does not show.",
         "Use at most one scene per assetId. The scene narration must match the selected artifact/site.",
         "Prefer historically authentic images; when unavailable, a clearly relevant depiction of the SAME ACTION or PHYSICAL RESULT is acceptable as an illustrative example, never as claimed original evidence.",
-        "A sinking scene can use a sinking vessel or submerged wreck; generic sea, clouds, intact ships or a different disaster recovery are not suitable substitutes.",
         "Images are not historical fact verification. Do not invent facts.",
         JSON.stringify(rankedAssets.map(({ id, title, category, provider, sourceUrl, license }) =>
             ({ id, title, category, provider, sourceUrl, license })))
@@ -682,15 +679,14 @@ Do not use a specific list of categories for every historical topic.
         "Requested topic: " + completedTopic,
         "Grounded scene candidates: " + JSON.stringify(candidates),
         "Choose at least 3 candidates, using unique assetIds, and return them in playback order. Prefer 4-6 concise beats when genuinely supported; do not force extra scenes.",
-        "Each beat should have one primary visible action or outcome. Do not combine the impact, sinking, rescue, death toll and reforms into a single scene.",
-        "Before choosing candidates, identify the central event/action explicitly requested by the topic.",
-        "Require at least one candidate whose sourced FACT explicitly describes that central event/action itself; background, departure, rescue, casualties or aftermath alone are NOT sufficient.",
-        "If the central event itself is missing from grounded candidates, return empty assetIds. Do not change the topic to match available pictures.",
-        "The central requested historical event must be explained, not just its background.",
+        "Each beat should contribute one distinct sourced idea or development; do not combine unrelated claims in one scene.",
+        "Before choosing candidates, identify the central historical subject or question requested by the topic.",
+        "Require sourced candidates that directly explain the central historical subject, not merely adjacent background.",
+        "If the central subject cannot be explained from grounded candidates, return empty assetIds. Do not change the topic to match available pictures.",
+        "The requested historical subject must be substantively explained, not just named.",
         "Use a coherent chronological progression; an opening flash-forward is allowed ONLY if the next scene explicitly bridges back in time.",
-        "For historical disasters, do not narrate deaths from the aftermath before the scene showing the main disaster has occurred. A lifeboat or evacuation scene may precede the sinking, but defer casualty totals and final outcomes until after the central event is shown.",
         "The last candidate MUST provide a meaningful conclusion about the requested subject, not a return to earlier construction/background.",
-        "A final casualty figure alone is not a complete conclusion when a sourced consequence, lesson, investigation result or documented policy change is available with a matching image. Prefer that grounded conclusion, but never invent one or use unrelated imagery merely to add an ending.",
+        "End with a grounded conclusion appropriate to the subject; do not invent a lesson, outcome, or consequence to force a dramatic ending.",
         "Never invent additional facts, visual assets, or event outcomes. If the available candidates cannot form a complete story, return an empty assetIds array.",
         'Return ONLY JSON: {"assetIds":[1,2,3],"reason":"brief story arc explanation"}'
     ].join("\\n");
@@ -774,7 +770,7 @@ completedTopic을 그대로 반복하는 것이 아니라
 출력 JSON의 work_instructions.scenes 배열에 있는 모든 Scene은 imageQueries를
 반드시 문자열 2~3개로 구성된 배열로 출력한다. 빈 배열, null, 필드 생략 금지.
 imageQueries는 direction이나 imageQuery가 아니라 정확히 imageQueries 필드여야 한다.
-예시: "coreSubject": "Pompeii plaster cast", "imageQueries": ["Pompeii victim cast", "Pompeii plaster casts museum"].
+coreSubject는 장면의 실제 시각 대상명, imageQueries는 해당 대상을 찾을 수 있는 검색어로 작성한다.
 이미지 자료를 찾기 어려우면 그 Scene을 실제 검색 가능한 역사 자료 중심으로 다시 설계한다.
 검증되지 않은 검색어를 자동 생성해서 오류를 숨기지 않는다.
 
