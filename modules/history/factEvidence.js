@@ -27,14 +27,30 @@ async function fetchWikiExtract(topic, lang) {
     } finally { clearTimeout(timer); }
 }
 
-export async function collectHistoryEvidence(topic) {
+export async function collectHistoryEvidence(topic, searchQueries = []) {
     const sources = [];
-    for (const lang of ["ko", "en"]) {
-        try { sources.push(...await fetchWikiExtract(topic, lang)); }
-        catch (error) { console.log("[HISTORY FACT QC] Source unavailable:", lang, error.message); }
+    const queries = [topic, ...searchQueries.map(q => typeof q === "string" ? q : q?.query).filter(Boolean)]
+        .map(q => String(q).trim()).filter(Boolean);
+    const tried = new Set();
+    let rateLimited = false;
+    for (const query of queries.slice(0, 4)) {
+        for (const lang of ["ko", "en"]) {
+            const key = lang + ":" + query.toLowerCase();
+            if (tried.has(key) || rateLimited) continue;
+            tried.add(key);
+            try {
+                const found = await fetchWikiExtract(query, lang);
+                sources.push(...found);
+                console.log("[HISTORY FACT SEARCH]", JSON.stringify({lang, query, found: found.length}));
+            } catch (error) {
+                console.log("[HISTORY FACT QC] Source unavailable:", lang, error.message);
+                if (/HTTP 429/.test(error.message)) rateLimited = true;
+            }
+        }
+        if (sources.length >= 2 || rateLimited) break;
     }
-    if (!sources.length) throw new Error("[HISTORY FACT QC] No independent text references found");
-    return sources;
+    if (!sources.length) throw new Error(rateLimited ? "[HISTORY FACT QC] Wikipedia rate limited; evidence retrieval deferred" : "[HISTORY FACT QC] No independent text references found");
+    return [...new Map(sources.map(source => [source.url, source])).values()].slice(0, 6);
 }
 
 /**
