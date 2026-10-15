@@ -554,7 +554,7 @@ Do not use a specific list of categories for every historical topic.
     ].join("\\n");
 
     // Retrieve reference text BEFORE script generation to avoid unsupported hooks.
-    const factSources = await collectHistoryEvidence(completedTopic);
+    const factSources = await collectHistoryEvidence(completedTopic, plannedQueries);
     const factGuidance = JSON.stringify(factSources.map(({ title, url, excerpt }) => ({ title, url, excerpt })));
 
     // Match sourced facts to real downloaded assets BEFORE writing narration.
