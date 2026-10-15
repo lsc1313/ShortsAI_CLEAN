@@ -2,6 +2,7 @@ import { collectHistoryEvidence } from "./factEvidence.js";
 import { callAI } from "../ai/index.js";
 import { getRecentDuplicates } from "../services/duplicateService.js";
 import { collectHistoryAssets } from "./assetPreflight.js";
+import { isCommonsRateLimited } from "../providers/historyArchives.js";
 
 /*
 =====================================================
@@ -524,6 +525,7 @@ Do not use a specific list of categories for every historical topic.
     const plannedQueries = Array.isArray(researchPlan?.queries) ? researchPlan.queries : [];
     let archiveAssets = await collectHistoryAssets(plannedQueries);
     if (archiveAssets.length < 3) {
+        if (isCommonsRateLimited()) throw new Error("[HISTORY PROVIDER RATE LIMITED] Wikimedia Commons HTTP 429; defer production instead of judging topic suitability");
         throw new Error("[HISTORY ASSET PREFLIGHT] Fewer than 3 downloaded assets");
     }
     // Rank subject relevance without penalizing entire evidence formats. Keep the full
@@ -603,6 +605,9 @@ Do not use a specific list of categories for every historical topic.
         // topic/queries and text evidence; never fabricate visual evidence.
         console.log("[HISTORY JOINT RECOVERY] Initial match failed:", joint.reason);
         // Generic recovery for ANY historical subject.
+        if (isCommonsRateLimited()) {
+            throw new Error("[HISTORY PROVIDER RATE LIMITED] Wikimedia Commons HTTP 429; defer production and avoid recovery requests");
+        }
         const recoveryQueries = plannedQueries
             .filter(q => q && typeof q.query === "string")
             .flatMap(q => {
@@ -623,6 +628,9 @@ Do not use a specific list of categories for every historical topic.
                 maxAssets: 20, existingAssets: archiveAssets
             });
             if (expanded.length > archiveAssets.length) archiveAssets = expanded;
+        }
+        if (isCommonsRateLimited()) {
+            throw new Error("[HISTORY PROVIDER RATE LIMITED] Wikimedia Commons HTTP 429 during recovery; defer production");
         }
         assetMap = new Map(archiveAssets.map(a => [a.id, a]));
         rankedAssets = [...archiveAssets];
