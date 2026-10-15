@@ -315,28 +315,9 @@ if (channelName === "history") {
     await validateHistoryStoryPlan(topic, director);
     validateHistoryClaimRisk(director);
     await checkHistoryEvidence(topic, director, director.factSources);
-    try {
-        await validateHistoryEditorialPlan(topic, director);
-    } catch (editorialError) {
-        // History-only, bounded recovery: regenerate a new evidence/asset-grounded
-        // plan once, then rerun ALL history checks. Never waive a QC failure.
-        if (!String(editorialError?.message || "").startsWith("[HISTORY EDITORIAL QC]")) {
-            throw editorialError;
-        }
-        console.warn("[HISTORY EDITORIAL RECOVERY] First QC failed:", editorialError.message);
-        console.warn("[HISTORY EDITORIAL RECOVERY] Regenerating History director once; original plan rejected");
-        const recovered = await createHistoryDirector(topic);
-        for (const scene of recovered.scenes || []) {
-            scene.product = product;
-            scene.category = "history";
-        }
-        await validateHistoryStoryPlan(topic, recovered);
-        validateHistoryClaimRisk(recovered);
-        await checkHistoryEvidence(topic, recovered, recovered.factSources);
-        await validateHistoryEditorialPlan(topic, recovered);
-        director = recovered;
-        console.log("[HISTORY EDITORIAL RECOVERY] PASS");
-    }
+    // Editorial failure is a quality gate, not a reason to restart the entire
+    // research/director pipeline. Surface the failure to the scheduler.
+    await validateHistoryEditorialPlan(topic, director);
     await validateHistoryVisualSimilarity(director);
 }
 
