@@ -1,17 +1,22 @@
 import { callAI } from "../../ai/index.js";
-import duplicateService from "../../services/duplicateService.js";
+import duplicateService, { getRecentDuplicates } from "../../services/duplicateService.js";
 import scoringService from "../../services/scoringService.js";
 
 // History chooses its own subject. No predefined countries, eras, events,
 // examples, subject pools, or trending keywords are injected.
 export async function generateTopics(request = {}) {
     const count = Math.max(1, Math.min(10, Number(request?.count) || 1));
+    const recent = (await getRecentDuplicates())
+        .filter(item => String(item.channel || "").toLowerCase() === "history")
+        .slice(-40)
+        .map(item => item.topic);
     const prompt = [
         "역사 전체를 대상으로 교육적 가치와 흥미가 높은 Shorts 주제를 자율적으로 발굴하라.",
         "시대, 지역, 인물, 국가, 분야, 사건 유형을 사전에 제한하거나 특정 방향을 우대하지 마라.",
         "실제로 존재한 역사적 사실을 중심으로, 독립적으로 검증 가능한 구체적 주제를 선정하라.",
         "제작하기 쉬운 시각 자료가 있는 주제만 반복 선정하지 마라.",
         "주제 간 의미가 중복되지 않게 하고 JSON 외의 문장은 출력하지 마라.",
+        "다음은 이미 제작된 주제 목록이다. 동일한 역사적 핵심 내용을 제목만 바꾸어 다시 제안하지 마라: " + JSON.stringify(recent),
         `정확히 ${count}개의 주제를 생성하라.`,
         '{"topics":["주제 문자열"]}'
     ].join("\n");
