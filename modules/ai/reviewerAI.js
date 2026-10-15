@@ -252,6 +252,58 @@ export function selectBestMedia(candidates = []){
     );
 }
 
+// Conservative History metadata gate: never treat a search query alone as proof
+// that an asset actually depicts the narrated historical subject.
+function historyMetadataMatches(candidate, scene){
+    const channel = String(scene?.category || scene?.channel || "").toLowerCase();
+    if(channel !== "history") return true;
+    const core = normalizeSubject(scene?.coreSubject || "");
+    if(!core) return false;
+    const metadata = getProviderText(candidate);
+    if(!metadata.trim()) return false;
+
+    // Preserve proper names: "Secret Cabinet" is a collection name, not an adjective.
+    // An event date or a staging verb must not become a mandatory image label.
+    const coreWords = core.match(/[a-z0-9]+/g) || [];
+    const descriptive = new Set([
+        "mystery","mysterious","unknown","hidden","shocking","surprising",
+        "tragic","tragedy","story","stories","truth","facts","revealed",
+        "dramatic","terrifying","horrifying","moment","last","final",
+        "seal","sealed","sealing","watching","closeup","view","detail"
+    ]);
+    const generic = new Set([
+        "photo","image","roman","ancient","historical","history",
+        "scene","painting","illustration","mount",
+        "and","or","of","the","a","an","in","at","with","for","from",
+        "archaeological","archaeology","site","sites","remains"
+    ]);
+    const required = coreWords.filter(w => !/^[0-9]{3,4}$/.test(w) && !descriptive.has(w) && !generic.has(w));
+    if(!required.length) return false;
+    const words = new Set(metadata.match(/[a-z0-9]+/g) || []);
+    const singular = w => w.endsWith("ies") ? w.slice(0,-3)+"y" :
+        w.endsWith("es") && /(ches|shes|sses|xes|zes)$/.test(w) ? w.slice(0,-2) :
+        w.endsWith("s") && !w.endsWith("ss") ? w.slice(0,-1) : w;
+    const present = w => words.has(w) || [...words].some(other => singular(other) === singular(w));
+    // "Pompeii Secret Cabinet" must be identifiable; matching Pompeii alone is insufficient.
+    // A Pompeii victim cast is a plaster cast even when the catalog omits
+    // the material word "plaster". Require BOTH place and artifact type.
+    const pompeiiCast = required.includes("pompeii") &&
+        required.includes("plaster") && required.includes("cast") &&
+        present("pompeii") && present("cast");
+    const missing = required.filter(w => !(pompeiiCast && w === "plaster") && !present(w));
+    if(missing.length){
+        console.log("[HISTORY IMAGE DIAGNOSTIC]", JSON.stringify({
+            provider: candidate?.provider,
+            coreSubject: core,
+            required,
+            missing,
+            sourceUrl: candidate?.sourceUrl || "",
+            metadata: metadata.slice(0, 320)
+        }));
+    }
+    return missing.length === 0;
+}
+
 export async function reviewImage(
     candidate,
     scene
@@ -300,6 +352,11 @@ export async function reviewImage(
         getProviderText(
             candidate
         );
+
+    if(!historyMetadataMatches(candidate, scene)){
+        console.log(`[${candidate.provider}] Reject : History metadata mismatch`);
+        return null;
+    }
 
 
     /*
