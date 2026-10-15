@@ -226,6 +226,45 @@ function createYoutubeOwnerClient(channel) {
     });
 }
 
+const REQUIRED_UPLOAD_SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly"
+];
+
+async function preflightYoutubeOAuth(channel, name) {
+    const oauth = new google.auth.OAuth2(channel.clientId, channel.clientSecret);
+    oauth.setCredentials({ refresh_token: channel.refreshToken });
+
+    let accessToken;
+    try {
+        const result = await oauth.getAccessToken();
+        accessToken = result?.token;
+        if (!accessToken) throw new Error("access token missing");
+    } catch (error) {
+        if (/invalid_grant/i.test(String(error?.message || error))) {
+            throw new Error(`[LONGFORM AUTH] ${name}: RELOGIN_REQUIRED (invalid_grant). Upload not started.`);
+        }
+        throw error;
+    }
+
+    const tokenInfo = await oauth.getTokenInfo(accessToken);
+    const granted = new Set(tokenInfo.scopes || []);
+    const missing = REQUIRED_UPLOAD_SCOPES.filter(scope => !granted.has(scope));
+    if (missing.length) {
+        throw new Error(`[LONGFORM AUTH] ${name}: MISSING_SCOPES ${missing.join(", ")}. Upload not started; reauthorize channel.`);
+    }
+
+    const youtube = google.youtube({ version: "v3", auth: oauth });
+    const response = await youtube.channels.list({ part: ["id"], mine: true });
+    const actualId = response.data.items?.[0]?.id;
+    if (!actualId) throw new Error(`[LONGFORM AUTH] ${name}: authenticated channel not found`);
+    if (channel.channelId && /^UC[A-Za-z0-9_-]{20,}$/.test(channel.channelId) &&
+        channel.channelId !== actualId) {
+        throw new Error(`[LONGFORM AUTH] ${name}: WRONG_CHANNEL. Upload not started.`);
+    }
+    console.log(`[LONGFORM AUTH] ${name} OK`);
+}
+
 async function waitForYoutubeProcessing(
     channel,
     videoId,
@@ -437,6 +476,10 @@ export async function uploadLongform({
     );
 
 
+    // Verify both credentials before any new upload begins.
+    await preflightYoutubeOAuth(koChannel, "History");
+    await preflightYoutubeOAuth(enChannel, "EchoesAgo");
+
     let state =
         getProduction(
             productionId
@@ -493,6 +536,12 @@ export async function uploadLongform({
             id: state.ko_video_id,
             url: state.ko_url
         };
+
+        await waitForYoutubeProcessing(
+            koChannel,
+            state.ko_video_id,
+            "KO RESUME"
+        );
 
     }
     else {
@@ -578,6 +627,12 @@ export async function uploadLongform({
             id: state.en_video_id,
             url: state.en_url
         };
+
+        await waitForYoutubeProcessing(
+            enChannel,
+            state.en_video_id,
+            "EN RESUME"
+        );
 
     }
     else {
