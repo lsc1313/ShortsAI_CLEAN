@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { searchCommonsHistory } from "../providers/historyArchives.js";
+import { searchCommonsHistory, isCommonsRateLimited } from "../providers/historyArchives.js";
 import { downloadImage } from "../image/download.js";
 
 /**
@@ -40,7 +40,7 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
     // Relevance depends on the chosen subject and narration, not a global blacklist.
     const collectQuery = async ({ query, category }, limit = 3) => {
         const normalized = query.toLowerCase().trim();
-        if (!normalized || tried.has(normalized) || results.length >= maxAssets) return;
+        if (!normalized || tried.has(normalized) || results.length >= maxAssets || isCommonsRateLimited()) return;
         tried.add(normalized);
         stats.queries++;
         const candidates = await searchAll(query);
@@ -90,7 +90,7 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
     // Two assets per query on the first pass preserves coverage across distinct
     // events, physical outcomes and aftermath, instead of saturating on scenery.
     for (const item of orderedResearch) {
-        if (results.length >= maxAssets) break;
+        if (results.length >= maxAssets || isCommonsRateLimited()) break;
         await collectQuery(item, 2);
     }
     // Spend remaining slots on other results from the same queries, without
@@ -100,7 +100,7 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
     // Keep the original search terms; never synthesize a new historical claim.
     if (results.length < 3) {
         for (const item of research) {
-            if (results.length >= 3) break;
+            if (results.length >= 3 || isCommonsRateLimited()) break;
             const words = item.query.trim().split(/\s+/);
             const shorter = words.slice(0, Math.min(2, words.length)).join(" ");
             if (shorter.length >= 4 && shorter.toLowerCase() !== item.query.toLowerCase()) {
@@ -110,7 +110,8 @@ export async function collectHistoryAssets(queries, { maxAssets = 12, outputDir 
     }
     console.log("[HISTORY ASSET PREFLIGHT]", JSON.stringify({
         searched: stats.queries, downloaded: results.length, stats,
-        categories: [...new Set(results.map(a => a.category))]
+        categories: [...new Set(results.map(a => a.category))],
+        rateLimited: isCommonsRateLimited()
     }));
     return results;
 }
