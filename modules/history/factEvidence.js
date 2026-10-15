@@ -27,6 +27,37 @@ async function fetchWikiExtract(topic, lang) {
     } finally { clearTimeout(timer); }
 }
 
+
+async function fetchOpenAlexEvidence(query) {
+    const endpoint = new URL("https://api.openalex.org/works");
+    endpoint.searchParams.set("search", query);
+    endpoint.searchParams.set("per-page", "5");
+    endpoint.searchParams.set("select", "id,title,doi,abstract_inverted_index,publication_year");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    try {
+        const response = await fetch(endpoint, {
+            signal: controller.signal,
+            headers: { "User-Agent": "ShortsAI-HistoryResearch/1.0 (history evidence research)" }
+        });
+        if (!response.ok) throw new Error(`OpenAlex HTTP ${response.status}`);
+        const data = await response.json();
+        return (data.results || []).flatMap(work => {
+            const index = work.abstract_inverted_index;
+            if (!index || typeof index !== "object") return [];
+            const positions = [];
+            for (const [word, offsets] of Object.entries(index)) {
+                for (const offset of offsets) {
+                    if (Number.isInteger(offset) && offset >= 0 && offset < 10000) positions[offset] = word;
+                }
+            }
+            const excerpt = positions.map(word => word || "").join(" ").trim().slice(0, 4200);
+            if (excerpt.length < 180 || !work.title || !work.id) return [];
+            return [{ title: work.title, url: work.doi || work.id, excerpt }];
+        });
+    } finally { clearTimeout(timer); }
+}
+
 export async function collectHistoryEvidence(topic, searchQueries = []) {
     const sources = [];
     const queries = [topic, ...searchQueries.map(q => typeof q === "string" ? q : q?.query).filter(Boolean)]
@@ -49,7 +80,19 @@ export async function collectHistoryEvidence(topic, searchQueries = []) {
         }
         if (sources.length >= 2 || rateLimited) break;
     }
-    if (!sources.length) throw new Error(rateLimited ? "[HISTORY FACT QC] Wikipedia rate limited; evidence retrieval deferred" : "[HISTORY FACT QC] No independent text references found");
+    if (sources.length < 2) {
+        for (const query of queries.slice(1, 4)) {
+            try {
+                const found = await fetchOpenAlexEvidence(query);
+                sources.push(...found);
+                console.log("[HISTORY FACT OPENALEX]", JSON.stringify({query, found: found.length}));
+                if (sources.length >= 2) break;
+            } catch (error) {
+                console.log("[HISTORY FACT QC] OpenAlex unavailable:", error.message);
+            }
+        }
+    }
+    if (!sources.length) throw new Error(rateLimited ? "[HISTORY FACT QC] Reference providers unavailable or rate limited; evidence retrieval deferred" : "[HISTORY FACT QC] No independent text references found");
     return [...new Map(sources.map(source => [source.url, source])).values()].slice(0, 6);
 }
 
