@@ -582,17 +582,6 @@ Do not use a specific list of categories for every historical topic.
         "Use at least 3 unique downloaded asset IDs that meaningfully depict the chosen facts. Category labels are not a quality requirement. Return empty candidates if impossible.",
         "If a claimed mechanical damage detail or casualty count is not directly supported by text evidence, omit it rather than embellish."
     ].join("\n");
-    // Reject obvious action-versus-static-image mismatches BEFORE story/narration generation.
-    // Conservative metadata guard: cannot prove what pixels depict; final editorial QC remains mandatory.
-    function isStaticActionMismatch(candidate) {
-        const title = String(assetMap.get(candidate.assetId)?.title || "").toLowerCase();
-        const fact = String(candidate.fact || "");
-        const eruption = /분화|폭발|분출|화산재가? (?:뿜|솟)|erupt/i.test(fact);
-        const staticVolcano = /(?:mount|mt\.?|volcano|vesuvius|베수비오|화산)/i.test(title) &&
-            /(?:view|vista|landscape|panorama|scenery|from |seen from|풍경|전경|전망)/i.test(title) &&
-            !/(?:eruption|erupting|explosion|ash cloud|volcanic ash|분화|폭발|분출)/i.test(title);
-        return eruption && staticVolcano;
-    }
     const sourceUrls = new Set(factSources.map(x => x.url));
     let assetMap = new Map(archiveAssets.map(x => [x.id, x]));
     function inspectJointCandidates(value) {
@@ -608,9 +597,6 @@ Do not use a specific list of categories for every historical topic.
                 !c.sourceUrls.every(url => sourceUrls.has(url))) {
                 return { ok: false, reason: "invalid fact/image/source mapping", candidates: list };
             }
-            if (isStaticActionMismatch(c)) {
-                return { ok: false, reason: "static volcano landscape assigned to eruption action; image-first plan rejected before story generation", candidates: list };
-            }
             ids.add(c.assetId);
         }
         return { ok: true, candidates: list };
@@ -621,13 +607,7 @@ Do not use a specific list of categories for every historical topic.
         // Exactly one bounded archive recovery pass. Reuse the same researched
         // topic/queries and text evidence; never fabricate visual evidence.
         console.log("[HISTORY JOINT RECOVERY] Initial match failed:", joint.reason);
-        // Do not shorten eruption queries into static mountain landscapes.
-        // Retry selection once even if the archive has no additional assets:
-        // the initial candidate list may contain other usable illustrations.
-        const invalidIds = (joint.candidates || [])
-            .filter(c => isStaticActionMismatch(c))
-            .map(c => c.assetId);
-        // Generic recovery for ANY historical event: retain action-specific
+        // Generic recovery for ANY historical subject: retain action-specific
         // search terms from the researched plan instead of topic-specific branches.
         const recoveryQueries = plannedQueries
             .filter(q => q && typeof q.query === "string")
@@ -661,8 +641,7 @@ Do not use a specific list of categories for every historical topic.
             "Downloaded assets: " + originalInventory,
             "Downloaded assets: " + expandedInventory
         ) + "\nRECOVERY: Reassess all assets against the visible ACTION or PHYSICAL RESULT " +
-            "of each sourced fact. Reject mismatched static/background images, including " +
-            "previously rejected assetIds " + JSON.stringify(invalidIds) + ". " +
+            "of each sourced fact. Reject assets that do not meaningfully depict the narrated subject or claim. " +
             "Prioritize images of the actual event, then allow imagery from another " +
             "place or era that clearly depicts the SAME action/result as illustrative " +
             "footage. Never present illustrative imagery as authentic evidence of the " +
@@ -674,7 +653,6 @@ Do not use a specific list of categories for every historical topic.
                 id: a.id, title: a.title, category: a.category,
                 provider: a.provider, sourceUrl: a.sourceUrl
             })),
-            rejectedStaticAssetIds: invalidIds,
             returnedCandidates: Array.isArray(recoveryResponse?.candidates)
                 ? recoveryResponse.candidates.map(c => ({
                     assetId: c.assetId, fact: c.fact,
