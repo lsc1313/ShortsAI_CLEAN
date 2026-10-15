@@ -509,7 +509,7 @@ const judgeResult =
     const researchPrompt = `
 You are a historical archive research planner.
 Requested topic: ${completedTopic}
-Return ONLY JSON with {"queries":[{"query":"English archive search terms","category":"distinct evidence type"}]}.
+Return ONLY JSON with {"queries":[{"query":"English archive search terms","category":"distinct evidence type"}],"evidenceQueries":["concise English search phrase for the exact historical subject"]}.
 Provide 6 to 8 specific, searchable English queries. Each query must seek a distinct visual role or evidence item rather than alternate copies of one familiar depiction. Prioritize visual materials that directly explain the selected historical subject,
 including its people, documents, places, objects, changes, actions, or results as appropriate.
 Search for authentic subject-specific materials first and meaningful illustrative
@@ -517,7 +517,7 @@ alternatives where direct historical images are unavailable.
 Avoid repeatedly searching for the same person, artifact, or illustration under different names. Seek independently meaningful visual evidence for different verified aspects of the subject; category diversity alone is not a requirement.
 Use concise archive-index-friendly keywords rather than cinematic descriptions.
 Do not assume any item exists. Do not change the topic.
-Category names must be short lowercase English words. Avoid broad generic terms.
+Category names must be short lowercase English words. Avoid broad generic terms.\nAlso provide 2 to 3 evidenceQueries for TEXT reference research, using the exact central historical subject, not visually related neighboring topics. These are distinct from image queries.
 Do not use a specific list of categories for every historical topic.
 `;
     const researchPlan = parseJSON(await callAI(researchPrompt));
@@ -554,7 +554,7 @@ Do not use a specific list of categories for every historical topic.
     ].join("\\n");
 
     // Retrieve reference text BEFORE script generation to avoid unsupported hooks.
-    const factSources = await collectHistoryEvidence(completedTopic, plannedQueries);
+    const evidenceQueries = Array.isArray(researchPlan?.evidenceQueries) ? researchPlan.evidenceQueries.filter(q => typeof q === "string" && q.trim()).slice(0, 3) : [];\n    const factSources = await collectHistoryEvidence(completedTopic, evidenceQueries.length ? evidenceQueries : plannedQueries);
     const factGuidance = JSON.stringify(factSources.map(({ title, url, excerpt }) => ({ title, url, excerpt })));
 
     // Match sourced facts to real downloaded assets BEFORE writing narration.
@@ -564,7 +564,7 @@ Do not use a specific list of categories for every historical topic.
         "Text evidence: " + factGuidance,
         "Downloaded assets: " + JSON.stringify(rankedAssets.map(a => ({id:a.id,title:a.title,category:a.category,sourceUrl:a.sourceUrl,illustrative:!!a.illustrative}))),
         "JSON schema: {\"candidates\":[{\"assetId\":1,\"fact\":\"short Korean sourced fact\",\"sourceUrls\":[\"exact text source URL\"],\"visualReason\":\"why asset title directly depicts fact\"}]}",
-        "Every narrated historical fact must be explicitly present in text evidence. An image may illustrate the same visible action or physical result even if it depicts another subject or era; it must NOT be presented as an authentic image of the named event.",
+        "The original Topic is NON-NEGOTIABLE. Do not replace it with a related but different historical practice, event, institution, person, or era merely because sources or assets are easier to find. If the provided text evidence does not directly address the core subject, return empty candidates.",\n        "Every candidate fact must be ABOUT the original central subject, not merely a fact from a retrieved reference. Reject evidence that concerns only neighboring subjects.",\n        "Every narrated historical fact must be explicitly present in text evidence. An image may illustrate the same visible action or physical result even if it depicts another subject or era; it must NOT be presented as an authentic image of the named event.",
         "Assets are ordered by a rough metadata relevance heuristic, NOT by verified visual content. Independently assess each asset title.",
         "Do not create two adjacent candidates that merely restate the same event and date; each candidate must advance the story with a distinct verified fact.",
         "Prioritize authentic event image, then event-specific illustration, then an illustrative image showing the SAME ACTION or physical result. Reject merely thematic or atmospheric associations.",
