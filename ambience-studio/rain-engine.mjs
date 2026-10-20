@@ -24,7 +24,7 @@ export function renderRain({seconds,output,library}) {
     const delay=i===0?0:i===1?11300:28700;
     return '['+i+':a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,'+
       (delay?'adelay='+delay+'|'+delay+',':'')+
-      "volume='"+gains[i]+"*(1+0.12*sin(2*PI*t/"+periods[i]+"))':eval=frame"+
+      "volume='"+gains[i]+"*(1+0.12*sin(2*PI*if(isnan(t),0,t)/"+periods[i]+"))':eval=frame"+
       '[a'+i+']';
   });
   const fade=Math.min(3,seconds/8);
