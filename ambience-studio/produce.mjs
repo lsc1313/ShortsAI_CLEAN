@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { renderMusic } from './music-engine.mjs';
 
 const DATA = process.env.SHORTSAI_DATA_ROOT || 'D:/ShortsAI_DATA';
 const LIB = path.join(DATA, 'ambience-library', 'rain');
@@ -36,16 +37,9 @@ if (kind === 'rain') {
     '[a][b]amix=inputs=2:duration=longest:normalize=0,highpass=f=45,lowpass=f=14000,alimiter=limit=0.88,afade=t=in:st=0:d='+fade+',afade=t=out:st='+(seconds-fade)+':d='+fade+'[out]',
     '-map','[out]','-t',String(seconds),'-ar','48000','-ac','2','-c:a','pcm_s16le',output]);
 } else {
-  // Technical ambient-pad reference only; not a finished piano composition.
-  const notes = [220,261.6256,329.6276,392];
-  const args=[];
-  for (const f of notes) args.push('-f','lavfi','-i','sine=frequency='+f+':sample_rate=48000:duration='+seconds);
-  const filters=notes.map((_,i)=>'['+i+':a]volume=0.035,lowpass=f=1100[a'+i+']').join(';')+
-    ';'+notes.map((_,i)=>'[a'+i+']').join('')+
-    'amix=inputs=4:duration=longest:normalize=0,aecho=0.8:0.7:350|700:0.18|0.12,alimiter=limit=0.85,afade=t=in:st=0:d=3,afade=t=out:st='+(seconds-3)+':d=3[out]';
-  run([...args,'-filter_complex',filters,'-map','[out]','-t',String(seconds),'-ar','48000','-ac','2','-c:a','pcm_s16le',output]);
+  renderMusic({seconds,output});
 }
 if (!fs.existsSync(output) || fs.statSync(output).size < 10000) throw new Error('Output missing or too small');
-const report={kind,seconds,output,createdAt:new Date().toISOString(),status:'technical-preview',uploadAllowed:false,licenseReviewRequired:kind==='rain'};
+const report={kind,seconds,output,createdAt:new Date().toISOString(),status:'technical-preview',musicEngine:kind==='music'?'original-melodic-synth-v1':null,uploadAllowed:false,licenseReviewRequired:kind==='rain'};
 fs.writeFileSync(output+'.json',JSON.stringify(report,null,2));
 console.log('[AMBIENCE STUDIO] Preview ready:',output);
