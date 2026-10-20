@@ -271,8 +271,30 @@ function makeChapter(chapter, result) {
     const narrationEn = cleanText(result.narrationEn);
 
     const images = Array.isArray(result.images)
-        ? result.images.slice(0, 2)
+        ? result.images.slice(0, 2).map(image => {
+            if (typeof image === "string") {
+                return {
+                    query: image.trim(),
+                    purpose: "Historical documentary visual context"
+                };
+            }
+            return {
+                ...image,
+                query: typeof image?.query === "string"
+                    ? image.query.trim()
+                    : ""
+            };
+        })
         : [];
+
+    if (
+        images.length !== 2 ||
+        images.some(image => !image.query)
+    ) {
+        throw new Error(
+            `Director chapter ${chapter.number}: two valid image queries required`
+        );
+    }
 
     return {
         number: chapter.number,
