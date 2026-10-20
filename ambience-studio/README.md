@@ -10,4 +10,4 @@ Run from repository root:
 
 Output: `D:/ShortsAI_DATA/ambience-studio/output/` (override root with SHORTSAI_DATA_ROOT).
 
-The rain preview reuses the Rain V2 source library, with file matching and stereo normalization. The music preview is only a synthetic ambient pad to exercise the shared renderer; it is NOT a completed healing-piano composition. No upload or scheduler integration is performed. All previews are blocked from automatic upload. Review source licenses and audio quality before release.
+The rain preview reuses the Rain V2 source library, with file matching and stereo normalization. The music preview now uses an original deterministic C–Am–F–G chord and melody synthesizer (music-engine.mjs). It remains a synthetic prototype, NOT a finished acoustic piano recording. Listen and validate quality before release. No upload or scheduler integration is performed. All previews are blocked from automatic upload. Review source licenses and audio quality before release.
