@@ -3,7 +3,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 // Rain V3 preview: retains the Rain V2 CC0 manifest, avoids thunder for sleep use,
-// staggers layers and adds gentle, slow gain movement.
+// starts all layers immediately and adds gentle, slow gain movement.
 export function renderRain({seconds,output,library}) {
   const manifestFile=path.join(library,'manifest.json');
   if(!fs.existsSync(manifestFile)) throw new Error('Rain manifest missing: '+manifestFile);
@@ -21,9 +21,7 @@ export function renderRain({seconds,output,library}) {
   for(const s of chosen) args.push('-stream_loop','-1','-i',s.file);
   const gains=[0.48,0.22,0.10],periods=[53,79,107];
   const stages=chosen.map((s,i)=>{
-    const delay=i===0?0:i===1?11300:28700;
     return '['+i+':a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,'+
-      (delay?'adelay='+delay+'|'+delay+',':'')+
       "volume='"+gains[i]+"*(1+0.12*sin(2*PI*if(isnan(t),0,t)/"+periods[i]+"))':eval=frame"+
       '[a'+i+']';
   });
