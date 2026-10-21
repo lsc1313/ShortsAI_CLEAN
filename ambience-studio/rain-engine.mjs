@@ -30,7 +30,7 @@ export function renderRain({seconds,output,library}) {
   const fade=Math.min(3,seconds/8);
   const filters=stages.join(';')+';'+chosen.map((_,i)=>'[a'+i+']').join('')+
     'amix=inputs='+chosen.length+':duration=longest:normalize=0,'+
-    'highpass=f=45,lowpass=f=14000,alimiter=limit=0.88,'+
+    'highpass=f=45,lowpass=f=14000,volume=5.0,alimiter=limit=0.88,'+
     'afade=t=in:st=0:d='+fade+',afade=t=out:st='+(seconds-fade)+':d='+fade+'[out]';
   const result=spawnSync('ffmpeg',['-hide_banner','-nostdin','-y',...args,'-filter_complex',filters,
     '-map','[out]','-t',String(seconds),'-ar','48000','-ac','2','-c:a','pcm_s16le',output],
