@@ -31,9 +31,6 @@ for(let i=0;i<sceneCount;i++){
   }catch(e){console.warn('[VIDEO] Scene acquisition failed:',e.message);}
 }
 if(!scenes.length)throw new Error('No visual source available; video not rendered.');
-const outDir=path.join(ROOT,'video');
-fs.mkdirSync(outDir,{recursive:true});
-const out=path.join(outDir,kind+'-'+seconds+'s.mp4');
 const temp=path.join(outDir,kind+'-'+seconds+'s-scenes');
 fs.mkdirSync(temp,{recursive:true});
 const segmentLength=30;
