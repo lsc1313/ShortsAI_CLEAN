@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { evaluateCandidate } from './evaluate.mjs';
+const now = new Date();
+const candidate = { productId: 'p1', title: 'Example', seller: 'Example seller', option: '500ml x 20', sourceUrl: 'https://example.com/deal', productUrl: 'https://example.com/product', observedAt: now.toISOString(), available: true, checkoutVerified: true, couponEligible: true, price: 6900, shipping: 0 };
+const previous = [{ productId: 'p1', option: '500ml x 20', observedAt: new Date(now.getTime() - 86400000).toISOString(), payablePrice: 10000 }];
+test('rejects missing history', () => assert.ok(evaluateCandidate(candidate, []).reasons.includes('insufficient_price_history')));
+test('approves verified 31% price drop', () => assert.equal(evaluateCandidate(candidate, previous).approved, true));
+test('rejects unverified checkout', () => assert.equal(evaluateCandidate({...candidate, checkoutVerified: false}, previous).approved, false));
+test('rejects wrong option history', () => assert.equal(evaluateCandidate(candidate, [{...previous[0], option:'other'}]).approved, false));
+test('rejects price drop under threshold', () => assert.equal(evaluateCandidate({...candidate, price: 9000}, previous).approved, false));
