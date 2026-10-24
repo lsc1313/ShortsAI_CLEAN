@@ -1,0 +1,25 @@
+name: Real Hotdeal Tests
+on:
+  push:
+    branches:
+      - feat/real-hotdeal-discovery-v1
+    paths:
+      - 'real_hotdeal/**'
+      - '.github/workflows/real-hotdeal-tests.yml'
+  pull_request:
+    paths:
+      - 'real_hotdeal/**'
+      - '.github/workflows/real-hotdeal-tests.yml'
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run isolated tests
+        run: node --test real_hotdeal/*.test.mjs
