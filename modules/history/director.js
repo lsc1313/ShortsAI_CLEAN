@@ -1,5 +1,7 @@
+import { collectHistoryEvidence } from "./factEvidence.js";
 import { callAI } from "../ai/index.js";
 import { getRecentDuplicates } from "../services/duplicateService.js";
+import { collectHistoryAssets } from "./assetPreflight.js";
 
 /*
 =====================================================
@@ -35,7 +37,7 @@ const COMMON_PROMPT = `
 
 주어진 키워드와 중복 콘텐츠를 이해하고,
 역사적으로 사실에 맞는 새로운 주제를 스스로 판단한다.
-45~60초 길이의 영상으로 제작한다.
+영상 길이는 내용에 맞춰 25~60초 범위에서 유연하게 결정한다. 짧게 만들기 위해 핵심 설명을 삭제하지 않는다.
 
 주제가 결정되면
 그 주제를 Shorts로 어떻게 전달하는 것이 가장 좋은지
@@ -57,6 +59,16 @@ Ending의 형태와 연출은
 
 사실을 만들어내지 않는다.
 확실하지 않은 역사적 세부사항은 단정하지 않는다.
+
+[역사적 사실 안전 규칙]
+- 역사 기록이 없는 인물의 심리, 군중의 행동, 종교 의식, 축제, 대화, 목격 장면을 상상해서 사실처럼 말하지 않는다.
+- '모두', '아무도', '도망치지 않았다', '기뻐했다', '축제를 준비했다', '감상했다', '몰라서 멸망했다'처럼 집단 전체의 생각이나 행동을 단정하지 않는다.
+- 역사적 사실과 해석·가설을 분리한다. 확인되지 않은 인과관계를 제목이나 결말에 넣지 않는다.
+- 언어·문화에 특정 단어가 없었다는 주장은 해당 시대 문헌 근거가 확실하지 않으면 사용하지 않는다.
+- 확인할 수 없는 극적인 일화 대신 발굴 유물, 동시대 기록, 확인된 사건 순서로 흥미를 만든다.
+- 장면별로 검증 가능한 역사적 주장만 쓰고, 검증 근거가 불분명한 주장은 삭제하거나 신중하게 표현한다.
+- AI가 만든 검색어 또는 이미지가 사실의 증거가 되지는 않는다.
+
 
 Director가 결정해야 하는 것은
 주제,
@@ -181,6 +193,11 @@ Manager가 전달한 키워드를 그대로 제목으로 사용하지 않는다.
 키워드의 의미를 이해하고,
 그 안에서 만들 수 있는 콘텐츠를 스스로 생각한다.
 
+입력 키워드: {{TOPIC}}
+
+최근 7일 콘텐츠 목록:
+{{DUPLICATE_TOPICS}}
+
 최근 7일 콘텐츠 목록과 비교하여
 문자열이 아니라 의미와 핵심 내용이 같은지를 판단한다.
 
@@ -194,7 +211,7 @@ Director가 스스로 판단한다.
 
 GLOBAL은 하나의 주제나 사건을 중심으로 전개할 수 있다.
 
-RANKING은 여러 대상을 비교하는 것이 실제 콘텐츠에 더 적합할 때 선택한다.
+RANKING은 여러 대상을 동일한 객관적 기준으로 비교할 수 있고 각 항목의 이유를 충분히 설명할 수 있을 때만 선택한다. 그렇지 않으면 GLOBAL을 선택한다.
 
 형식과 주제의 구체적인 내용은
 키워드와 중복 목록을 이해한 뒤 스스로 결정한다.
@@ -235,11 +252,22 @@ const GLOBAL_PROMPT = `
 imageQueries는 해당 Scene을 실제 이미지 또는 영상 검색으로
 확보할 수 있는 구체적인 영어 검색어로 작성한다.
 
+[역사 아카이브 자료 중심 장면 설계]
+- coreSubject는 대본에 등장하는 전체 사건의 재현 문장이 아니라, 실제 박물관·위키미디어 아카이브에서 검색 가능한 단일 시각 자료의 대상명으로 지정한다.
+- 특정 사건의 실제 기록 사진이 존재하지 않는 경우, 시대를 설명하는 유물·부조·지도·후대 삽화를 사용하되 그것을 사건 당시의 실제 장면이나 직접 증거라고 설명하지 않는다.
+- coreSubject에 towards, watching, sailing, erupting 등 동작이나 연출 문구, "79 AD"처럼 장면 설명용 연도를 덧붙이지 않는다. 이런 내용은 direction에만 작성한다.
+- 역사적 대상과 무관한 일반 풍경·동전·다른 시대 선박·인물 초상은 검색 대체재로 사용하지 않는다.
+- 자료 검색 가능성을 이유로 사실과 대본 내용을 변경하지 않는다.
+- CT·X-ray·MRI·DNA 분석·현미경·복원 영상처럼 특정 연구 결과 자체를 요구하는 coreSubject는 공개 아카이브에 실제로 해당 자료가 있을 때만 사용한다.
+- 이 경우 대본에서 CT 연구 사실을 언급할 수는 있지만, direction에서 유물 사진은 CT 촬영 결과가 아니라 관련 유물의 참고 화면임을 분명히 한다. 유물 사진을 CT 영상·내부 구조·검사 결과처럼 연출하거나 자막으로 주장하지 않는다.
+- 단, 해당 Scene의 주된 정보가 CT 이미지의 구체적인 판독 결과이고 이를 보여줄 근거 자료가 없다면 다른 검증 가능한 사실 중심으로 Scene을 다시 구성한다. 연구 결과나 사실을 임의로 만들어내지 않는다.
+
+
 같은 의미의 검색어를 반복하지 않는다.
 
 역사적 사실과 시대적 맥락을 정확하게 유지한다.
 
-25~40초 범위에서 주제에 맞는 적절한 영상 흐름을 만든다.
+25~60초 범위에서 주제에 맞는 적절한 영상 흐름을 만든다. 제목이 제기한 의문에 영상 안에서 구체적으로 답하고, 원인·과정·결과 중 주제에 필요한 설명을 빠뜨리지 않는다. 이름과 연도만 나열하지 않는다.
 
 JSON 외에는 출력하지 않는다.
 
@@ -280,12 +308,13 @@ Ending은
 
 imageQueries는 각 Scene의 핵심 내용을 실제 이미지 또는 영상으로
 찾을 수 있는 구체적인 영어 검색어로 작성한다.
+coreSubject는 전체 사건을 묘사하는 문장이 아니라 실제 역사 아카이브에서 찾을 수 있는 유물·인물 초상·지도·회화 등의 단일 시각 대상명으로 작성한다. 연도·행동·감정·연출은 coreSubject에 섞지 않는다.
 
 같은 의미의 검색어를 반복하지 않는다.
 
 역사적 사실과 시대적 맥락을 정확하게 유지한다.
 
-35~40초 범위에서 주제에 맞는 적절한 영상 흐름을 만든다.
+25~60초 범위에서 주제에 맞는 적절한 영상 흐름을 만든다. 각 순위 항목에는 반드시 구체적인 근거 또는 이유를 설명하는 문장을 넣는다. 순위의 비교 기준을 명시하며, 기준이 불분명하면 억지로 순위를 만들지 않고 global 형식을 선택할 수 있도록 주제 선정 단계에서 판단한다. 시간 부족 시 순위 항목 수를 줄여 설명의 완결성을 우선한다.
 
 JSON 외에는 출력하지 않는다.
 
@@ -450,11 +479,8 @@ const judgeResult =
 
 
     const completedTopic =
-        String(
-            judge?.completedTopic ||
-            topic ||
-            ""
-        ).trim();
+        String(topic || judge?.completedTopic || "").trim();
+    // An explicitly requested History topic must not be replaced by a different story.
 
 
     console.log(
@@ -479,6 +505,205 @@ const judgeResult =
             : GLOBAL_PROMPT;
 
 
+    // Topic-agnostic research planner: search distinct evidence types before writing.
+    const researchPrompt = `
+You are a historical archive research planner.
+Requested topic: ${completedTopic}
+Return ONLY JSON with {"queries":[{"query":"English archive search terms","category":"distinct evidence type"}],"evidenceQueries":["concise English search phrase for the exact historical subject"]}.
+Provide 6 to 8 specific, searchable English queries. Each query must seek a distinct visual role or evidence item rather than alternate copies of one familiar depiction. Prioritize visual materials that directly explain the selected historical subject,
+including its people, documents, places, objects, changes, actions, or results as appropriate.
+Search for authentic subject-specific materials first and meaningful illustrative
+alternatives where direct historical images are unavailable.
+Avoid repeatedly searching for the same person, artifact, or illustration under different names. Seek independently meaningful visual evidence for different verified aspects of the subject; category diversity alone is not a requirement.
+Use concise archive-index-friendly keywords rather than cinematic descriptions.
+Do not assume any item exists. Do not change the topic.
+Category names must be short lowercase English words. Avoid broad generic terms.\nAlso provide 2 to 3 evidenceQueries for TEXT reference research, using the exact central historical subject, not visually related neighboring topics. These are distinct from image queries.
+Do not use a specific list of categories for every historical topic.
+`;
+    const researchPlan = parseJSON(await callAI(researchPrompt));
+    const plannedQueries = Array.isArray(researchPlan?.queries) ? researchPlan.queries : [];
+    let archiveAssets = await collectHistoryAssets(plannedQueries);
+    if (archiveAssets.length < 3) {
+        throw new Error("[HISTORY ASSET PREFLIGHT] Fewer than 3 downloaded assets");
+    }
+    // Rank subject relevance without penalizing entire evidence formats. Keep the full
+    // downloaded pool: editorial selection still decides what matches narration.
+    const topicTokens = completedTopic.toLowerCase().match(/[a-z0-9]{3,}|[가-힣]{2,}/g) || [];
+    let rankedAssets = [...archiveAssets].sort((a, b) => {
+        const score = asset => {
+            const label = String(asset.title || "").toLowerCase();
+            const query = String(asset.query || "").toLowerCase();
+            const overlap = topicTokens.filter(token => label.includes(token)).length;
+            const named = topicTokens.some(token => query.includes(token));
+            const category = String(asset.category || "").toLowerCase();
+            return overlap * 20 + (named ? 8 : 0);
+        };
+        return score(b) - score(a) || a.id - b.id;
+    });
+    const archiveGuidance = [
+        "The following archive assets have ALREADY BEEN DOWNLOADED.",
+        "Every scene MUST select exactly one assetId (integer) from this list.",
+        "Choose scenes that can truthfully be illustrated by these actual assets.",
+        "Keep the EXACT requested historical event as the central story. Do not pivot to a later legend, tourist anecdote or unrelated artifact merely because its image is available.",
+        "Do not invent assets or describe an asset as a photo of an event it does not show.",
+        "Use at most one scene per assetId. The scene narration must match the selected artifact/site.",
+        "Prefer historically authentic images; when unavailable, a clearly relevant depiction of the SAME ACTION or PHYSICAL RESULT is acceptable as an illustrative example, never as claimed original evidence.",
+        "Images are not historical fact verification. Do not invent facts.",
+        JSON.stringify(rankedAssets.map(({ id, title, category, provider, sourceUrl, license }) =>
+            ({ id, title, category, provider, sourceUrl, license })))
+    ].join("\\n");
+
+    // Retrieve reference text BEFORE script generation to avoid unsupported hooks.
+    const evidenceQueries = Array.isArray(researchPlan?.evidenceQueries) ? researchPlan.evidenceQueries.filter(q => typeof q === "string" && q.trim()).slice(0, 3) : [];\n    const factSources = await collectHistoryEvidence(completedTopic, evidenceQueries.length ? evidenceQueries : plannedQueries);
+    const factGuidance = JSON.stringify(factSources.map(({ title, url, excerpt }) => ({ title, url, excerpt })));
+
+    // Match sourced facts to real downloaded assets BEFORE writing narration.
+    const candidatePrompt = [
+        "Plan 3 to 8 historical video scene candidates. Return JSON only. Prefer 4-6 when available evidence supports distinct narrative beats; never pad with unrelated imagery.",
+        "Topic: " + completedTopic,
+        "Text evidence: " + factGuidance,
+        "Downloaded assets: " + JSON.stringify(rankedAssets.map(a => ({id:a.id,title:a.title,category:a.category,sourceUrl:a.sourceUrl,illustrative:!!a.illustrative}))),
+        "JSON schema: {\"candidates\":[{\"assetId\":1,\"fact\":\"short Korean sourced fact\",\"sourceUrls\":[\"exact text source URL\"],\"visualReason\":\"why asset title directly depicts fact\"}]}",
+        "The original Topic is NON-NEGOTIABLE. Do not replace it with a related but different historical practice, event, institution, person, or era merely because sources or assets are easier to find. If the provided text evidence does not directly address the core subject, return empty candidates.",\n        "Every candidate fact must be ABOUT the original central subject, not merely a fact from a retrieved reference. Reject evidence that concerns only neighboring subjects.",\n        "Every narrated historical fact must be explicitly present in text evidence. An image may illustrate the same visible action or physical result even if it depicts another subject or era; it must NOT be presented as an authentic image of the named event.",
+        "Assets are ordered by a rough metadata relevance heuristic, NOT by verified visual content. Independently assess each asset title.",
+        "Do not create two adjacent candidates that merely restate the same event and date; each candidate must advance the story with a distinct verified fact.",
+        "Prioritize authentic event image, then event-specific illustration, then an illustrative image showing the SAME ACTION or physical result. Reject merely thematic or atmospheric associations.",
+        "Do not count alternate reproductions, crops, translations, or depictions of the same artifact as separate meaningful visual beats. Distinct file IDs do not establish distinct scene coverage.",
+        "Images from other incidents may illustrate the SAME visible action or physical result, but must never be described as authentic documentary evidence of the requested incident.",
+        "When using a generic analogous scene, keep the historical fact grounded in text and label the visual as illustrative, not an authentic record.",
+        "The visual must depict the specific action, state, subject, or result narrated; merely sharing a keyword or broad theme is insufficient.",
+        "Do not infer from pictures or invent dates, causes, actions, superlatives or quotes.",
+        "Stock-provider assets marked illustrative are modern illustrative images, never historical primary sources. Only match them to visually supported actions or physical states; never use them as evidence of a specific historical person or event.",
+        "Exclude unrelated generic rooms, landscapes, institutions or misleading reenactments.",
+        "Use at least 3 unique downloaded asset IDs that meaningfully depict the chosen facts. Category labels are not a quality requirement. Return empty candidates if impossible.",
+        "If a claimed mechanical damage detail or casualty count is not directly supported by text evidence, omit it rather than embellish."
+    ].join("\n");
+    const sourceUrls = new Set(factSources.map(x => x.url));
+    let assetMap = new Map(archiveAssets.map(x => [x.id, x]));
+    function inspectJointCandidates(value) {
+        const list = value?.candidates;
+        if (!Array.isArray(list) || list.length < 3 || list.length > 8) {
+            return { ok: false, reason: "need 3-8 matched candidates", candidates: list || [] };
+        }
+        const ids = new Set();
+        for (const c of list) {
+            if (!Number.isInteger(c.assetId) || !assetMap.has(c.assetId) || ids.has(c.assetId) ||
+                !String(c.fact || "").trim() || !String(c.visualReason || "").trim() ||
+                !Array.isArray(c.sourceUrls) || !c.sourceUrls.length ||
+                !c.sourceUrls.every(url => sourceUrls.has(url))) {
+                return { ok: false, reason: "invalid fact/image/source mapping", candidates: list };
+            }
+            ids.add(c.assetId);
+        }
+        return { ok: true, candidates: list };
+    }
+    // One selection pass only: no extra Gemini retry to satisfy arbitrary category counts.
+    let joint = inspectJointCandidates(parseJSON(await callAI(candidatePrompt)));
+    if (!joint.ok) {
+        // Exactly one bounded archive recovery pass. Reuse the same researched
+        // topic/queries and text evidence; never fabricate visual evidence.
+        console.log("[HISTORY JOINT RECOVERY] Initial match failed:", joint.reason);
+        // Generic recovery for ANY historical subject.
+        const recoveryQueries = plannedQueries
+            .filter(q => q && typeof q.query === "string")
+            .flatMap(q => {
+                const words = q.query.trim().split(/\s+/).filter(Boolean);
+                return [
+                    { query: words.slice(0, 4).join(" "), category: q.category || "event" },
+                    { query: words.slice(0, 3).join(" "), category: q.category || "event" }
+                ];
+            })
+            .filter(q => q.query.length >= 4);
+        const original = new Set(plannedQueries.map(q => String(q.query || "").toLowerCase().trim()));
+        const extra = [...new Map(recoveryQueries
+            .filter(q => !original.has(q.query.toLowerCase()))
+            .map(q => [q.query.toLowerCase(), q])).values()].slice(0, 8);
+        const previousCount = archiveAssets.length;
+        if (extra.length) {
+            const expanded = await collectHistoryAssets(extra, {
+                maxAssets: 20, existingAssets: archiveAssets
+            });
+            if (expanded.length > archiveAssets.length) archiveAssets = expanded;
+        }
+        assetMap = new Map(archiveAssets.map(a => [a.id, a]));
+        rankedAssets = [...archiveAssets];
+        const originalInventory = candidatePrompt
+            .split("Downloaded assets: ")[1].split("\n")[0];
+        const expandedInventory = JSON.stringify(rankedAssets.map(a => ({
+            id: a.id, title: a.title, category: a.category, sourceUrl: a.sourceUrl, illustrative: !!a.illustrative
+        })));
+        const recoveryPrompt = candidatePrompt.replace(
+            "Downloaded assets: " + originalInventory,
+            "Downloaded assets: " + expandedInventory
+        ) + "\nRECOVERY: Reassess all assets against the visible ACTION or PHYSICAL RESULT " +
+            "of each sourced fact. Reject assets that do not meaningfully depict the narrated subject or claim. " +
+            "Prioritize images of the actual event, then allow imagery from another " +
+            "place or era that clearly depicts the SAME action/result as illustrative " +
+            "footage. Never present illustrative imagery as authentic evidence of the " +
+            "named historical event. Keep the original topic and sourced facts. " +
+            "If fewer than 3 distinct grounded matches exist, return empty candidates.";
+        // No new evidence and no grounded candidates: a second model call cannot
+        // create a distinct visual scene from an unchanged inventory.
+        if (archiveAssets.length === previousCount && !(joint.candidates || []).length) {
+            throw new Error("[HISTORY VISUAL COVERAGE] No distinct grounded scenes; archive recovery added no assets. Skip this topic without repeating the same model request.");
+        }
+        const recoveryResponse = parseJSON(await callAI(recoveryPrompt));
+        console.log("[HISTORY JOINT RECOVERY DIAGNOSTIC]", JSON.stringify({
+            availableAssets: archiveAssets.map(a => ({
+                id: a.id, title: a.title, category: a.category,
+                provider: a.provider, sourceUrl: a.sourceUrl
+            })),
+            returnedCandidates: Array.isArray(recoveryResponse?.candidates)
+                ? recoveryResponse.candidates.map(c => ({
+                    assetId: c.assetId, fact: c.fact,
+                    visualReason: c.visualReason, sourceUrls: c.sourceUrls
+                })) : null,
+            responseKeys: recoveryResponse && typeof recoveryResponse === "object"
+                ? Object.keys(recoveryResponse) : []
+        }));
+        joint = inspectJointCandidates(recoveryResponse);
+        console.log("[HISTORY JOINT RECOVERY]", JSON.stringify({
+            addedAssets: archiveAssets.length - previousCount,
+            matched: joint.ok ? joint.candidates.length : 0,
+            reason: joint.reason || "ok"
+        }));
+    }
+    if (!joint.ok) {
+        throw new Error("[HISTORY JOINT PLAN] " + joint.reason +
+            "; selected=" + JSON.stringify((joint.candidates || []).map(c => c.assetId)));
+    }
+    const candidates = joint.candidates;
+    const candidateIds = new Set(candidates.map(c => c.assetId));
+    console.log("[HISTORY JOINT PLAN] Matched candidates:", candidates.length);
+    // Plan story order using ONLY candidates that already have both sourced facts and downloaded images.
+    // Never introduce a new historical claim or substitute an unrelated image to fill the ending.
+    const storyPrompt = [
+        "You are the story-structure editor for a history short. Do NOT write narration.",
+        "Requested topic: " + completedTopic,
+        "Grounded scene candidates: " + JSON.stringify(candidates),
+        "Choose at least 3 candidates, using unique assetIds, and return them in playback order. Prefer 4-6 concise beats when genuinely supported; do not force extra scenes.",
+        "Each beat should contribute one distinct sourced idea or development; do not combine unrelated claims in one scene.",
+        "Before choosing candidates, identify the central historical subject or question requested by the topic.",
+        "Require sourced candidates that directly explain the central historical subject, not merely adjacent background.",
+        "If the central subject cannot be explained from grounded candidates, return empty assetIds. Do not change the topic to match available pictures.",
+        "The requested historical subject must be substantively explained, not just named.",
+        "Use a coherent chronological progression; an opening flash-forward is allowed ONLY if the next scene explicitly bridges back in time.",
+        "The last candidate MUST provide a meaningful conclusion about the requested subject, not a return to earlier construction/background.",
+        "End with a grounded conclusion appropriate to the subject; do not invent a lesson, outcome, or consequence to force a dramatic ending.",
+        "Never invent additional facts, visual assets, or event outcomes. If the available candidates cannot form a complete story, return an empty assetIds array.",
+        'Return ONLY JSON: {"assetIds":[1,2,3],"reason":"brief story arc explanation"}'
+    ].join("\\n");
+    const storyPlan = parseJSON(await callAI(storyPrompt));
+    const storyIds = storyPlan?.assetIds;
+    if (!Array.isArray(storyIds) || storyIds.length < 3 ||
+        new Set(storyIds).size !== storyIds.length ||
+        !storyIds.every(id => candidateIds.has(id))) {
+        throw new Error("[HISTORY STORY PLAN] No coherent story from verified fact-and-image candidates");
+    }
+    console.log("[HISTORY STORY PLAN] Ordered grounded assets:", storyIds.join(", "));
+    const candidateGuidance = JSON.stringify(candidates);
+    const candidateById = new Map(candidates.map(c => [c.assetId, c]));
+
     const finalPrompt = `
 
 ${COMMON_PROMPT}
@@ -500,31 +725,67 @@ Director Completed Topic:
 
 ${completedTopic}
 
+=====================================================
+ARCHIVE PREFLIGHT (VISUAL EVIDENCE ONLY)
+=====================================================
+${archiveGuidance}
+
+=====================================================
+HISTORICAL TEXT EVIDENCE (REQUIRED)
+=====================================================
+${factGuidance}
+
+MANDATORY FACT-AND-IMAGE MATCHED SCENE CANDIDATES:
+${candidateGuidance}
+
+MANDATORY STORY ORDER (assetIds in playback order): ${JSON.stringify(storyIds)}
+Use exactly these assetIds in this exact order. Do not add or omit scenes.
+The narration MUST describe the central event itself in at least one scene; do not jump from departure directly to aftermath.
+The title MUST accurately describe the user's requested topic, not switch focus to background design or construction.
+Do not narrate the aftermath or death toll before showing and explaining the central event, unless a deliberate flash-forward is explicitly signposted and then resolved.\nIf supported by both textual evidence and a relevant asset, finish with a concrete documented consequence rather than casualty numbers alone. Never fabricate a policy change or force an unrelated visual.\nThe final scene must conclude the requested historical event, not end with
+its construction or earlier background. Keep a coherent narrative timeline.
+
+Select scenes ONLY from these candidates. Each scene must use the matching
+assetId and state ONLY its explicitly sourced historical fact, without adding
+new claims. Build a non-repetitive coherent story from the candidates.
+If impossible, output empty scenes and allow preflight to fail.
+
+Do not invent precise structural damage, casualty counts, survivor totals or treaty dates. Use such details only when explicitly verified by the supplied text evidence.\nEvery factual claim in every scene must be directly supported by the historical
+text evidence above. Avoid unsupported slogans, invented lists, quotations,
+dramatic metaphors that imply specific facts, and unverified numbers.
+If an attention-grabbing hook cannot be supported, use a factual hook instead.
+Never claim the images themselves prove historical facts.
 
 선택된 콘텐츠 형식:
 
 ${format}
 
 
-위 정보를 바탕으로 최종 Shorts Director 결과를 만든다.
+위 정보를 바탕으로 최종 Shorts Director 결과를 만든다.\n사용자가 지정한 주제 \"${topic}\"의 중심 사건을 반드시 설명한다. 이미지가 다른 이야기를 유도하더라도 주제를 바꾸지 않는다. 주제에 맞는 자료가 없으면 사실을 꾸미지 말고 제작이 실패하도록 한다.
 
 중요:
 
 completedTopic을 그대로 반복하는 것이 아니라
 실제 영상에서 사용할 수 있도록 대본과 장면을 구성한다.
 
-모든 Scene에는 필수 필드를 빠짐없이 넣는다.
+모든 Scene에는 필수 필드를 빠짐없이 넣는다.\n모든 Scene에는 위 다운로드된 이미지 목록 중 하나의 정수 assetId를 반드시 넣는다. 목록에 없는 assetId를 생성하지 않는다.
+
+출력 JSON의 work_instructions.scenes 배열에 있는 모든 Scene은 imageQueries를
+반드시 문자열 2~3개로 구성된 배열로 출력한다. 빈 배열, null, 필드 생략 금지.
+imageQueries는 direction이나 imageQuery가 아니라 정확히 imageQueries 필드여야 한다.
+coreSubject는 장면의 실제 시각 대상명, imageQueries는 해당 대상을 찾을 수 있는 검색어로 작성한다.
+이미지 자료를 찾기 어려우면 그 Scene을 실제 검색 가능한 역사 자료 중심으로 다시 설계한다.
+검증되지 않은 검색어를 자동 생성해서 오류를 숨기지 않는다.
 
 특히 모든 Scene에는 반드시
 coreSubject를 포함한다.
 
-모든 imageQueries에는
-해당 Scene의 coreSubject가 반드시 포함되어야 한다.
+모든 imageQueries는 해당 Scene의 coreSubject가 가리키는 실제 역사 자료를 찾는 영어 검색어로 작성한다. 핵심 대상명 또는 통용되는 동의어를 포함하되 전체 사건을 한 장의 그림으로 요구하지 않는다.
 
 coreSubject가 없거나
 imageQueries가 비어 있는 Scene을 만들지 않는다.
 
-조건을 만족하지 못하는 Scene은
+각 Scene의 tts에는 시청자가 실제로 얻을 수 있는 사실 또는 명확한 질문과 답을 포함한다. 영상 전체에서 제목이 약속한 정보를 반드시 제공한다. 장면과 무관한 풍경 영상이나 범용 스톡 영상을 imageQueries로 요청하지 않는다.\n\n조건을 만족하지 못하는 Scene은
 임의로 수정하지 않고 실패 가능한 결과로 만든다.
 
 JSON 외에는 절대 출력하지 않는다.
@@ -561,6 +822,35 @@ JSON 외에는 절대 출력하지 않는다.
         );
 
 
+    // Fail closed: do not silently search unrelated images after Director output.
+    const selectedIds = new Set();
+    const assetById = new Map(archiveAssets.map(asset => [asset.id, asset]));
+    const proposedScenes = director?.work_instructions?.scenes ||
+        director?.director_analysis?.work_instructions?.scenes || [];
+    if (!Array.isArray(proposedScenes) || proposedScenes.length < 3 ||
+        proposedScenes.length > archiveAssets.length) {
+        throw new Error("[HISTORY ASSET PLAN] Invalid scene count for downloaded assets");
+    }
+    for (const [index, scene] of proposedScenes.entries()) {
+        const id = scene.assetId;
+        const asset = assetById.get(id);
+        if (!Number.isInteger(id) || !asset || !candidateById.has(id) || selectedIds.has(id)) {
+            throw new Error(`[HISTORY ASSET PLAN] Scene ${index + 1} has missing, duplicate or ungrounded assetId`);
+        }
+        selectedIds.add(id);
+        scene.groundedFact = candidateById.get(id).fact;
+        scene.groundedFactReferences = candidateById.get(id).sourceUrls;
+        scene.preflightAsset = {
+            file: asset.file, provider: asset.provider, sourceUrl: asset.sourceUrl,
+            license: asset.license, title: asset.title, category: asset.category
+        };
+    }
+
+    if (proposedScenes.length !== storyIds.length ||
+        proposedScenes.some((scene, index) => scene.assetId !== storyIds[index])) {
+        throw new Error("[HISTORY STORY PLAN] Director deviated from pre-approved story order");
+    }
+
     /*
     =================================================
     4.
@@ -582,6 +872,8 @@ JSON 외에는 절대 출력하지 않는다.
     director.format =
         format;
 
+
+    director.factSources = factSources;
 
     director.scenes =
         director

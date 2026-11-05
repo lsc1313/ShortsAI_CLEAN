@@ -6,6 +6,9 @@ import {
 } from "./modelLoader.js";
 
 
+const modelCooldowns = new Map();
+const requestCounts = new Map();
+
 function sleep(ms) {
     return new Promise(
         resolve => setTimeout(resolve, ms)
@@ -151,6 +154,8 @@ async function runGemini(
         );
 
     const preferred = [
+        "gemini-3.1-flash-lite",
+        "gemini-3.5-flash-lite",
         "gemini-3.6-flash",
         "gemini-3.5-flash",
         "gemini-3-flash-preview",
@@ -186,6 +191,7 @@ async function runGemini(
                 )
         )
     ]
+    .filter(model => (modelCooldowns.get(model) || 0) <= Date.now())
     .slice(0, 6);
 
     let lastErrorInfo = null;
@@ -248,6 +254,8 @@ async function runGemini(
                     ];
                 }
 
+                requestCounts.set(model, (requestCounts.get(model) || 0) + 1);
+                console.log(`[Gemini usage] ${model} requests_this_process=${requestCounts.get(model)}`);
                 const res =
                     await axios.post(
                         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -372,9 +380,12 @@ async function runGemini(
                     status === 429
                 ) {
 
-                    console.log(
-                        `[Gemini quota/rate limit] ${model} HTTP 429 -> next model`
-                    );
+                    const retryHint = message.match(/Please retry in\s+(\d+)h(\d+)m([\d.]+)s/i);
+                    const cooldownMs = retryHint
+                        ? ((Number(retryHint[1]) * 3600 + Number(retryHint[2]) * 60 + Number(retryHint[3])) * 1000)
+                        : 60000;
+                    modelCooldowns.set(model, Date.now() + Math.max(60000, cooldownMs));
+                    console.log(`[Gemini quota/rate limit] ${model} HTTP 429 cooldown=${Math.ceil(cooldownMs / 60000)}m -> next model`);
 
                     break;
                 }
