@@ -34,7 +34,8 @@ const authUrl = oauth.generateAuthUrl({
     prompt: "consent",
     include_granted_scopes: true,
     scope: [
-        "https://www.googleapis.com/auth/youtube.upload"
+        "https://www.googleapis.com/auth/youtube.upload",
+        "https://www.googleapis.com/auth/youtube.readonly"
     ]
 });
 
@@ -68,7 +69,27 @@ const server = http.createServer(async (req, res) => {
             refresh_token: tokens.refresh_token
         });
 
-        await oauth.getAccessToken();
+        const access = await oauth.getAccessToken();
+        const tokenInfo = await oauth.getTokenInfo(access.token);
+        const granted = new Set(tokenInfo.scopes || []);
+        for (const required of [
+            "https://www.googleapis.com/auth/youtube.upload",
+            "https://www.googleapis.com/auth/youtube.readonly"
+        ]) {
+            if (!granted.has(required)) {
+                throw new Error("Missing required OAuth scope: " + required);
+            }
+        }
+        const youtube = google.youtube({ version: "v3", auth: oauth });
+        const owner = await youtube.channels.list({ part: ["id"], mine: true });
+        const authenticatedChannelId = owner.data.items?.[0]?.id;
+        if (!authenticatedChannelId) {
+            throw new Error("Authenticated YouTube channel not found");
+        }
+        if (channel.channelId && /^UC[A-Za-z0-9_-]{20,}$/.test(channel.channelId) &&
+            channel.channelId !== authenticatedChannelId) {
+            throw new Error("Wrong YouTube channel selected for EchoesAgo");
+        }
 
         console.log("");
         console.log("TOKEN VERIFIED");

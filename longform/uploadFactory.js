@@ -342,6 +342,42 @@ EN -> EchoesAgo
 =====================================================
 */
 
+
+/*
+ * Check the stored EchoesAgo credential before trying to send a large video.
+ * A rejected refresh token cannot be fixed by retrying video upload.
+ * Never log client secrets, refresh tokens or access tokens.
+ */
+async function assertEnglishUploadAuth(channel) {
+    const oauth = new google.auth.OAuth2(channel.clientId, channel.clientSecret);
+    oauth.setCredentials({ refresh_token: channel.refreshToken });
+    try {
+        const refreshed = await oauth.getAccessToken();
+        if (!refreshed?.token) throw new Error("empty_access_token");
+        const youtube = google.youtube({ version: "v3", auth: oauth });
+        const identity = await youtube.channels.list({ part: ["id"], mine: true });
+        const channelId = identity.data.items?.[0]?.id;
+        if (!channelId) {
+            throw new Error("authenticated_channel_not_found");
+        }
+        if (channel.channelId && channel.channelId.startsWith("UC") &&
+            channel.channelId !== channelId) {
+            throw new Error("wrong_channel");
+        }
+        console.log("[LONGFORM AUTH] EchoesAgo credential OK");
+    } catch (error) {
+        const message = String(error?.message || "");
+        if (/invalid_grant/i.test(message)) {
+            throw new Error("[LONGFORM AUTH] EchoesAgo AUTH_REQUIRED (invalid_grant): existing English video retained; upload not started");
+        }
+        if (/wrong_channel/i.test(message)) {
+            throw new Error("[LONGFORM AUTH] EchoesAgo WRONG_CHANNEL: upload not started");
+        }
+        // Retain the original error type but avoid accidentally logging tokens.
+        throw new Error("[LONGFORM AUTH] EchoesAgo preflight failed: " + (error?.response?.status || error?.code || message.slice(0, 160)));
+    }
+}
+
 export async function uploadLongform({
     productionId,
     topic = "",
@@ -581,6 +617,8 @@ export async function uploadLongform({
 
     }
     else {
+
+        await assertEnglishUploadAuth(enChannel);
 
         console.log(
             "[LONGFORM UPLOAD] EN -> EchoesAgo"
