@@ -753,6 +753,90 @@ function validateHistorySceneSafety(
 }
 
 
+    /*
+    =================================================
+    SINGLE BOUNDED IMAGE QUERY REPAIR
+    =================================================
+
+    When the model omits imageQueries, ask it for ONLY
+    the missing search queries once. Preserve the original
+    script, scene order, factual claims and all other fields.
+    Never fabricate fallback historical visuals in code.
+    */
+
+    const missingImageQueryIndexes = director.scenes
+        .map((scene, index) => ({ scene, index }))
+        .filter(({ scene }) =>
+            !Array.isArray(scene?.imageQueries) ||
+            !scene.imageQueries.some(query =>
+                typeof query === "string" && query.trim()
+            )
+        )
+        .map(({ index }) => index);
+
+    if (missingImageQueryIndexes.length) {
+        console.log(
+            "[HISTORY DIRECTOR] REPAIR EMPTY IMAGE QUERIES : " +
+            missingImageQueryIndexes.map(index => index + 1).join(", ")
+        );
+
+        const repairPrompt = [
+            "You are repairing omitted image search terms in an existing history video plan.",
+            "Return ONLY JSON with this exact shape:",
+            '{"repairs":[{"sceneIndex":0,"imageQueries":["English archive search phrase 1","English archive search phrase 2"]}]}',
+            "sceneIndex is zero-based. Return exactly one entry for each requested sceneIndex.",
+            "Requested indexes: " + JSON.stringify(missingImageQueryIndexes),
+            "Video topic: " + completedTopic,
+            "Missing-query scenes: " + JSON.stringify(
+                missingImageQueryIndexes.map(index => ({
+                    sceneIndex: index,
+                    type: director.scenes[index]?.type,
+                    script: director.scenes[index]?.script,
+                    tts: director.scenes[index]?.tts,
+                    subtitle: director.scenes[index]?.subtitle,
+                    coreSubject: director.scenes[index]?.coreSubject,
+                    direction: director.scenes[index]?.direction
+                }))
+            ),
+            "Create 2-3 distinct, concrete English search queries per scene for historically relevant ",
+            "museum objects, maps, portraits, drawings, documents, or other identifiable visual sources.",
+            "Search for materials genuinely related to the scene's exact historical subject and period.",
+            "Never substitute an unrelated period, person, army, object, or battle merely to fill a scene.",
+            "A later illustration must not be described as a contemporary photograph or direct evidence.",
+            "Do not change the topic, historical claims, scene order, narration, or other fields.",
+            "Do not return a modified director. Do not invent sources or claim that an image was found.",
+            "If appropriate historically related searches cannot be identified, return an empty imageQueries array."
+        ].join("\\n");
+
+        const repaired = parseJSON(await callAI(repairPrompt));
+        const repairs = repaired?.repairs;
+
+        if (!Array.isArray(repairs) ||
+            repairs.length !== missingImageQueryIndexes.length) {
+            throw new Error("HISTORY_DIRECTOR_IMAGE_QUERY_REPAIR_INVALID_RESPONSE");
+        }
+
+        const expected = new Set(missingImageQueryIndexes);
+        const seen = new Set();
+        for (const entry of repairs) {
+            const index = entry?.sceneIndex;
+            if (!Number.isInteger(index) || !expected.has(index) || seen.has(index) ||
+                !Array.isArray(entry.imageQueries) ||
+                entry.imageQueries.length < 2 || entry.imageQueries.length > 3 ||
+                !entry.imageQueries.every(query => typeof query === "string" && query.trim())) {
+                throw new Error("HISTORY_DIRECTOR_IMAGE_QUERY_REPAIR_INVALID_RESPONSE");
+            }
+            seen.add(index);
+        }
+
+        for (const entry of repairs) {
+            director.scenes[entry.sceneIndex].imageQueries =
+                entry.imageQueries.map(query => query.trim());
+        }
+
+        console.log("[HISTORY DIRECTOR] IMAGE QUERY REPAIR COMPLETE");
+    }
+
     validateHistorySceneSafety(
         director.scenes
     );
