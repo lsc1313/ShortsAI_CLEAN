@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import dotenv from "dotenv";
+import { repairLongformImageQueries } from "../repairImageQueries.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -105,10 +106,8 @@ async function main() {
         )
     });
 
-    const payload =
-        buildImagePayload(
-            readJSON(INPUT)
-        );
+    const plan = await repairLongformImageQueries(readJSON(INPUT), { outputFile: INPUT });
+    const payload = buildImagePayload(plan);
 
     const {
         createImages
