@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { callAI } from "../modules/ai/index.js";
+import { repairLongformImageQueries } from "./repairImageQueries.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -598,9 +599,11 @@ async function main() {
             Number((totalWordsEn / 145).toFixed(1))
     };
 
+    const validatedOutput = await repairLongformImageQueries(output);
+
     fs.writeFileSync(
         OUTPUT,
-        JSON.stringify(output, null, 2),
+        JSON.stringify(validatedOutput, null, 2),
         "utf8"
     );
 
