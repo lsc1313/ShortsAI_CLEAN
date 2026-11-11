@@ -1,4 +1,6 @@
 import axios from "axios";
+import { callAI } from "./ai/index.js";
+import { searchCommonsHistory, searchAicHistory } from "./providers/historyArchives.js";
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
@@ -169,7 +171,7 @@ else{
 }
 
 // Longform keeps the Director's two queries in their original order.
-if(item.mediaMode !== "image") keywords.sort(
+if(item.mediaMode !== "image" && item.category !== "history") keywords.sort(
     (a,b)=>
         keywordScore(b)-
         keywordScore(a)
@@ -181,6 +183,10 @@ let imageNo = 1;
 let reviewAttempts = 0;
 
 const MAX_REVIEW_ATTEMPTS = 5;
+
+// History-only: allow one bounded AI re-plan of the visual search target.
+// Narration, subtitles and scene order are never changed here.
+for(let historyVisualRound = 0; historyVisualRound < (item.category === "history" ? 2 : 1); historyVisualRound++){
 
 for(const keyword of keywords){
 
@@ -212,7 +218,8 @@ const imageResults =
 
 const imageOnly =
     item.mediaMode === "image" ||
-    item.imageOnly === true;
+    item.imageOnly === true ||
+    item.category === "history";
 
 const videoResults =
     imageOnly
@@ -262,9 +269,12 @@ debug(
     `TOTAL=${mediaCandidates.length}`
 );
 
+// History uses only reviewed still images; generic stock clips must not win.
 const result =
     selectBestMedia(
-        mediaCandidates
+        item.category === "history"
+            ? mediaCandidates.filter(candidate => candidate.mediaType === "image")
+            : mediaCandidates
     );
 
 console.log(
@@ -356,7 +366,8 @@ else{
 
     await downloadImage(
         result.url,
-        file
+        file,
+        item.category === "history" ? { historyArchive: true, provider: result.provider } : {}
     );
 
 }
@@ -434,6 +445,9 @@ mediaType:
 
     catch(e){
 
+        if(item.category === "history"){
+            console.error(`[HISTORY IMAGE ERROR] Scene ${sceneNo} attempt=${reviewAttempts} :`, e?.stack || e);
+        }
         debug(
             `[IMAGE] Scene ${sceneNo} REVIEW ERROR ${reviewAttempts}/${MAX_REVIEW_ATTEMPTS} : ${e.message}`
         );
@@ -442,6 +456,89 @@ mediaType:
 
 }
 
+if(imageNo > 1 || item.category !== "history" || historyVisualRound > 0){
+    break;
+}
+
+try {
+    // Supply actual public-domain archive metadata; do not let the AI invent a target.
+    const archiveResults = [];
+    for(const query of [...new Set(keywords)].slice(0, 3)){
+        const [commons, aic] = await Promise.all([
+            searchCommonsHistory(query),
+            searchAicHistory(query)
+        ]);
+        archiveResults.push(...commons, ...aic);
+    }
+    const seenSources = new Set();
+    const archiveEvidence = archiveResults.filter(c => {
+        const key = c.sourceUrl || c.url;
+        if(!key || seenSources.has(key)) return false;
+        seenSources.add(key);
+        return true;
+    }).slice(0, 20).map((c, id) => ({
+        id, provider:c.provider, title:String(c.tags || "").slice(0,180),
+        sourceUrl:c.sourceUrl
+    }));
+    console.log("[HISTORY VISUAL REPLAN EVIDENCE]", JSON.stringify({scene:sceneNo, count:archiveEvidence.length}));
+    if(!archiveEvidence.length){
+        console.log("[HISTORY VISUAL REPLAN] No archive evidence");
+        break;
+    }
+    const prompt = [
+        "You are repairing the VISUAL SEARCH PLAN for one History Shorts scene.",
+        "The original image searches found no historically accurate licensed archive image.",
+        "Return ONLY JSON with coreSubject (English string), imageQueries (2-3 English strings), direction (Korean string).",
+        "Choose ONE specific, readily searchable historical artifact, museum object, site or documented archival photograph directly relevant to the scene.",
+        "coreSubject MUST be a short English noun phrase of 2-4 words, never a list joined by and/or, never a combination of an artifact and an archaeological site.",
+        "Keep Pompeii and Herculaneum distinct: do not substitute a Herculaneum victim or site for a Pompeii victim or site. If narration is about Pompeii, use Pompeii-related visuals only.",
+        "Use short archive-style search terms with one visual target per query.",
+        "Do NOT claim a plaster cast is a skeleton, or a photograph is a CT scan.",
+        "Do NOT change or invent any historical facts, narration, subtitles, names, dates or scene order.",
+        "If the narration specifically requires unavailable scientific imagery, choose an accurate contextual artifact and clearly describe it as a contextual visual in direction, never as the actual scientific result.",
+        "If no truthful visual is possible, return JSON with imageQueries: [].",
+        "Use ONLY the listed actual archive evidence. Do not invent image titles or locations.",
+        "Return chosenEvidenceId (integer id from Archive evidence), coreSubject, imageQueries, direction. Do not reproduce or invent source URLs.",
+        "Required JSON shape: {\\\"chosenEvidenceId\\\":0,\\\"coreSubject\\\":\\\"...\\\",\\\"imageQueries\\\":[\\\"...\\\",\\\"...\\\"],\\\"direction\\\":\\\"...\\\"}.",
+        "If none of the listed images honestly illustrates the narration, return imageQueries: [].",
+        "Archive evidence: " + JSON.stringify(archiveEvidence),
+        "Scene narration: " + String(item.tts || item.script || ""),
+        "Current visual subject: " + String(item.coreSubject || ""),
+        "Current queries: " + JSON.stringify(keywords)
+    ].join("\n");
+    const response = String(await callAI(prompt));
+    const match = response.match(/\{[\s\S]*\}/);
+    const plan = match ? JSON.parse(match[0]) : null;
+    const chosenId = plan?.chosenEvidenceId;
+    const chosenEvidence = Number.isInteger(chosenId) ? archiveEvidence.find(c => c.id === chosenId) : null;
+    if(!chosenEvidence) {
+        console.log("[HISTORY VISUAL REPLAN] Rejected ungrounded source");
+        break;
+    }
+    const nextCore = String(plan?.coreSubject || "").trim();
+    const nextQueries = Array.isArray(plan?.imageQueries)
+        ? plan.imageQueries.map(q => String(q || "").trim()).filter(Boolean).slice(0,3)
+        : [];
+    if(!nextCore || !nextQueries.length) {
+        console.log("[HISTORY VISUAL REPLAN] No safe replacement found");
+        break;
+    }
+    item.coreSubject = nextCore;
+    item.imageQueries = nextQueries;
+    if(typeof plan.direction === "string" && plan.direction.trim()) item.direction = plan.direction.trim();
+    keywords.splice(0, keywords.length, ...nextQueries);
+    reviewAttempts = 0;
+    console.log("[HISTORY VISUAL REPLAN]", JSON.stringify({scene:sceneNo, coreSubject:nextCore, imageQueries:nextQueries}));
+} catch(error) {
+    console.error("[HISTORY VISUAL REPLAN ERROR]", error.message);
+    break;
+}
+
+}
+
+if(item.category === "history"){
+    console.log(`[HISTORY IMAGE SUMMARY] Scene ${sceneNo} accepted=${imageNo - 1} required=${imageLimit} attempts=${reviewAttempts}`);
+}
 if(
     imageNo === 1
 ){
