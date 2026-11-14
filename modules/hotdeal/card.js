@@ -77,7 +77,7 @@ async function downloadImage(url, file) {
         if (fetchUrl.startsWith("//")) fetchUrl = "https:" + fetchUrl;
         
         // URL에서 쿼리스트링 정제 및 고화질 원본 이미지 주소 확보
-        fetchUrl = fetchUrl.split("?")[0];
+        // Keep signed image URL query parameters; removing them can cause 403 responses.
 
         if (fetchUrl.startsWith("http://") || fetchUrl.startsWith("https://")) {
             const response = await axios.get(fetchUrl, {
@@ -103,161 +103,40 @@ async function downloadImage(url, file) {
     return false;
 };;;
 
-function createCardSvg(
-    product,
-    imageFile
-) {
-
-    const productGroup =
-        escapeXml(
-            product.productGroup || ""
-        );
-
-    const name =
-        escapeXml(
-            product.name || ""
-        );
-
-    const price =
-        escapeXml(
-            formatPrice(product.price)
-        );
-
-    const unitPrice =
-        escapeXml(
-            formatUnitPrice(
-                product.unitPrice,
-                product.unitLabel
-            )
-        );
-
-    const sevenDay =
-        product.sevenDayStatus === "수집중"
-            ? "7일 최저가  수집중"
-            : `7일 최저  ${formatUnitPrice(product.sevenDayLow, product.unitLabel)}`;
-
-    const thirtyDay =
-        product.thirtyDayStatus === "수집중"
-            ? "30일 최저가  수집중"
-            : `30일 최저  ${formatUnitPrice(product.thirtyDayLow, product.unitLabel)}`;
-
-    const hotdeal =
-        product.isHotdeal === true
-            ? `
-                <rect x="70" y="180" width="250" height="72" rx="36"
-                    fill="#E53935"/>
-                <text x="195" y="229"
-                    text-anchor="middle"
-                    font-family="Noto Sans KR"
-                    font-size="34"
-                    font-weight="700"
-                    fill="white">HOT DEAL</text>
-              `
-            : "";
-
-    const href = imageFile;
-
+function createCardSvg(product, imageFile) {
+    const group = escapeXml(product.productGroup || "생활용품");
+    const name = escapeXml(String(product.name || "").slice(0, 32));
+    const total = escapeXml(formatPrice(product.price));
+    const unit = escapeXml(formatUnitPrice(product.unitPrice, product.unitLabel));
+    const hasSevenDay = product.sevenDayStatus !== "수집중" &&
+        product.sevenDayLow !== null && product.sevenDayLow !== undefined &&
+        Number.isFinite(Number(product.sevenDayLow)) && Number(product.sevenDayLow) > 0;
+    const history = hasSevenDay
+        ? "상품군 7일 최저 단위가격 " + formatUnitPrice(product.sevenDayLow, product.unitLabel)
+        : "7일 가격기록 수집 중";
+    const deal = product.isHotdeal === true && Number(product.dealRate) > 0
+        ? '<rect x="76" y="132" rx="23" width="210" height="65" fill="#e4494f"/><text x="181" y="176" text-anchor="middle" font-family="Noto Sans KR" font-size="30" font-weight="800" fill="#fff">핫딜 확인</text>'
+        : "";
     return `
-<svg xmlns="http://www.w3.org/2000/svg"
-     xmlns:xlink="http://www.w3.org/1999/xlink"
-     width="1080"
-     height="1920"
-     viewBox="0 0 1080 1920">
-
-    <rect width="1080" height="1920" fill="#F7F7F7"/>
-
-    <rect x="45" y="45"
-          width="990"
-          height="1830"
-          rx="48"
-          fill="white"/>
-
-    <image x="90" y="180" width="900" height="900" preserveAspectRatio="xMidYMid meet" href="${href}"/>
-
-    <text x="70" y="135"
-          font-family="Noto Sans KR"
-          font-size="58"
-          font-weight="700"
-          fill="#111111">${productGroup}</text>
-
-    ${hotdeal}
-
-    <rect x="70" y="290"
-          width="940"
-          height="760"
-          rx="36"
-          fill="#F3F3F3"/>
-
-    <image
-        x="110"
-        y="330"
-        width="860"
-        height="680"
-        preserveAspectRatio="xMidYMid meet"
-        href="${href}"
-        xlink:href="${href}"/>
-
-    <text x="70" y="1140"
-          font-family="Noto Sans KR"
-          font-size="42"
-          font-weight="700"
-          fill="#222222">${name}</text>
-
-    <text x="70" y="1270"
-          font-family="Noto Sans KR"
-          font-size="74"
-          font-weight="800"
-          fill="#111111">${price}</text>
-
-    <text x="70" y="1360"
-          font-family="Noto Sans KR"
-          font-size="50"
-          font-weight="700"
-          fill="#333333">${unitPrice}</text>
-
-    <line x1="70" y1="1420"
-          x2="1010" y2="1420"
-          stroke="#DDDDDD"
-          stroke-width="3"/>
-
-    <text x="70" y="1500"
-          font-family="Noto Sans KR"
-          font-size="38"
-          font-weight="600"
-          fill="#444444">${escapeXml(sevenDay)}</text>
-
-    <text x="70" y="1570"
-          font-family="Noto Sans KR"
-          font-size="38"
-          font-weight="600"
-          fill="#444444">${escapeXml(thirtyDay)}</text>
-
-    ${
-        product.dealRate > 0
-            ? `
-            <text x="70" y="1660"
-                  font-family="Noto Sans KR"
-                  font-size="42"
-                  font-weight="800"
-                  fill="#E53935">
-                ${escapeXml(
-                    `할인율 ${product.dealRate}%`
-                )}
-            </text>
-            `
-            : ""
-    }
-
-    <text x="70" y="1780"
-          font-family="Noto Sans KR"
-          font-size="30"
-          fill="#888888">
-        오늘의 가격비교
-    </text>
-
-</svg>
-`;
-
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1080" height="1920" viewBox="0 0 1080 1920">
+    <rect width="1080" height="1920" fill="#101725"/>
+    <rect x="56" y="67" width="968" height="1760" rx="48" fill="#192337"/>
+    <text x="84" y="132" font-family="Noto Sans KR" font-size="40" fill="#a1f6d0" font-weight="700">가격표 다시 보기 / ${group}</text>
+    <text x="84" y="275" font-family="Noto Sans KR" font-size="66" fill="#ffffff" font-weight="800">묶음 가격만 보지 마세요</text>
+    <text x="84" y="351" font-family="Noto Sans KR" font-size="37" fill="#cad6e5">진짜 비교는 단위가격부터</text>
+    <rect x="78" y="402" width="924" height="770" rx="42" fill="#fff"/>
+    <image x="105" y="432" width="870" height="710" preserveAspectRatio="xMidYMid meet"
+           href="${imageFile}" xlink:href="${imageFile}"/>
+    ${deal}
+    <text x="84" y="1265" font-family="Noto Sans KR" font-size="40" fill="#e1e8f3" font-weight="600">${name}</text>
+    <text x="84" y="1370" font-family="Noto Sans KR" font-size="37" fill="#a7b6c9">총 구매가격  ${total}</text>
+    <rect x="78" y="1430" rx="28" width="924" height="180" fill="#a1f6d0"/>
+    <text x="112" y="1490" font-family="Noto Sans KR" font-size="35" fill="#15253a" font-weight="700">비교할 숫자</text>
+    <text x="112" y="1570" font-family="Noto Sans KR" font-size="67" fill="#101725" font-weight="900">${unit}</text>
+    <text x="84" y="1698" font-family="Noto Sans KR" font-size="30" fill="#b9c6d7">${escapeXml(history)}</text>
+    <text x="84" y="1780" font-family="Noto Sans KR" font-size="27" fill="#899bb2">같은 규격·구성인지 구매 전 확인</text>
+</svg>`;
 }
 
 function renderSvg(svgFile, pngFile) {
@@ -322,7 +201,7 @@ export async function createHotdealCards(
 
         const imgOk = await downloadImage(product.image, sourceImage);
         if (!imgOk || !fs.existsSync(sourceImage) || fs.statSync(sourceImage).size < 500) {
-            console.warn(`[WARN] ${product.name} 이미지 다운로드 실패 - 대체 처리`);
+            throw new Error(`[HOTDEAL] 실제 상품 이미지 확보 실패: ${product.name}`);
         }
 
         let imageAttr = sourceImage;
