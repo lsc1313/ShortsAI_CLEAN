@@ -31,6 +31,7 @@ import { createShoppingDirector } from "./shopping/director.js";
 import { createHotdealDirector } from "./hotdeal/director.js";
 import { createHotdealCards } from "./hotdeal/card.js";
 import { createHistoryDirector } from "./history/director.js";
+import { readHistoryPair, findUnfinishedHistoryPair, saveHistoryKOVideo, saveHistoryPair, buildEnglishHistoryDirector, buildEnglishHistoryMetadata, uploadHistoryPair } from "./history/dualPublish.js";
 import { createAnimalDirector } from "./animal/director.js";
 import { createAIDirector } from "./ai/director.js";
 import { createScienceDirector } from "./science/director.js";
@@ -105,6 +106,27 @@ const channelName =
     String(channel?.name || "")
         .trim()
         .toLowerCase();
+
+/*
+ * Resume previous partial bilingual History publishing before producing a
+ * new topic. Reuse already-rendered media and never upload a recorded ID.
+ */
+if (channelName === "history") {
+    const previous = findUnfinishedHistoryPair() || readHistoryPair(topic);
+    if (previous) {
+        const uploads = await uploadHistoryPair(previous.topic, channel);
+        console.log("[HISTORY PAIR] RESUMED WITHOUT RENDER");
+        cleanAfterUpload();
+        return {
+            success: true,
+            topic: previous.topic,
+            video: uploads.ko.file,
+            youtube: { success: true, id: uploads.ko.id, url: uploads.ko.url },
+            youtubeEnglish: { success: true, id: uploads.en.id, url: uploads.en.url },
+            resumed: true
+        };
+    }
+}
 
 if (channelName === "shopping") {
 
@@ -301,6 +323,11 @@ else {
         `지원하지 않는 채널입니다: ${channel?.name || "UNKNOWN"}`
     );
 
+}
+
+if (channelName === "history") {
+    // Validate the English narration/subtitles BEFORE expensive image/TTS work.
+    buildEnglishHistoryDirector(director);
 }
 
 for (const scene of director.scenes) {
@@ -512,6 +539,13 @@ success(
 
 debug(video.file);
 
+// The renderer reuses the same working filenames for each language.
+// Preserve the KO output before creating the English render.
+const historyKOVideo = channelName === "history"
+    ? saveHistoryKOVideo(topic, video.file)
+    : null;
+const primaryVideoFile = historyKOVideo || video.file;
+
             /*
             7 썸네일 생성
             */
@@ -593,7 +627,7 @@ step("UPLOAD");
 
 section("UPLOAD");
 
-if(!fs.existsSync(video.file)){
+if(!fs.existsSync(primaryVideoFile)){
 
     throw new Error(
         "최종 영상이 없습니다."
@@ -603,17 +637,35 @@ if(!fs.existsSync(video.file)){
 
 
 let uploadResult;
+let englishUploadResult = null;
 
 try {
-
-    uploadResult =
-        await uploadVideo(
-            video.file,
-            metadata,
-            channel,
-            topic,
-            null
+    if (channelName === "history") {
+        section("HISTORY ENGLISH SHORTS");
+        const englishDirector = buildEnglishHistoryDirector(director);
+        const englishVoices = await createTTS(englishDirector, "en");
+        await createSubtitle(englishDirector, englishVoices);
+        const englishVideo = await createVideo(
+            englishDirector, images, englishVoices, "history"
         );
+        if (!englishVideo?.file || !fs.existsSync(englishVideo.file)) {
+            throw new Error("HISTORY_EN_RENDER_FAILED");
+        }
+        const englishMetadata = buildEnglishHistoryMetadata(director);
+        saveHistoryPair({
+            topic,
+            englishVideo: englishVideo.file,
+            koMetadata: metadata,
+            enMetadata: englishMetadata
+        });
+        const pair = await uploadHistoryPair(topic, channel);
+        uploadResult = { success: true, id: pair.ko.id, url: pair.ko.url };
+        englishUploadResult = { success: true, id: pair.en.id, url: pair.en.url };
+    } else {
+        uploadResult = await uploadVideo(
+            primaryVideoFile, metadata, channel, topic, null
+        );
+    }
 
 }
 catch (error) {
@@ -625,16 +677,17 @@ catch (error) {
         원본 작업파일은 여기서 삭제하지 않는다.
     */
     if (
-        error?.channelBlocked === true ||
+        channelName !== "history" &&
+        (error?.channelBlocked === true ||
         error?.shortsAIError ===
-            "YOUTUBE_UPLOAD_LIMIT"
+            "YOUTUBE_UPLOAD_LIMIT")
     ) {
 
         const queueJob =
             enqueueShort({
                 topic,
                 channel,
-                video: video.file,
+                video: primaryVideoFile,
                 thumbnail:
                     thumbnail.file,
                 metadata
@@ -759,7 +812,7 @@ if (
 
         instagramResult =
             await uploadInstagramReel(
-                video.file,
+                primaryVideoFile,
                 {
                     instagramUserId:
                         instagram.instagramUserId,
@@ -1015,11 +1068,12 @@ return {
 
     topic,
 
-    video: video.file,
+    video: primaryVideoFile,
 
     thumbnail: thumbnail.file,
 
     youtube: uploadResult,
+    youtubeEnglish: englishUploadResult,
 
     instagram: instagramResult,
     threads: threadsResult
