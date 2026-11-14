@@ -31,7 +31,7 @@ import { createShoppingDirector } from "./shopping/director.js";
 import { createHotdealDirector } from "./hotdeal/director.js";
 import { createHotdealCards } from "./hotdeal/card.js";
 import { createHistoryDirector } from "./history/director.js";
-import { readHistoryPair, findUnfinishedHistoryPair, saveHistoryKOVideo, saveHistoryPair, buildEnglishHistoryDirector, buildEnglishHistoryMetadata, uploadHistoryPair } from "./history/dualPublish.js";
+import { readHistoryPair, findUnfinishedHistoryPair, saveHistoryKOVideo, saveHistoryPair, buildEnglishHistoryDirector, buildEnglishHistoryMetadata, uploadHistoryPair, cleanupCompletedHistoryPair } from "./history/dualPublish.js";
 import { createAnimalDirector } from "./animal/director.js";
 import { createAIDirector } from "./ai/director.js";
 import { createScienceDirector } from "./science/director.js";
@@ -116,6 +116,7 @@ if (channelName === "history") {
     if (previous) {
         const uploads = await uploadHistoryPair(previous.topic, channel);
         console.log("[HISTORY PAIR] RESUMED WITHOUT RENDER");
+        cleanupCompletedHistoryPair(previous.topic);
         cleanAfterUpload();
         return {
             success: true,
@@ -1054,6 +1055,9 @@ if (
     );
 }
 
+if (channelName === "history") {
+    cleanupCompletedHistoryPair(topic);
+}
 cleanAfterUpload();
 
 
