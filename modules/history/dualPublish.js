@@ -197,3 +197,13 @@ export async function uploadHistoryPair(topic, koChannel, { uploader = uploadVid
     console.log(`[HISTORY PAIR] BOTH COMPLETE KO=${state.ko.id} EN=${state.en.id}`);
     return { ko: { ...state.ko }, en: { ...state.en } };
 }
+
+export function cleanupCompletedHistoryPair(topic) {
+    const state = readHistoryPair(topic);
+    if (!state?.ko?.id || !state?.en?.id) return false;
+    for (const file of [state.ko.file, state.en.file]) {
+        if (file && fs.existsSync(file)) fs.unlinkSync(file);
+    }
+    console.log("[HISTORY PAIR] LOCAL RENDERS CLEANED; UPLOAD IDS PRESERVED");
+    return true;
+}
