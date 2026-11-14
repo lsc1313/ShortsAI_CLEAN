@@ -101,6 +101,7 @@ step("DIRECTOR");
 let director;
         let hotdealCards = [];
 let hotdealProducts = [];
+let hotdealCatalogProducts = [];
 
 const channelName =
     String(channel?.name || "")
@@ -148,10 +149,8 @@ if (channelName === "shopping") {
         options?.hotdeal === true
     ) {
 
-        hotdealProducts = selectHotdealProducts(
-            Array.isArray(options?.products) ? options.products : [],
-            2
-        );
+        hotdealCatalogProducts = Array.isArray(options?.products) ? options.products : [];
+        hotdealProducts = selectHotdealProducts(hotdealCatalogProducts, 2);
         console.log("[HOTDEAL] 정보형 숏폼 선정 상품:", hotdealProducts.map(p => p.productGroup));
 
         if (
@@ -1049,10 +1048,10 @@ else {
 */
 if (
     options?.hotdeal === true &&
-    hotdealProducts.length > 0
+    hotdealCatalogProducts.length > 0
 ) {
     await updateShopPage(
-        hotdealProducts
+        hotdealCatalogProducts
     );
 }
 
