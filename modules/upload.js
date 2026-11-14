@@ -38,7 +38,8 @@ export async function uploadVideo(
     channel = null,
     sourceTopic = "",
     thumbnailFile = null,
-    isHotdeal = false
+    isHotdeal = false,
+    onVideoInserted = null
 ) {
 
     success(
@@ -243,6 +244,19 @@ const description =
 
     const videoId =
         response.data.id;
+
+    /*
+     * Optional crash-safe callback for bilingual publishing. Called immediately
+     * after YouTube returns the ID, BEFORE thumbnails or DB side effects.
+     * Other upload callers are unaffected.
+     */
+    if (typeof onVideoInserted === "function") {
+        await onVideoInserted({
+            id: videoId,
+            url: `https://youtube.com/watch?v=${videoId}`
+        });
+    }
+
 
     /*
         =====================================================
