@@ -20,3 +20,7 @@ jobs:
       - run: npm install
 
       - run: node --check server.js
+      - run: node --check modules/createShort.js
+      - run: node --check modules/hotdeal/director.js
+      - run: node --check modules/hotdeal/card.js
+      - run: node --test tests/hotdealStory.test.js
