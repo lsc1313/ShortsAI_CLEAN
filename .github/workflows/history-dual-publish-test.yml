@@ -1,0 +1,33 @@
+name: History bilingual Shorts offline tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "modules/createShort.js"
+      - "modules/history/dualPublish.js"
+      - "tests/historyDualPublish.test.js"
+      - ".github/workflows/history-dual-publish-test.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install JS dependencies without downloading Chromium
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "1"
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Syntax check
+        run: |
+          node --check modules/createShort.js
+          node --check modules/history/dualPublish.js
+          node --check tests/historyDualPublish.test.js
+      - name: Offline publish and retry regression tests
+        run: node --test tests/historyDualPublish.test.js
