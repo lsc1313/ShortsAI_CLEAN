@@ -87,3 +87,50 @@ test("History bilingual rejects missing English narration", () => {
         /HISTORY_EN_SCENE_1_INCOMPLETE/
     );
 });
+
+test("History bilingual persists YouTube ID even if post-insert code throws", async () => {
+    const oldCwd = process.cwd();
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "history-pair-insert-"));
+    try {
+        process.chdir(tmp);
+        fs.mkdirSync("modules/channels", { recursive: true });
+        const ko = { name: "History", clientId: "a", clientSecret: "b", refreshToken: "c", channelId: "KO" };
+        const en = { name: "EchoesAgo", clientId: "d", clientSecret: "e", refreshToken: "f", channelId: "EN" };
+        fs.writeFileSync("modules/channels/channels.json", JSON.stringify([ko, en]));
+        const koFile = path.join(tmp, "ko.mp4");
+        const enFile = path.join(tmp, "en.mp4");
+        fs.writeFileSync(koFile, Buffer.alloc(12000));
+        fs.writeFileSync(enFile, Buffer.alloc(12000));
+        saveHistoryKOVideo("crash-topic", koFile);
+        saveHistoryPair({
+            topic: "crash-topic", englishVideo: enFile,
+            koMetadata: { title: "KO" }, enMetadata: { title: "EN" }
+        });
+        let koCalls = 0;
+        const crashAfterInsert = async (_file, _meta, channel, _topic, _thumbnail, _hotdeal, onInserted) => {
+            if (channel.name === "History") {
+                koCalls++;
+                await onInserted({ id: "uploaded-before-crash", url: "https://youtu.be/uploaded-before-crash" });
+                throw new Error("process failed after successful YouTube insert");
+            }
+            return { success: true, id: "english-id" };
+        };
+        await assert.rejects(
+            uploadHistoryPair("crash-topic", ko, { uploader: crashAfterInsert }),
+            /process failed after successful/
+        );
+        assert.equal(readHistoryPair("crash-topic").ko.id, "uploaded-before-crash");
+        const recovery = await uploadHistoryPair("crash-topic", ko, {
+            uploader: async (_f, _m, channel) => {
+                assert.equal(channel.name, "EchoesAgo");
+                return { success: true, id: "english-id" };
+            }
+        });
+        assert.equal(recovery.ko.id, "uploaded-before-crash");
+        assert.equal(recovery.en.id, "english-id");
+        assert.equal(koCalls, 1);
+    } finally {
+        process.chdir(oldCwd);
+        fs.rmSync(tmp, { recursive: true, force: true });
+    }
+});
