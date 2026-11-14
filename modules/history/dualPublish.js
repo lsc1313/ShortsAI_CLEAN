@@ -185,14 +185,25 @@ export async function uploadHistoryPair(topic, koChannel, { uploader = uploadVid
             throw new Error(`HISTORY_PAIR_${lang.toUpperCase()}_FILE_MISSING`);
         }
         console.log(`[HISTORY PAIR] ${lang.toUpperCase()} UPLOAD -> ${channel.name}`);
-        const result = await uploader(record.file, record.metadata, channel, topic, null);
+        // Persist immediately when YouTube returns the ID, before any
+        // thumbnail or upload-record side effects can interrupt the process.
+        const persistInsertedId = async ({ id, url }) => {
+            if (!id) throw new Error("HISTORY_PAIR_UPLOAD_ID_MISSING");
+            record.id = id;
+            record.url = url || `https://youtu.be/${id}`;
+            state.updatedAt = new Date().toISOString();
+            writeState(file, state);
+        };
+        const result = await uploader(
+            record.file, record.metadata, channel, topic, null, false, persistInsertedId
+        );
         if (!result?.success || !result?.id) {
             throw new Error(`HISTORY_PAIR_${lang.toUpperCase()}_UPLOAD_FAILED`);
         }
-        record.id = result.id;
-        record.url = result.url || `https://youtu.be/${result.id}`;
-        state.updatedAt = new Date().toISOString();
-        writeState(file, state);
+        if (record.id && record.id !== result.id) {
+            throw new Error("HISTORY_PAIR_UPLOAD_ID_CHANGED");
+        }
+        await persistInsertedId({ id: result.id, url: result.url });
     }
     console.log(`[HISTORY PAIR] BOTH COMPLETE KO=${state.ko.id} EN=${state.en.id}`);
     return { ko: { ...state.ko }, en: { ...state.en } };
