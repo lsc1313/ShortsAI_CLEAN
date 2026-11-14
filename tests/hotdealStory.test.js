@@ -34,7 +34,7 @@ test("director never invents discounts or 7-day low prices", async () => {
     const p = product("생수");
     const d = await createHotdealDirector([p], [{ cardFile: "card.png" }]);
     assert.match(d.hook.tts, /묶음 가격/);
-    assert.match(d.products[0].tts, /수집된|수집/);
+    assert.match(d.products[0].tts, /비교 기록이 충분하지 않아/);
     assert.doesNotMatch(d.products[0].tts, /할인율|최저가입니다/);
     assert.equal(d.products[0].cardFile, "card.png");
     assert.equal(d.products.length, 1);
