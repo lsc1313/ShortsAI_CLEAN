@@ -28,7 +28,7 @@ import { uploadInstagramReel } from "./instagram/instagramUploader.js";
 import { createThreadsDirector } from "./threads/director.js";
 import { uploadThreadsText } from "./threads/uploader.js";
 import { createShoppingDirector } from "./shopping/director.js";
-import { createHotdealDirector } from "./hotdeal/director.js";
+import { createHotdealDirector, selectHotdealProducts } from "./hotdeal/director.js";
 import { createHotdealCards } from "./hotdeal/card.js";
 import { createHistoryDirector } from "./history/director.js";
 import { readHistoryPair, findUnfinishedHistoryPair, saveHistoryKOVideo, saveHistoryPair, buildEnglishHistoryDirector, buildEnglishHistoryMetadata, uploadHistoryPair, cleanupCompletedHistoryPair } from "./history/dualPublish.js";
@@ -148,10 +148,11 @@ if (channelName === "shopping") {
         options?.hotdeal === true
     ) {
 
-        hotdealProducts =
-            Array.isArray(options?.products)
-                ? options.products
-                : [];
+        hotdealProducts = selectHotdealProducts(
+            Array.isArray(options?.products) ? options.products : [],
+            2
+        );
+        console.log("[HOTDEAL] 정보형 숏폼 선정 상품:", hotdealProducts.map(p => p.productGroup));
 
         if (
             hotdealProducts.length === 0
