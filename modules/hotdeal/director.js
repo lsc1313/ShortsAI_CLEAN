@@ -1,710 +1,117 @@
-import { callAI } from "../ai/index.js";
-import { createHotdealCards } from "./card.js";
-
 /*
- * HOTDEAL DIRECTOR
- *
- * 입력:
- *   today-products.json의 products 배열
- *
- * 처리:
- *
- *   상품정보
- *      ↓
- *   상품 카드 생성
- *      ↓
- *   카드 파일 + 구조화된 상품정보
- *      ↓
- *   HOTDEAL DIRECTOR
- *      ↓
- *   영상 연출 결정
- *
- * 주의:
- *   - Director는 이미지를 검색하지 않는다.
- *   - 기존 IMAGE ENGINE을 호출하지 않는다.
- *   - 가격/상품 원본정보를 변경하지 않는다.
- *   - cardFile은 이후 VIDEO 단계에서 사용할 실제 카드 파일이다.
+ * Hotdeal information-short director.
+ * Facts are constructed from collector data, never invented by an LLM.
+ * The public interface remains compatible with createShort.js.
  */
-
-export async function createHotdealDirector(products = [], cards = []) {
-
-  console.log("[HOTDEAL DIRECTOR] START");
-
-  if (
-    !Array.isArray(products) ||
-    products.length === 0
-  ) {
-
-    throw new Error(
-      "HOTDEAL DIRECTOR: 상품 데이터가 없습니다."
-    );
-
-  }
-
-
-  /*
-   * =====================================================
-   * 1. 원본 상품정보 고정
-   * =====================================================
-   *
-   * Director가 가격 등을 임의로 바꾸지 못하도록
-   * 원본 데이터를 먼저 고정한다.
-   */
-
-  const sourceProducts =
-    products.map(
-      (product, index) => ({
-
-        order:
-          index + 1,
-
-        productGroup:
-          product.productGroup,
-
-        name:
-          product.name,
-
-        price:
-          product.price,
-
-        unitPrice:
-          product.unitPrice,
-
-        unitLabel:
-          product.unitLabel,
-
-        highestPrice:
-          product.highestPrice,
-
-        dealRate:
-          product.dealRate,
-
-        isHotdeal:
-          product.isHotdeal,
-
-        sevenDayLow:
-          product.sevenDayLow,
-
-        sevenDayStatus:
-          product.sevenDayStatus,
-
-        thirtyDayLow:
-          product.thirtyDayLow,
-
-        thirtyDayStatus:
-          product.thirtyDayStatus,
-
-        image:
-          product.image,
-
-        url:
-          product.url
-
-      })
-    );
-
-
-  /*
-   * =====================================================
-   * 2. NEW HOTDEAL PRODUCT CARD
-   * =====================================================
-   *
-   * 상품정보를 이용해
-   * 실제 세로형 상품 카드를 먼저 만든다.
-   *
-   * 기존 IMAGE ENGINE을 사용하지 않는다.
-   */
-
-  console.log(
-    "[HOTDEAL CARD] 상품 카드 생성 시작"
-  );
-
-  // cards 매개변수 직접 사용
-
-  if (
-    !Array.isArray(cards) ||
-    cards.length !== sourceProducts.length
-  ) {
-
-    throw new Error(
-      `HOTDEAL CARD 무결성 오류 : ` +
-      `PRODUCT ${sourceProducts.length} / ` +
-      `CARD ${cards?.length || 0}`
-    );
-
-  }
-
-  console.log(
-    `[HOTDEAL CARD] ${cards.length}장 생성 완료`
-  );
-
-
-  /*
-   * =====================================================
-   * 3. CARD + PRODUCT INFORMATION
-   * =====================================================
-   *
-   * Director가 판단할 데이터.
-   *
-   * 카드 이미지를 AI에게 분석시키는 것이 아니다.
-   *
-   * 카드에 들어가는 정보와
-   * 원본 상품정보를 구조화해서 전달한다.
-   */
-
-  const directorProducts =
-    sourceProducts.map(
-      (source, index) => ({
-
-        order:
-          source.order,
-
-        productGroup:
-          source.productGroup,
-
-        name:
-          source.name,
-
-        price:
-          source.price,
-
-        unitPrice:
-          source.unitPrice,
-
-        unitLabel:
-          source.unitLabel,
-
-        highestPrice:
-          source.highestPrice,
-
-        dealRate:
-          source.dealRate,
-
-        isHotdeal:
-          source.isHotdeal,
-
-        sevenDayLow:
-          source.sevenDayLow,
-
-        sevenDayStatus:
-          source.sevenDayStatus,
-
-        thirtyDayLow:
-          source.thirtyDayLow,
-
-        thirtyDayStatus:
-          source.thirtyDayStatus,
-
-        /*
-         * 카드가 실제로 생성되었는지만
-         * Director가 알 수 있도록 한다.
-         */
-        cardReady:
-          Boolean(
-            cards[index]?.cardFile
-          )
-
-      })
-    );
-
-
-  /*
-   * =====================================================
-   * 4. HOTDEAL DIRECTOR PROMPT
-   * =====================================================
-   */
-
-  const prompt = `
-너는 YouTube Shorts 가격비교 콘텐츠를 전문으로 만드는
-HOTDEAL DIRECTOR다.
-
-이번 영상은 일반적인 상품소개 쇼츠가 아니다.
-
-"오늘의 생필품 가격비교"를 보여주는
-세로형 9:16 가격비교 쇼츠다.
-
-상품마다 이미 세로형 상품 카드가 생성되어 있다.
-
-Director는 상품 이미지를 검색하거나
-새로운 이미지를 만들지 않는다.
-
-Director가 판단해야 하는 것은
-이미 만들어진 상품 카드들을
-영상에서 어떻게 보여줄 것인가이다.
-
-영상은 약 35초다.
-
-핵심 연출:
-
-세로형 상품 카드
-↓
-첫 카드에서 시작
-↓
-상품 카드를 순서대로 보여줌
-↓
-상품이 화면에 들어올 때
-상품군 + 단위가격 + 가격정보를 짧게 전달
-↓
-필요하면 HOT DEAL 강조
-↓
-마지막 프로필 CTA
-
-반드시 지켜라.
-
-1. 화면 비율
-
-9:16 세로형.
-
-2. 상품 카드
-
-각 상품의 카드가 이미 생성되어 있다.
-
-Director는 카드를 새로 만들지 않는다.
-
-Director는 상품 이미지를 검색하지 않는다.
-
-imageQueries를 만들지 않는다.
-
-3. 상품 데이터
-
-다음 값은 절대로 수정하지 않는다.
-
-- price
-- unitPrice
-- unitLabel
-- highestPrice
-- dealRate
-- isHotdeal
-- sevenDayLow
-- sevenDayStatus
-- thirtyDayLow
-- thirtyDayStatus
-
-가격을 추측하거나 계산해서 변경하지 않는다.
-
-4. 가격 의미와 7일 / 30일 비교
-
-price는 현재 상품의 실제 총 구매가격이다.
-
-unitPrice는 상품군 전체 비교를 위해 정규화된 현재 단위가격이다.
-sevenDayLow와 thirtyDayLow도 총 구매가격이 아니라
-같은 productGroup 전체 상품의 정규화 단위가격 최저값이다.
-브랜드는 구분하지 않는다.
-
-unitLabel 기준으로 반드시 함께 읽는다.
-예: unitLabel이 "롤"이면 "롤당 630원", "매"이면 "매당 12원",
-"ml"이면 내부값을 1000배하여 "1리터당 500원", "g"이면 "100그램당 500원",
-"매"이면 "100매당 1,200원"처럼 사람이 이해하기 쉬운 표시단위로 표현한다.
-롤/개/포 등은 1단위 기준을 유지한다.
-중요: 이 변환은 표시와 TTS에만 적용하며 원본 unitPrice, sevenDayLow, thirtyDayLow 값은 수정하지 않는다.
-
-원화 가격에는 소수점을 만들거나 읽지 않는다.
-663.00원 같은 표현을 만들지 말고 663원으로 표현한다.
-
-값이 null이고 status가 "수집중"이면
-반드시 "수집중"이라고 표시한다.
-
-절대로 없는 가격을 만들어내지 않는다.
-
-5. HOT DEAL
-
-isHotdeal이 true인 상품만
-HOT DEAL을 강조한다.
-
-false이면 HOT DEAL을 표시하지 않는다.
-
-6. 할인율
-
-dealRate는 같은 productId의 직전 수집가격 대비 실제 가격하락률이다.
-다른 브랜드나 다른 상품의 최고 단위가격을 할인 기준으로 사용하지 않는다.
-dealRate가 제공되고 0보다 큰 경우에만 할인율을 말하거나 표시한다.
-값이 null이면 할인율을 추측하거나 만들어내지 않는다.
-
-7. 상품 순서
-
-입력 order 순서를 기본적으로 유지한다.
-
-상품의 order 자체를 변경하지 않는다.
-
-8. 영상 길이
-
-전체 영상은 약 35초다.
-
-상품 수가 많으므로
-각 상품 설명은 짧게 한다.
-
-9. 나레이션
-
-각 상품에서는 필요한 정보만 짧게 말한다.
-
-우선순위:
-
-상품군
-현재 단위가격(unitLabel 포함)
-상품군 전체 7일 최저 단위가격 상태
-상품군 전체 30일 최저 단위가격 상태
-HOT DEAL인 경우 할인율
-
-10. Hook
-
-첫 부분은 짧고 강하게 만든다.
-
-예:
-
-"오늘 생필품 가격, 한눈에 비교해보겠습니다."
-
-11. 카드 이동
-
-카드가 위에서 아래 방향으로
-순서대로 등장하도록 연출한다.
-
-필요한 경우 다음 값을 결정한다.
-
-scrollStart
-scrollEnd
-scrollDuration
-scrollSpeed
-
-12. Director의 역할
-
-Director는 다음을 결정한다.
-
-- 상품 표시 순서
-- 상품별 표시 시간
-- 카드 이동 방식
-- 카드 강조 방식
-- TTS
-- 자막
-- HOT DEAL 강조 여부
-- 마지막 CTA
-
-Director는 카드 자체를 생성하지 않는다.
-
-반드시 JSON만 출력한다.
-
-다음 형식을 사용한다.
-
-{
-  "title": "",
-  "description": "",
-  "format": {
-    "aspectRatio": "9:16",
-    "orientation": "vertical"
-  },
-  "video": {
-    "targetDuration": 35,
-    "layout": "vertical_product_cards",
-    "scrollDirection": "top_to_bottom",
-    "scrollMode": "continuous"
-  },
-  "hook": {
-    "tts": "",
-    "subtitle": "",
-    "duration": 2.5
-  },
-  "products": [
-    {
-      "order": 1,
-      "productGroup": "",
-      "displayDuration": 2.5,
-      "scrollDuration": 2.5,
-      "scrollSpeed": "slow",
-      "tts": "",
-      "subtitle": "",
-      "showHotdeal": false
-    }
-  ],
-  "ending": {
-    "tts": "",
-    "subtitle": "",
-    "duration": 2.5
-  }
+const number = value => value === null || value === undefined || value === "" ? NaN : Number(value);
+const won = value => Math.round(Number(value)).toLocaleString("ko-KR") + "원";
+const displayUnit = label => {
+    const s = String(label || "").trim().toLowerCase();
+    if (s === "ml") return { scale: 1000, label: "1리터" };
+    if (s === "g") return { scale: 100, label: "100그램" };
+    if (s === "매") return { scale: 100, label: "100매" };
+    return { scale: 1, label: String(label || "개") };
+};
+const unitPriceText = product => {
+    const unit = displayUnit(product.unitLabel);
+    return unit.label + "당 " + won(number(product.unitPrice) * unit.scale);
+};
+const baseline = (product, period) => {
+    const value = number(period === 7 ? product.sevenDayLow : product.thirtyDayLow);
+    const status = period === 7 ? product.sevenDayStatus : product.thirtyDayStatus;
+    if (!Number.isFinite(value) || value <= 0 || status === "수집중") return null;
+    return value;
+};
+const eligible = p => p && p.image && p.name && p.productGroup &&
+    Number.isFinite(number(p.price)) && number(p.price) > 0 &&
+    Number.isFinite(number(p.unitPrice)) && number(p.unitPrice) > 0 &&
+    String(p.unitLabel || "").trim().length > 0;
+
+/* Pick informative, independently verifiable examples. Never pad a video
+ * with unrelated products just to meet a quantity target. */
+export function selectHotdealProducts(products = [], max = 2) {
+    const seen = new Set();
+    return [...products]
+        .filter(eligible)
+        .filter(p => {
+            const key = String(p.productGroup);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
+        .map((p, i) => ({
+            p, i,
+            score: (baseline(p, 7) !== null ? 8 : 0) +
+                (baseline(p, 30) !== null ? 5 : 0) +
+                (p.isHotdeal === true && number(p.dealRate) > 0 ? 3 : 0)
+        }))
+        .sort((a, b) => b.score - a.score || a.i - b.i)
+        .slice(0, Math.max(1, max))
+        .map(x => x.p);
 }
 
-상품 배열에는 입력 상품 수만큼 반드시 모두 포함한다.
-`;
+const advice = group => {
+    const name = String(group || "");
+    if (/생수|음료/.test(name)) return "묶음 가격보다 1리터당 가격을 확인하세요.";
+    if (/화장지|휴지/.test(name)) return "롤 수뿐 아니라 롤 길이와 겹수도 확인하세요.";
+    if (/물티슈/.test(name)) return "매수만 보지 말고 한 장 크기와 두께도 확인하세요.";
+    if (/샴푸|린스|컨디셔너|바디워시|세제/.test(name)) return "용량을 맞춰 단위가격으로 비교하세요.";
+    if (/즉석밥/.test(name)) return "한 개 용량을 맞춘 뒤 개당 가격을 비교하세요.";
+    if (/치약/.test(name)) return "그램당 가격과 제품 종류를 함께 확인하세요.";
+    return "구성과 규격을 맞춘 뒤 단위가격으로 비교하세요.";
+};
 
+export async function createHotdealDirector(products = [], cards = []) {
+    if (!Array.isArray(products) || !products.length)
+        throw new Error("HOTDEAL: 상품 데이터가 없습니다.");
+    if (!Array.isArray(cards) || cards.length !== products.length ||
+        cards.some(c => !c?.cardFile))
+        throw new Error("HOTDEAL: 실제 상품 카드가 누락되었습니다.");
+    if (products.some(p => !eligible(p)))
+        throw new Error("HOTDEAL: 이미지·가격·단위정보가 검증되지 않은 상품이 있습니다.");
 
-  /*
-   * =====================================================
-   * 5. DIRECTOR AI
-   * =====================================================
-   */
-
-  const result =
-    await callAI(
-
-      prompt +
-
-      "\n\n===== PRODUCT CARD INFORMATION =====\n" +
-
-      JSON.stringify(
-        directorProducts,
-        null,
-        2
-      )
-
-    );
-
-
-  console.log(
-    "===== HOTDEAL DIRECTOR RESULT ====="
-  );
-
-  console.log(
-    result
-  );
-
-  console.log(
-    "===================================="
-  );
-
-
-  const json =
-    result
-      .replace(
-        /^```json/i,
-        ""
-      )
-      .replace(
-        /^```/,
-        ""
-      )
-      .replace(
-        /```$/,
-        ""
-      )
-      .trim();
-
-
-  const director =
-    JSON.parse(
-      json
-    );
-
-
-  /*
-   * =====================================================
-   * 6. DIRECTOR PLAN
-   * =====================================================
-   */
-
-  const plans =
-    Array.isArray(
-      director.products
-    )
-      ? director.products
-      : [];
-
-
-  const planByOrder =
-    new Map(
-
-      plans.map(
-        plan =>
-          [
-            Number(plan.order),
-            plan
-          ]
-      )
-
-    );
-
-
-  /*
-   * =====================================================
-   * 7. 원본 상품정보 + 카드 파일 + Director 연출
-   * =====================================================
-   */
-
-  const finalProducts =
-    sourceProducts.map(
-      (source, index) => {
-
-        const plan =
-          planByOrder.get(
-            source.order
-          ) || {};
-
-        const card =
-          cards[index];
-
+    const first = products[0];
+    const hookText = first.productGroup + ", 묶음 가격만 보면 정말 저렴한 걸까요?";
+    const output = products.map((p, index) => {
+        const current = number(p.unitPrice);
+        const historical = baseline(p, 7);
+        const unit = displayUnit(p.unitLabel);
+        // 7-day figures are category unit-price observations, not a discount
+        // or a historical price for this individual SKU.
+        const comparison = historical === null
+            ? "아직 7일 비교 기록이 충분하지 않아 최저가 판단은 보류합니다."
+            : current <= historical + 0.00001
+                ? "수집된 같은 상품군의 7일 최저 단위가격 수준입니다."
+                : "수집된 같은 상품군 7일 최저 단위가격은 " +
+                    won(historical * unit.scale) + "입니다.";
+        const message = p.productGroup + "의 현재 가격은 " + won(p.price) +
+            ". " + unitPriceText(p) + "입니다. " + comparison;
+        const tip = advice(p.productGroup);
         return {
-
-          order:
-            source.order,
-
-          productGroup:
-            source.productGroup,
-
-          name:
-            source.name,
-
-          price:
-            source.price,
-
-          unitPrice:
-            source.unitPrice,
-
-          unitLabel:
-            source.unitLabel,
-
-          highestPrice:
-            source.highestPrice,
-
-          dealRate:
-            source.dealRate,
-
-          isHotdeal:
-            source.isHotdeal,
-
-          sevenDayLow:
-            source.sevenDayLow,
-
-          sevenDayStatus:
-            source.sevenDayStatus,
-
-          thirtyDayLow:
-            source.thirtyDayLow,
-
-          thirtyDayStatus:
-            source.thirtyDayStatus,
-
-          image:
-            source.image,
-
-          url:
-            source.url,
-
-          /*
-           * NEW
-           *
-           * 실제 영상에서 사용할
-           * 세로형 상품 카드
-           */
-          cardFile:
-            card.cardFile,
-
-          displayDuration:
-            Number.isFinite(
-              Number(
-                plan.displayDuration
-              )
-            )
-              ? Number(
-                  plan.displayDuration
-                )
-              : 2.5,
-
-          scrollDuration:
-            Number.isFinite(
-              Number(
-                plan.scrollDuration
-              )
-            )
-              ? Number(
-                  plan.scrollDuration
-                )
-              : 2.5,
-
-          scrollSpeed:
-            plan.scrollSpeed ||
-            "slow",
-
-          tts:
-            typeof plan.tts === "string"
-              ? plan.tts
-              : "",
-
-          subtitle:
-            typeof plan.subtitle === "string"
-              ? plan.subtitle
-              : "",
-
-          showHotdeal:
-            source.isHotdeal === true
-
+            order: index + 1, productGroup: p.productGroup,
+            name: p.name, price: p.price, unitPrice: p.unitPrice,
+            unitLabel: p.unitLabel, image: p.image, url: p.url,
+            sevenDayLow: p.sevenDayLow, sevenDayStatus: p.sevenDayStatus,
+            thirtyDayLow: p.thirtyDayLow, thirtyDayStatus: p.thirtyDayStatus,
+            dealRate: p.dealRate, isHotdeal: p.isHotdeal === true,
+            cardFile: cards[index].cardFile,
+            displayDuration: 8, scrollDuration: 8, scrollSpeed: "slow",
+            tts: message + " " + tip,
+            subtitle: p.productGroup + " | " + unitPriceText(p),
+            showHotdeal: p.isHotdeal === true
         };
-
-      }
-    );
-
-
-  /*
-   * =====================================================
-   * 8. FINAL RESULT
-   * =====================================================
-   */
-
-  return {
-
-    title:
-      director.title ||
-      "오늘의 생필품 가격비교",
-
-    description:
-      director.description ||
-      "",
-
-    format: {
-
-      aspectRatio:
-        "9:16",
-
-      orientation:
-        "vertical"
-
-    },
-
-    video: {
-
-      targetDuration:
-        35,
-
-      layout:
-        "vertical_product_cards",
-
-      scrollDirection:
-        "top_to_bottom",
-
-      scrollMode:
-        "continuous"
-
-    },
-
-    hook:
-      director.hook ||
-      {
-
-        tts:
-          "오늘 생필품 가격을 비교해보겠습니다.",
-
-        subtitle:
-          "오늘의 생필품 가격비교",
-
-        duration:
-          2.5
-
-      },
-
-    products:
-      finalProducts,
-
-    ending:
-      director.ending ||
-      {
-
-        tts:
-          "오늘 가격은 프로필 상품에서 확인하세요.",
-
-        subtitle:
-          "프로필 상품에서 확인하세요",
-
-        duration:
-          2.5
-
-      }
-
-  };
-
+    });
+    const last = products[products.length - 1];
+    const endingText = "결론! " + advice(first.productGroup) +
+        (products.length > 1 ? " " + last.productGroup + "도 같은 기준으로 확인해 보세요." : "") +
+        " 상품 정보는 프로필에서 확인하세요.";
+    return {
+        title: first.productGroup + " 살 때 총가격만 보면 놓치는 것 #쇼핑팁 #가격비교",
+        description: "가격은 수집 시점 기준이며 변동될 수 있습니다. 단위가격과 상품 규격을 함께 확인하세요.",
+        format: { aspectRatio: "9:16", orientation: "vertical" },
+        video: { targetDuration: 28, layout: "information_short", scrollDirection: "top_to_bottom", scrollMode: "cut" },
+        hook: { tts: hookText, subtitle: hookText, duration: 2.5 },
+        products: output,
+        ending: { tts: endingText, subtitle: "총가격보다 단위가격 + 규격", duration: 4 }
+    };
 }
