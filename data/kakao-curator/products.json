@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "products": [
+    {
+      "id": "kakao-optizen-gift",
+      "name": "옵티젠 마스터 컬렉션 종합비타민 멀티팩 30포 / 1박스 (+장미꽃&키링)",
+      "keyword": "옵티젠 종합비타민 멀티팩",
+      "description": "30포 1박스 구성. 장미꽃과 키링 행사 구성은 구매 전 상세페이지에서 확인하세요.",
+      "price": null,
+      "partnerUrl": "https://gift-link.kakao.com/c/73zu3HCp",
+      "provider": "kakao-curator",
+      "images": [],
+      "enabled": true
+    }
+  ]
+}
