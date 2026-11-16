@@ -139,3 +139,20 @@ export async function stageProductImages(product, candidates, {maxImages=6}={}){
  if(!images.length)throw new Error("실제 상품 이미지 확보 실패: 영상 제작 보류");
  return {...product, images, publicImages:dedupe([...publicImages,...(product.publicImages||[])]),productMediaVerified:true};
 }
+
+export async function prepareShoppingProduct(product) {
+  if(!product?.partnerUrl)throw new Error("SHOPPING: 원본 제휴 링크가 필요합니다.");
+  if(product.productMediaVerified===true && product.images?.length)return product;
+  const link=product.provider==="kakao-curator" ? product.partnerUrl : (product.sourceUrl||product.detailUrl||product.partnerUrl);
+  const info=await discoverProductPage(link,{expectedName:product.name||""});
+  const images=dedupe([...(product.images||[]),...(info.verified?info.images:[])]).slice(0,16);
+  const merged={
+    ...product,
+    name:product.name||info.name,
+    description:product.description||((info.verified)?info.description:""),
+    price:product.price||((info.verified)?info.price:null),
+    mediaSource:info.source
+  };
+  if(!merged.name || !images.length)throw new Error("SHOPPING: 상품 상세정보/실제 이미지가 없어 업로드 보류");
+  return stageProductImages(merged,images,{maxImages:6});
+}
