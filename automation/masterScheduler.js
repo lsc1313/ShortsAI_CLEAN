@@ -1,9 +1,6 @@
 ﻿import * as Brain from "../brain/brain.js";
 import fs from "fs";
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
-const Hotdeal = require("../coupang-hotdeal/index.js");
+import { chooseCuratorProduct, markCuratorPublished } from "../modules/kakaoCurator/store.js";
 import path from "path";
 
 import {
@@ -39,21 +36,13 @@ ShortsAI PC MASTER SCHEDULER
 10:00  Science  1개
 13:00  History  1개
 
-HOTDEAL / Shopping Recommendation은
-다음 단계에서 이 파일에 추가한다.
+Shopping: Coupang Partners 12:00 x1; Kakao Curator 18:00 x1.
 =========================================================
 */
 
 const CHECK_INTERVAL_MS = 30 * 1000;
 
 const DAILY_JOBS = [
-    {
-        id: "hotdeal-morning",
-        hour: 8,
-        minute: 0,
-        channel: "hotdeal",
-        count: 1
-    },
     {
         id: "ai",
         hour: 9,
@@ -83,10 +72,10 @@ const DAILY_JOBS = [
         count: 1
     },
     {
-        id: "hotdeal-evening",
-        hour: 21,
+        id: "kakao-curator",
+        hour: 18,
         minute: 0,
-        channel: "hotdeal",
+        channel: "kakao-curator",
         count: 1
     }
 ];
@@ -158,118 +147,30 @@ function isDue(
 }
 
 
-async function runHotdealJob() {
-
-    console.log("");
-    console.log(
-        "========================================="
-    );
-    console.log(
-        " HOTDEAL SCHEDULE JOB"
-    );
-    console.log(
-        "========================================="
-    );
-
-    const activeProducts =
-        Hotdeal.getActiveProducts();
-
-    if (
-        !Array.isArray(activeProducts) ||
-        activeProducts.length === 0
-    ) {
-        throw new Error(
-            "HOTDEAL: 활성 상품이 없습니다."
-        );
+async function runKakaoCuratorJob() {
+    const product = chooseCuratorProduct();
+    if (!product) {
+        // No attribution-safe product with usable media; never publish an
+        // unrelated image or repeat the same gift recommendation every day.
+        console.log("[KAKAO CURATOR] 유효한 미게시 상품이 없어 오늘 업로드를 건너뜁니다.");
+        return { skipped: true, reason: "no-eligible-product" };
     }
-
-    const productGroups =
-        activeProducts.map(
-            product => product.name
-        );
-
-    console.log(
-        `[HOTDEAL] 활성 상품군 : ${productGroups.length}`
-    );
-
-    /*
-    1. 활성 상품군 전체 갱신
-    */
-    const products =
-        await Hotdeal.run(
-            productGroups
-        );
-
-    if (
-        !Array.isArray(products) ||
-        products.length === 0
-    ) {
-        throw new Error(
-            "HOTDEAL: 갱신된 상품이 없습니다."
-        );
+    const result = await Brain.start({
+        mode: "QUICK",
+        topic: product.name,
+        count: 1,
+        channel: "Shopping",
+        product
+    });
+    // Brain.start can return an error status without throwing; do not mark
+    // a product published unless at least one video finished successfully.
+    const status = Brain.getStatus();
+    if (status.status !== "완료" || Number(status.current || 0) < 1) {
+        throw new Error("KAKAO CURATOR: 쇼츠 제작/업로드 성공을 확인하지 못했습니다.");
     }
-
-    const activeNames =
-        new Set(
-            activeProducts.map(
-                product => product.name
-            )
-        );
-
-    const hotdealProducts =
-        products.filter(
-            product =>
-                activeNames.has(
-                    product.productGroup
-                )
-        );
-
-    if (
-        hotdealProducts.length === 0
-    ) {
-        throw new Error(
-            "HOTDEAL: 갱신된 활성 상품이 없습니다."
-        );
-    }
-
-    console.log(
-        `[HOTDEAL] 갱신 완료 : ${hotdealProducts.length}/${activeProducts.length}`
-    );
-
-    /*
-    2. 전체 갱신 상품을 하나의 HOTDEAL 작업으로
-       기존 Brain 생산라인에 전달
-    */
-    const result =
-        await Brain.start({
-
-            mode:
-                "QUICK",
-
-            topic:
-                "오늘의 생필품 HOTDEAL",
-
-            count:
-                1,
-
-            channel:
-                "Shopping",
-
-            type:
-                "HOTDEAL",
-
-            products:
-                hotdealProducts
-
-        });
-
-    console.log(
-        "[HOTDEAL] COMPLETE"
-    );
-
+    markCuratorPublished(product);
     return result;
 }
-
 
 async function runShoppingRecommendationJob() {
 
@@ -547,13 +448,8 @@ try {
                 await runShoppingRecommendationJob();
 
             }
-            else if (
-                job.id === "hotdeal-morning" ||
-                job.id === "hotdeal-evening"
-            ) {
-
-                await runHotdealJob();
-
+            else if (job.id === "kakao-curator") {
+                await runKakaoCuratorJob();
             }
             else {
 
