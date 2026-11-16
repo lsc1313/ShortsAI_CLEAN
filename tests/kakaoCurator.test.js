@@ -25,7 +25,7 @@ test("Kakao shorts description uses only Kakao curator disclosure", () => {
   const meta = createMetadata({title:"선물 고르는 기준",description:"구성 확인"}, {product});
   assert.ok(meta.description.includes(DISCLOSURE));
   assert.ok(!meta.description.includes("쿠팡 파트너스 활동"));
-  assert.ok(!meta.description.includes(link)); // profile shop flow
+  assert.ok(meta.description.includes(link)); // direct affiliate URL; old shop page retired
   assert.ok(meta.tags.includes("카카오큐레이터"));
 });
 test("Coupang shorts keep Coupang disclosure", () => {
