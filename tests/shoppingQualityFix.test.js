@@ -41,9 +41,17 @@ test("Video renderer burns-in ASS on shopping too",()=>{
  assert.match(code,/const isHotdealVideo = false/);
  assert.match(code,/ass=\$\{subtitle\}/);
 });
-test("No link-page production after shopping Shorts",()=>{
+test("All-products page updates, without retired hotdeal publisher",()=>{
  const manager=fs.readFileSync(new URL("../brain/manager.js",import.meta.url),"utf8");
  const create=fs.readFileSync(new URL("../modules/createShort.js",import.meta.url),"utf8");
- assert.ok(!manager.includes("await createLinkPage("));
+ assert.ok(manager.includes("await createLinkPage("));
  assert.ok(!create.includes("await updateShopPage("));
+ const html=fs.readFileSync(new URL("../public/shop/index.html",import.meta.url),"utf8");
+ assert.ok(html.includes("ALL_PRODUCTS_START"));
+ assert.ok(html.includes("ALL_PRODUCTS_END"));
+ assert.ok(html.includes("전체상품"));
+ assert.ok(!html.includes("HOTDEAL_START"));
+ assert.ok(!html.includes("hotdeal-section"));
+ assert.ok(!html.includes("category-tab"));
+ assert.ok((html.match(/class="product-card"/g)||[]).length>=40);
 });
