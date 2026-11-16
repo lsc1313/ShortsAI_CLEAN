@@ -1,3 +1,5 @@
+import { DISCLOSURE as KAKAO_DISCLOSURE } from "./kakaoCurator/store.js";
+
 export function createMetadata(
     director,
     options = {}
@@ -154,9 +156,9 @@ ${aiData.description || ""}
 
     lines.push("");
 
-    lines.push(
-        "※ 이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
-    );
+    const isKakao = product.provider === "kakao-curator";
+    lines.push(isKakao ? KAKAO_DISCLOSURE :
+        "※ 이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.");
 
 
     /*
@@ -166,7 +168,7 @@ ${aiData.description || ""}
     lines.push("");
 
     lines.push(
-        "#쇼츠 #제품추천 #쇼핑추천 #쿠팡파트너스"
+        isKakao ? "#쇼츠 #선물추천 #카카오선물하기 #큐레이터" : "#쇼츠 #제품추천 #쇼핑추천 #쿠팡파트너스"
     );
 
 
@@ -186,7 +188,7 @@ ${aiData.description || ""}
         "쇼핑",
         "쇼핑추천",
         "생활용품",
-        "쿠팡파트너스"
+        isKakao ? "카카오큐레이터" : "쿠팡파트너스"
 
     ];
 
