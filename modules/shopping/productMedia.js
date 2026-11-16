@@ -95,7 +95,19 @@ export async function discoverProductPage(link,{expectedName="",fetchImpl=fetch}
        target=next;continue;
      }
      if(!res.ok)break;
-     finalUrl=target;html=await res.text();break;
+     finalUrl=target;html=await res.text();
+     // Some short links use a small HTML redirect rather than HTTP 3xx.
+     // Follow only a Kakao/Coupang destination, never an arbitrary host.
+     const refresh=html.match(/<meta\b[^>]*http-equiv\s*=\s*["']refresh["'][^>]*content\s*=\s*["'][^"']*url=([^"']+)/i)?.[1];
+     const locationScript=html.match(/(?:location\.href\s*=|location\.replace\s*\()\s*["'](https:\/\/[^"']+)["']/i)?.[1];
+     const nextString=htmlDecode(refresh||locationScript||"").trim();
+     if(nextString){
+       try{
+         const next=new URL(nextString,target).href;
+         if(allowedPage(next)){target=next;continue;}
+       }catch{}
+     }
+     break;
    }
    return extractProductPage(html,finalUrl,{expectedName,requireIdentity:true});
  }catch{return {name:"",description:"",images:[],verified:false,source:"unavailable"};}
