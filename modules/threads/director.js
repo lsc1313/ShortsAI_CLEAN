@@ -668,16 +668,18 @@ JSON만 출력한다.
     const cta =
         String(
             result.cta ||
-            "소개한 상품은 프로필 링크에서 확인할 수 있어요."
+            "소개한 상품은 아래 추천 링크에서 확인할 수 있어요."
         ).trim();
 
-    const coupangNotice =
-        "※ 이 게시물은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.";
+    const coupangNotice = product.provider === "kakao-curator"
+        ? "이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공 받습니다."
+        : "※ 이 게시물은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.";
 
     const finalText =
         [
             text,
             cta,
+            product.partnerUrl || "",
             coupangNotice
         ]
         .filter(Boolean)
