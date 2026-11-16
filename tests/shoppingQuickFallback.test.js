@@ -55,7 +55,7 @@ test("QUICK keeps production blocked when no candidate offers even a real single
     prepare:async()=>{count++;throw Error("SHOPPING_MEDIA_INSUFFICIENT: insufficient photos");},
     logger:noop
   }),/정보형 대체 제작도 불가능합니다/);
-  assert.equal(count,2);
+  assert.equal(count,4); // two strict attempts plus two real-photo fallback attempts
 });
 
 test("QUICK rejects false-positive prepared object without 2 distinct validated photos",async()=>{
