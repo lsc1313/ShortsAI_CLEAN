@@ -1234,8 +1234,12 @@ async function deleteCoupangProduct(
         <article style="padding:12px;background:#101820;border-radius:10px">
           <strong>${escape(p.name)}</strong>
           <p style="font-size:12px;word-break:break-all">${escape(p.partnerUrl)}</p>
-          <p>${p.images?.length ? "상품 이미지 등록됨" : "사진 미확보 — 업로드 보류"}</p>
+          <p>등록된 이미지 주소: ${p.images?.length || 0}장 · 쇼츠 제작에는 실제로 열리는 서로 다른 사진 2장 이상 필요</p>
+          <label style="display:block;margin:8px 0">휴대폰 갤러리에서 실제 상품 사진 추가
+            <input type="file" multiple accept="image/jpeg,image/png,image/webp" data-curator-files="${escape(p.id)}" style="display:block;width:100%;padding:8px 0">
+          </label>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" data-curator-action="upload" data-id="${escape(p.id)}">선택한 사진 등록</button>
             <button type="button" data-curator-action="enrich" data-id="${escape(p.id)}">이미지 자동 확인</button>
             <button type="button" data-curator-action="create" data-id="${escape(p.id)}">지금 쇼츠 제작</button>
             <button type="button" data-curator-action="remove" data-id="${escape(p.id)}">삭제</button>
@@ -1266,9 +1270,19 @@ async function deleteCoupangProduct(
         if (!confirm("이 큐레이터 상품을 삭제할까요?")) return;
         await request("/curator/products/" + id,"DELETE");
         status.textContent = "삭제 완료";
+      } else if (action === "upload") {
+        const fileInput = [...list.querySelectorAll("[data-curator-files]")]
+          .find(el => el.dataset.curatorFiles === btn.dataset.id);
+        if (!fileInput?.files?.length) throw Error("갤러리에서 상품 사진을 2장 이상 선택하세요.");
+        const formData = new FormData();
+        for (const file of fileInput.files) formData.append("images",file);
+        const response = await fetch("/curator/products/" + id + "/images",{method:"POST",body:formData});
+        const result = await response.json();
+        if (!response.ok || !result.success) throw Error(result.error || "사진 등록 실패");
+        status.textContent = "상품 사진 " + result.imageCount + "장 등록됨. 제작 시 실제 사진 중복 검사를 진행합니다.";
       } else if (action === "enrich") {
         const result = await request("/curator/products/" + id + "/enrich","POST");
-        status.textContent = result.mediaReady ? "상품 이미지 확인 완료" : "공개 이미지가 확인되지 않았습니다. 이미지 주소를 직접 등록하세요.";
+        status.textContent = result.mediaReady ? "등록 이미지가 있습니다. 서로 다른 사진 2장 이상이 확보되는지는 제작 시 검사합니다." : "카카오 공개 페이지에서 추가 이미지를 찾지 못했습니다. 휴대폰 갤러리에서 실제 상품 사진을 추가할 수 있습니다.";
       } else if (action === "create") {
         status.textContent = "쇼츠 제작 중입니다.";
         await request("/curator/products/" + id + "/create","POST");

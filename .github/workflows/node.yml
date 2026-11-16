@@ -24,6 +24,7 @@ jobs:
       - run: npm install
 
       - run: node --check server.js
+      - run: node --check public/app.js
       - run: node --check modules/createShort.js
       - run: node --check modules/hotdeal/director.js
       - run: node --check modules/hotdeal/card.js
@@ -35,7 +36,7 @@ jobs:
       - run: node --check modules/shopping/director.js
       - run: node --check modules/metadata.js
       - run: node --check public/app.js
-      - run: node --test tests/kakaoCurator.test.js tests/shoppingProductMedia.test.js tests/shoppingQualityFix.test.js
+      - run: node --test tests/kakaoCurator.test.js tests/shoppingProductMedia.test.js tests/shoppingQualityFix.test.js tests/curatorUpload.test.js
       - run: node --check modules/video/render.js
       - run: node --check modules/video.js
       - run: node --check modules/threads/director.js
