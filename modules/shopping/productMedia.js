@@ -118,7 +118,7 @@ const isImageBuffer=b=> b.length>1000 && (
  (b[0]===0x89&&b[1]===0x50&&b[2]===0x4e)||
  (b.toString("ascii",0,4)==="RIFF"&&b.toString("ascii",8,12)==="WEBP")
 );
-export async function stageProductImages(product, candidates, {maxImages=6}={}){
+export async function stageProductImages(product, candidates, {maxImages=6,allowSinglePhoto=false}={}){
  const id=crypto.createHash("sha256").update(product.partnerUrl||product.name).digest("hex").slice(0,20);
  const dir=path.resolve("media/products/verified",id);
  fs.mkdirSync(dir,{recursive:true});
@@ -159,13 +159,15 @@ export async function stageProductImages(product, candidates, {maxImages=6}={}){
      images.push(render.status===0 && fs.existsSync(portrait)?portrait:filename);
    }catch{/* inaccessible images are skipped, not replaced with unrelated stock */ }
  }
- if(images.length<2)throw new Error("SHOPPING_MEDIA_INSUFFICIENT: 동일 상품의 서로 다른 이미지가 2장 미만이어서 업로드를 보류합니다.");
- return {...product, images, publicImages:dedupe([...publicImages,...(product.publicImages||[])]),productMediaVerified:true};
+ if(images.length<(allowSinglePhoto?1:2))throw new Error("SHOPPING_MEDIA_INSUFFICIENT: 동일 상품의 실제 이미지가 제작 기준보다 부족합니다.");
+ // This flag describes one actual product image, never two fabricated photos.
+ const singlePhotoMode=images.length===1;
+ return {...product, images, distinctPhotoCount:images.length, singlePhotoMode, publicImages:dedupe([...publicImages,...(product.publicImages||[])]),productMediaVerified:true};
 }
 
-export async function prepareShoppingProduct(product) {
+export async function prepareShoppingProduct(product, {allowSinglePhoto=false}={}) {
   if(!product?.partnerUrl)throw new Error("SHOPPING: 원본 제휴 링크가 필요합니다.");
-  if(product.productMediaVerified===true && product.images?.length>=2)return product;
+  if(product.productMediaVerified===true && product.images?.length>=(allowSinglePhoto?1:2))return product;
   const link=product.provider==="kakao-curator" ? product.partnerUrl : (product.sourceUrl||product.detailUrl||product.partnerUrl);
   const info=await discoverProductPage(link,{expectedName:product.name||""});
   const images=dedupe([...(info.verified?info.images:[]),...(product.galleryImages||[]),...(product.images||[])]).slice(0,16);
@@ -177,5 +179,5 @@ export async function prepareShoppingProduct(product) {
     mediaSource:info.source
   };
   if(!merged.name || !images.length)throw new Error("SHOPPING: 상품 상세정보/실제 이미지가 없어 업로드 보류");
-  return stageProductImages(merged,images,{maxImages:6});
+  return stageProductImages(merged,images,{maxImages:6,allowSinglePhoto});
 }
