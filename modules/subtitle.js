@@ -707,42 +707,25 @@ function getStyle(item,index){
 =====================================================
 */
 
-function getOverride(style){
-
-    if(style === "Hook"){
-
-        return (
-            "{\\an2" +
-            "\\fad(70,50)" +
-            "\\shad0" +
-            "\\blur0.4" +
-            "\\fscx100" +
-            "\\fscy100}"
-        );
-
-    }
-
-
-    if(style === "CTA"){
-
-        return (
-            "{\\an2" +
-            "\\fad(80,80)" +
-            "\\shad0" +
-            "\\blur0.4}"
-        );
-
-    }
-
-
-    return (
-        "{\\an2" +
-        "\\fad(45,35)" +
-        "\\shad0" +
-        "\\blur0.35}"
-    );
-
+/** Editorial subtitle layouts: scene type and shot rhythm determine placement and typography.
+ * Keep all text within the 1080×1920 Shorts safe region. No random font churn.
+ */
+export function subtitleLayout(style,sceneIndex=0){
+ const layouts=[
+  {font:'Noto Sans CJK KR',size:100,y:415,color:'&H0000E8FF&',outline:6},
+  {font:'Malgun Gothic',size:83,y:1470,color:'&H00FFFFFF&',outline:5},
+  {font:'NanumSquare',size:89,y:1280,color:'&H00FFF1CE&',outline:5},
+  {font:'Noto Serif CJK KR',size:85,y:600,color:'&H00FFFFFF&',outline:6}
+ ];
+ const index=style==='Hook'?0:style==='CTA'?2:style==='Ranking'?3:(1+Math.abs(sceneIndex)%3);
+ return layouts[index];
 }
+
+function getOverride(style,sceneIndex=0){
+ const layout=subtitleLayout(style,sceneIndex);
+ return `{\\an5\\pos(540,${layout.y})\\fn${layout.font}\\fs${layout.size}\\c${layout.color}\\bord${layout.outline}\\3c&H000000&\\shad2\\fad(85,65)}`;
+}
+
 
 
 /*
@@ -1067,7 +1050,8 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
 
             const override =
                 getOverride(
-                    style
+                    style,
+                    i
                 );
 
 
@@ -1086,10 +1070,7 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
             =====================================================
             */
 
-            const dialogueMarginV =
-                safeChunk.includes("\\N")
-                    ? 565
-                    : 0;
+            const dialogueMarginV = 0; // explicit scene position in getOverride()
 
             events +=
 `Dialogue: 0,${assTime(start)},${assTime(end)},${style},,0,0,${dialogueMarginV},,${override}${textLine}
