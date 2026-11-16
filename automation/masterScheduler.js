@@ -447,23 +447,14 @@ currentJobId = job.id;
 lastError = null;
 
 try {
+            let executionResult;
 
-            if (
-                job.id === "shopping-recommendation"
-            ) {
-
-                await runShoppingRecommendationJob();
-
-            }
-            else if (job.id === "kakao-curator") {
-                await runKakaoCuratorJob();
-            }
-            else {
-
-                await runChannelJob(
-                    job
-                );
-
+            if (job.id === "shopping-recommendation") {
+                executionResult = await runShoppingRecommendationJob();
+            } else if (job.id === "kakao-curator") {
+                executionResult = await runKakaoCuratorJob();
+            } else {
+                executionResult = await runChannelJob(job);
             }
 
 const brainStatus =
@@ -473,7 +464,10 @@ jobResults.set(
     key,
     {
         completed:
-            Number(brainStatus?.current || 0),
+            executionResult?.skipped ? 0 : Number(brainStatus?.current || 0),
+
+        skipped: executionResult?.skipped === true,
+        reason: executionResult?.reason || null,
 
         target:
             Number(job.count || 0)
@@ -599,6 +593,8 @@ else if (
 
 const result =
     jobResults.get(key) || null;
+
+if (result?.skipped === true) status = "skipped";
 
             return {
                 id:
