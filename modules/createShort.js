@@ -25,6 +25,7 @@ import { createThumbnail } from "./thumbnail.js";
 import { createMetadata } from "./metadata.js";
 import { uploadVideo } from "./upload.js";
 import { uploadInstagramReel } from "./instagram/instagramUploader.js";
+import { getInstagramToken } from "./instagram/instagramAuth.js";
 import { createThreadsDirector } from "./threads/director.js";
 import { uploadThreadsText } from "./threads/uploader.js";
 import { createShoppingDirector } from "./shopping/director.js";
@@ -835,7 +836,7 @@ if (
                         instagram.instagramUserId,
 
                     accessToken:
-                        instagram.accessToken,
+                        await getInstagramToken(instagram.instagramUserId, instagram.accessToken),
 
                     username:
                         instagram.username,
