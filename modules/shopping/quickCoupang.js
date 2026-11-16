@@ -25,6 +25,7 @@ export async function chooseQuickCoupangProduct(keyword, {
   }
 
   const attempts = [];
+  const singlePhotoCandidates = [];
   for (const [index, selected] of candidates.slice(0,limit).entries()) {
     const productName = String(selected?.title || selected?.name || "").trim();
     const productId = String(selected?.productId || "").trim();
@@ -66,6 +67,9 @@ export async function chooseQuickCoupangProduct(keyword, {
         enabled: true
       };
 
+      // Strict pass first: exhaust possible distinct multi-photo products.
+      // Keep a candidate for a second, clearly marked one-photo pass.
+      singlePhotoCandidates.push({candidate,selectedIndex:index+1});
       const product = await prepare(candidate);
       if (product?.productMediaVerified !== true || !Array.isArray(product?.images) || product.images.length < 2) {
         throw new Error("SHOPPING_MEDIA_INSUFFICIENT: 같은 상품의 서로 다른 실제 사진이 2장 미만");
@@ -86,10 +90,30 @@ export async function chooseQuickCoupangProduct(keyword, {
     }
   }
 
+  // Coupang often provides only the official hero image. Once all products
+  // fail the strict gallery requirement, use one genuine product photo with
+  // camera movement / informational overlays; never claim it is two photos.
+  for (const {candidate,selectedIndex} of singlePhotoCandidates) {
+    try {
+      const product=await prepare(candidate,{allowSinglePhoto:true});
+      if (product?.productMediaVerified !== true ||
+          !Array.isArray(product.images) || product.images.length < 1 ||
+          (product.images.length === 1 && product.singlePhotoMode !== true)) {
+        throw new Error("SHOPPING: 실제 사진 1장 검증 실패");
+      }
+      logger.warn("[SHOPPING QUICK] 실제 상품 사진 1장 정보형 쇼츠로 제작:",{
+        productId:candidate.id,selectedIndex,distinctPhotos:product.distinctPhotoCount ?? product.images.length
+      });
+      return {product,selectedIndex,inspected:Math.min(candidates.length,limit)};
+    } catch (error) {
+      logger.warn("[SHOPPING QUICK] 단일 사진 후보 제외:",candidate.name,String(error?.message||error).slice(0,150));
+    }
+  }
+
   logger.warn("[SHOPPING QUICK] 후보 전체 미통과:",attempts);
   const summary=attempts.slice(0,4).map(x=>`${x.name}: ${x.reason}`).join(" / ");
   throw new Error(
-    `SHOPPING_MEDIA_INSUFFICIENT: ${Math.min(candidates.length,limit)}개 쿠팡 상품을 확인했지만 서로 다른 실제 상품 사진 2장 이상인 후보가 없습니다.`+
+    `SHOPPING_MEDIA_INSUFFICIENT: ${Math.min(candidates.length,limit)}개 쿠팡 상품을 확인했지만 서로 다른 실제 상품 사진 2장 이상인 후보가 없고 실제 사진 1장 정보형 대체 제작도 불가능합니다.`+
     (summary ? " (예: "+summary.slice(0,260)+")" : "")
   );
 }
