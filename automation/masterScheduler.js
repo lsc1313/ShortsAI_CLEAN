@@ -15,6 +15,7 @@ import {
 import {
     createPartnerLink
 } from "../modules/coupang/index_api.js";
+import { resolveCoupangProduct } from "../modules/coupang/productResolver.js";
 
 import {
     getCompletedJobs,
@@ -214,6 +215,21 @@ async function runShoppingRecommendationJob() {
         );
     }
 
+    // Resolve the exact item behind the newly issued affiliate link rather
+    // than describing unrelated shopping-category products.
+    let verifiedCoupang = null;
+    try {
+        const resolved = await resolveCoupangProduct({
+            name: selected.name, partnerUrl, images: [selected.image]
+        });
+        if (resolved?.resolved === true) verifiedCoupang = resolved;
+    } catch (error) {
+        console.warn("[COUPANG] 실상품 상세 수집 실패:", error.message);
+    }
+    const productDetails = verifiedCoupang?.attributes?.map(x =>
+        `${x.type}: ${x.value}`).join("; ") || "";
+    const exactGallery = verifiedCoupang?.galleryImages || [];
+
     /*
     3. 기존 Shopping IMAGE 엔진이 사용할
        상품 이미지를 로컬에 저장한다.
@@ -272,15 +288,16 @@ async function runShoppingRecommendationJob() {
             selected.searchTopic,
 
         description:
-            "",
+            productDetails,
 
         price:
-            selected.price,
+            Number(verifiedCoupang?.price) || selected.price,
 
         partnerUrl,
-        sourceUrl: selected.url,
+        sourceUrl: verifiedCoupang?.detailUrl || selected.url,
         publicImages: selected.image ? [selected.image] : [],
         provider: "coupang",
+        galleryImages: exactGallery,
         images: [imageFile],
 
         enabled:
