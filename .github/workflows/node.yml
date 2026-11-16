@@ -30,6 +30,8 @@ jobs:
       - run: node --check modules/hotdeal/card.js
       - run: node --test tests/hotdealStory.test.js
       - run: node --check automation/masterScheduler.js
+      - run: node --check automation/shoppingRecommendation.js
+      - run: node --test tests/shoppingSchedulerRecovery.test.js
       - run: node --check modules/kakaoCurator/store.js
       - run: node --check modules/kakaoCurator/media.js
       - run: node --check modules/shopping/productMedia.js

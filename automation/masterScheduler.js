@@ -5,7 +5,7 @@ import { enrichCuratorProduct, prepareCuratorProduct } from "../modules/kakaoCur
 import path from "path";
 
 import {
-    selectShoppingRecommendation
+    selectShoppingRecommendationCandidates
 } from "./shoppingRecommendation.js";
 
 import {
@@ -16,6 +16,7 @@ import {
     createPartnerLink
 } from "../modules/coupang/index_api.js";
 import { resolveCoupangProduct } from "../modules/coupang/productResolver.js";
+import { prepareShoppingProduct } from "../modules/shopping/productMedia.js";
 
 import {
     getCompletedJobs,
@@ -181,206 +182,104 @@ async function runKakaoCuratorJob() {
 }
 
 async function runShoppingRecommendationJob() {
+    // Do not mark a shopping product as published until YouTube production
+    // truly completes. An HTML/API page with only one distinct photo should
+    // not consume the daily slot or contaminate the recommendation history.
+    const candidates = await selectShoppingRecommendationCandidates(5);
+    const failures = [];
 
-    console.log("");
-    console.log(
-        "========================================="
-    );
-    console.log(
-        " 12:00 SHOPPING RECOMMENDATION"
-    );
-    console.log(
-        "========================================="
-    );
+    for (const selected of candidates) {
+        try {
+            const partnerUrl = await createPartnerLink(selected.url);
+            if (!partnerUrl || typeof partnerUrl !== "string") {
+                throw new Error("쿠팡 파트너스 링크 생성 실패");
+            }
 
-    /*
-    1. 추천 상품 선정
+            let exact = null;
+            try {
+                exact = await resolveCoupangProduct({
+                    name: selected.name,
+                    partnerUrl,
+                    images: [selected.image]
+                });
+            } catch (error) {
+                console.warn("[COUPANG] 상세정보 확인 실패:", error.message);
+            }
+            // Only identity-matched details and galleries can supplement the
+            // verified catalog image. Never use another SKU's photos.
+            const verified = exact?.resolved === true ? exact : null;
+            const attrs = verified?.attributes || [];
+            const description = attrs
+                .filter(x => x?.type && x?.value)
+                .map(x => `${x.type}: ${x.value}`)
+                .join("; ");
 
-    이 단계에서는 아직 DB에 기록하지 않는다.
-    */
-    const selected =
-        await selectShoppingRecommendation();
+            const product = {
+                id: String(selected.productId),
+                name: verified?.productTitle || selected.name,
+                keyword: selected.searchTopic,
+                description,
+                price: Number(verified?.price) || selected.price,
+                partnerUrl,
+                sourceUrl: verified?.detailUrl || selected.url,
+                provider: "coupang",
+                images: [selected.image],
+                galleryImages: verified?.galleryImages || [],
+                publicImages: [selected.image],
+                enabled: true
+            };
 
-    /*
-    2. 파트너스 링크 생성
-    */
-    const partnerUrl =
-        await createPartnerLink(
-            selected.url
-        );
+            // This is intentionally before Brain.start. A failed product
+            // cannot result in a misleading "완료 0/1" success.
+            const prepared = await prepareShoppingProduct(product);
+            console.log("[COUPANG MEDIA]", {
+                productId: selected.productId,
+                candidateUrls: [selected.image, ...product.galleryImages].length,
+                distinctPhotos: prepared.images.length,
+                mediaSource: prepared.mediaSource
+            });
 
-    if (!partnerUrl) {
-        throw new Error(
-            "Shopping Recommendation: 파트너스 링크 생성 실패"
-        );
-    }
+            const result = await Brain.start({
+                mode: "QUICK",
+                topic: prepared.name,
+                count: 1,
+                channel: "Shopping",
+                product: prepared
+            });
+            const status = Brain.getStatus();
+            if (status.status !== "완료" || Number(status.current || 0) < 1) {
+                throw new Error("쇼츠 제작 또는 업로드 미완료 (완료 0/1)");
+            }
 
-    // Resolve the exact item behind the newly issued affiliate link rather
-    // than describing unrelated shopping-category products.
-    let verifiedCoupang = null;
-    try {
-        const resolved = await resolveCoupangProduct({
-            name: selected.name, partnerUrl, images: [selected.image]
-        });
-        if (resolved?.resolved === true) verifiedCoupang = resolved;
-    } catch (error) {
-        console.warn("[COUPANG] 실상품 상세 수집 실패:", error.message);
-    }
-    const productDetails = verifiedCoupang?.attributes?.map(x =>
-        `${x.type}: ${x.value}`).join("; ") || "";
-    const exactGallery = verifiedCoupang?.galleryImages || [];
-
-    /*
-    3. 기존 Shopping IMAGE 엔진이 사용할
-       상품 이미지를 로컬에 저장한다.
-    */
-    const imageId =
-        `scheduled_${Date.now()}`;
-
-    const imageDir =
-        path.join(
-            process.cwd(),
-            "media",
-            "products",
-            imageId
-        );
-
-    fs.mkdirSync(
-        imageDir,
-        {
-            recursive: true
+            rememberRecommendedProduct({
+                productId: selected.productId,
+                productName: selected.name,
+                searchTopic: selected.searchTopic
+            });
+            console.log("[SHOPPING] 쿠팡 쇼츠 업로드 성공:", selected.productId);
+            return result;
+        } catch (error) {
+            const message = String(error?.message || error);
+            failures.push(`${selected.productId}: ${message}`);
+            console.warn("[SHOPPING] 후보 제외:", selected.productId, message);
+            // If production/upload was attempted and failed, do not blindly
+            // attempt further uploads in the same tick: they might have
+            // partially succeeded and need inspection first.
+            if (!/SHOPPING_MEDIA_INSUFFICIENT|상품 이미지|상품 사진|상세정보|파트너스 링크|미지원|COUPANG/i.test(message)) {
+                throw error;
+            }
         }
-    );
-
-    const imageFile =
-        path.join(
-            imageDir,
-            "product.jpg"
-        );
-
-    await downloadImage(
-        selected.image,
-        imageFile
-    );
-
-    if (
-        !fs.existsSync(imageFile) ||
-        fs.statSync(imageFile).size === 0
-    ) {
-        throw new Error(
-            "Shopping Recommendation: 상품 이미지 저장 실패"
-        );
     }
 
-    /*
-    4. 기존 Shopping QUICK 생산라인이 사용하는
-       Product 객체 형식으로 변환한다.
-    */
-    const product = {
-
-        id:
-            imageId,
-
-        name:
-            selected.name,
-
-        keyword:
-            selected.searchTopic,
-
-        description:
-            productDetails,
-
-        price:
-            Number(verifiedCoupang?.price) || selected.price,
-
-        partnerUrl,
-        sourceUrl: verifiedCoupang?.detailUrl || selected.url,
-        publicImages: selected.image ? [selected.image] : [],
-        provider: "coupang",
-        galleryImages: exactGallery,
-        images: [imageFile],
-
-        enabled:
-            true
-
+    console.warn(
+        "[SHOPPING] 오늘 후보 이미지 부족: " + failures.join(" | ").slice(0,1000)
+    );
+    return {
+        skipped: true,
+        reason: "insufficient-product-images",
+        diagnostics: failures
     };
-
-    console.log(
-        "[SHOPPING RECOMMENDATION PRODUCT]",
-        {
-            productId:
-                selected.productId,
-
-            searchTopic:
-                selected.searchTopic,
-
-            name:
-                product.name,
-
-            price:
-                product.price,
-
-            image:
-                product.images[0]
-        }
-    );
-
-    /*
-    5. 기존 Brain → Planner → Manager →
-       createShort 생산라인 실행.
-
-    반드시 await 한다.
-
-    실제 생산/업로드가 실패하면 아래 DB 기록까지
-    진행되지 않는다.
-    */
-    const result =
-        await Brain.start({
-
-            mode:
-                "QUICK",
-
-            topic:
-                product.name,
-
-            count:
-                1,
-
-            channel:
-                "Shopping",
-
-            product
-
-        });
-
-    /*
-    6. 생산라인이 정상 완료된 뒤에만
-       추천상품 중복 DB에 기록한다.
-    */
-    rememberRecommendedProduct({
-
-        productId:
-            selected.productId,
-
-        productName:
-            selected.name,
-
-        searchTopic:
-            selected.searchTopic
-
-    });
-
-    console.log(
-        `[SHOPPING RECOMMENDATION] 중복 DB 기록 완료 : ${selected.productId}`
-    );
-
-    console.log(
-        "[SHOPPING RECOMMENDATION] COMPLETE"
-    );
-
-    return result;
 }
-
 
 async function runChannelJob(job) {
 
@@ -474,8 +373,12 @@ try {
                 executionResult = await runChannelJob(job);
             }
 
-const brainStatus =
-    Brain.getStatus();
+const brainStatus = Brain.getStatus();
+            if (!executionResult?.skipped &&
+                (brainStatus.status !== "완료" || Number(brainStatus.current || 0) < Number(job.count || 1))) {
+                throw new Error("SCHEDULER_INCOMPLETE: " + job.id +
+                    " 업로드 확인 실패 (" + (brainStatus.current || 0) + "/" + job.count + ")");
+            }
 
 jobResults.set(
     key,

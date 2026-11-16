@@ -252,7 +252,7 @@ function removeDuplicates(
 =========================================================
 */
 
-export async function selectShoppingRecommendation() {
+export async function selectShoppingRecommendationCandidates(limit=5) {
 
     const searchTopic =
         chooseSearchTopic();
@@ -299,10 +299,7 @@ export async function selectShoppingRecommendation() {
         );
     }
 
-    const selected =
-        available[0];
-
-    const result = {
+    const results = available.slice(0, Math.max(1, limit)).map(selected => ({
 
         searchTopic,
 
@@ -321,21 +318,16 @@ export async function selectShoppingRecommendation() {
         url:
             selected.url
 
-    };
+    }));
 
-    console.log(
-        `[SHOPPING RECOMMENDATION] 선택 : ${result.name}`
-    );
-
-    console.log(
-        `[SHOPPING RECOMMENDATION] PRODUCT ID : ${result.productId}`
-    );
-
-    return result;
+    console.log(`[SHOPPING RECOMMENDATION] 검토 후보 : ${results.length}`);
+    return results;
 }
 
 
-export default {
-    selectShoppingRecommendation
-};
+export async function selectShoppingRecommendation() {
+    return (await selectShoppingRecommendationCandidates(1))[0];
+}
+
+export default { selectShoppingRecommendation, selectShoppingRecommendationCandidates };
 
