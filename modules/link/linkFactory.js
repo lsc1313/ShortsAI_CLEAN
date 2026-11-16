@@ -318,70 +318,39 @@ export async function createLinkPage(
 
     /*
     =====================================================
-    ALL PRODUCTS UPDATE
-
-    일반상품 제작 시:
-    - 기존 HOTDEAL 영역은 그대로 유지
-    - ALL_PRODUCTS 영역만 최신 일반상품 목록으로 교체
+    ALL PRODUCTS ONLY
+    - Keep the existing product archive and link history.
+    - Add/update published products without resurrecting HOTDEAL.
     =====================================================
     */
-
+    const allStart = "<!-- ALL_PRODUCTS_START -->";
+    const allEnd = "<!-- ALL_PRODUCTS_END -->";
     let html = generatedHTML;
 
     if (fs.existsSync(OUTPUT_FILE)) {
-
-        const currentHTML =
-            fs.readFileSync(
-                OUTPUT_FILE,
-                "utf8"
-            );
-
-        const allStart =
-            "<!-- ALL_PRODUCTS_START -->";
-
-        const allEnd =
-            "<!-- ALL_PRODUCTS_END -->";
-
-        const generatedGridStart =
-            generatedHTML.indexOf("<section");
-
-        const generatedGridEnd =
-            generatedHTML.indexOf(
-                "</section>",
-                generatedGridStart
-            );
-
-        if (
-            currentHTML.includes(allStart) &&
-            currentHTML.includes(allEnd) &&
-            generatedGridStart >= 0 &&
-            generatedGridEnd >= 0
-        ) {
-
-            const newProductGrid =
-                generatedHTML.slice(
-                    generatedGridStart,
-                    generatedGridEnd +
-                        "</section>".length
-                );
-
-            const before =
-                currentHTML.split(allStart)[0];
-
-            const after =
-                currentHTML.split(allEnd)[1];
-
-            html =
-                before +
-                allStart +
-                "\n" +
-                newProductGrid +
-                "\n" +
-                allEnd +
-                after;
+        const oldHTML = fs.readFileSync(OUTPUT_FILE, "utf8");
+        if (oldHTML.includes(allStart) && oldHTML.includes(allEnd)) {
+            const oldSection = oldHTML.split(allStart)[1].split(allEnd)[0];
+            const newGrid = generatedHTML.match(/<section\b[^>]*class="product-grid"[^>]*>([\s\S]*?)<\/section>/i);
+            const oldGrid = oldSection.match(/<section\b[^>]*class="product-grid"[^>]*>([\s\S]*?)<\/section>/i);
+            const cardRegex = /<a\b[^>]*class="product-card"[^>]*>[\s\S]*?<\/a>/gi;
+            const cards = [
+                ...(newGrid?.[1]?.match(cardRegex) || []),
+                ...(oldGrid?.[1]?.match(cardRegex) || [])
+            ];
+            const seen = new Set();
+            const unique = cards.filter(card => {
+                const url = card.match(/\bhref="([^"]+)"/i)?.[1];
+                if (!url || seen.has(url)) return false;
+                seen.add(url);
+                return true;
+            });
+            const mergedGrid = '<section class="product-grid" aria-label="영상 속 상품">\n' +
+                unique.join("\n") + '\n</section>';
+            html = oldHTML.split(allStart)[0] + allStart + '\n' +
+                mergedGrid + '\n' + allEnd + oldHTML.split(allEnd)[1];
         }
     }
-
 
     /*
     =====================================================
