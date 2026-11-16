@@ -117,6 +117,17 @@ const type =
 }
 
 
+const SCENE_MOVES=['push_in','pan_right','pull_out','pan_left','tilt_up','tilt_down'];
+const SCENE_SHOTS=['closeup','medium','wide','macro','medium','wide'];
+export function fallbackSceneDirection(item,index){
+ const i=Math.max(0,Number(index)||0);
+ return {
+  shot:item?.shot||SCENE_SHOTS[i%SCENE_SHOTS.length],
+  cameraMove:item?.cameraMove||SCENE_MOVES[i%SCENE_MOVES.length],
+  motion:item?.motion||(i%2===0?'zoom_in':'zoom_out')
+ };
+}
+
 export async function createVideo(
     director,
     images,
@@ -294,14 +305,7 @@ scenes.push(
         {
             sceneType: "ending",
 
-            shot:
-                item?.shot,
-
-            cameraMove:
-                item?.cameraMove,
-
-            motion:
-                item?.motion,
+            ...fallbackSceneDirection(item,i),
 
             transition:
                 item?.transition,
@@ -401,9 +405,7 @@ if(
                 scenes.length,
                 {
                     sceneType,
-                    shot:item?.shot,
-                    cameraMove:item?.cameraMove,
-                    motion:item?.motion,
+                    ...fallbackSceneDirection(item,i),
                     transition:item?.transition,
                     duration:item?.duration
                 }
@@ -498,14 +500,7 @@ scenes.push(
         {
             sceneType,
 
-            shot:
-                item?.shot,
-
-            cameraMove:
-                item?.cameraMove,
-
-            motion:
-                item?.motion,
+            ...fallbackSceneDirection(item,i),
 
             transition:
                 item?.transition,

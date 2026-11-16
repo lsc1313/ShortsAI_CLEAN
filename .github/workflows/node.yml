@@ -49,5 +49,7 @@ jobs:
       - run: node --test tests/instagramAuth.test.js
       - run: node --check modules/video/render.js
       - run: node --check modules/video.js
+      - run: node --check modules/subtitle.js
+      - run: node --test tests/editorialScenePresentation.test.js
       - run: node --check modules/threads/director.js
       - run: node --check brain/manager.js
