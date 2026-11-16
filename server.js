@@ -1565,9 +1565,16 @@ app.get("/curator/products", (req, res) => {
     try { res.json({ success: true, products: listCuratorProducts() }); }
     catch (error) { res.status(500).json({ success:false, error:error.message }); }
 });
-app.post("/curator/products", (req, res) => {
-    try { res.json({ success:true, product:saveCuratorProduct(req.body || {}) }); }
-    catch (error) { res.status(400).json({ success:false, error:error.message }); }
+app.post("/curator/products", async (req, res) => {
+    try {
+        const saved=saveCuratorProduct(req.body || {});
+        const product=await enrichCuratorProduct(saved);
+        res.json({
+            success:true,product,
+            mediaReady:Boolean(product.name && product.images?.length),
+            extractionStatus:product.name && product.images?.length ? "ready" : "pending"
+        });
+    } catch(error) { res.status(400).json({success:false,error:error.message}); }
 });
 app.delete("/curator/products/:id", (req, res) => {
     try {
