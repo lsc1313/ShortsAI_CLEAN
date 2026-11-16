@@ -51,7 +51,8 @@ function imageNodes(html,base){
  // Only explicit gallery/product image attributes; never scrape arbitrary
  // recommendations, tracking pixels or decorative page assets.
  for(const tag of (String(html||"").match(/<img\b[^>]*>/gi)||[])){
-   if(!/(?:product|gallery|goods|detail|thumb|main-image|swiper)/i.test(tag))continue;
+   if(/recommend|related|suggest|advertisement|sponsor/i.test(tag))continue;
+   if(!/(?:product-gallery|product-image|goods-image|detail-image|gallery|main-image|data-zoom-image)/i.test(tag))continue;
    for(const attr of ["data-zoom-image","data-src","src"]){
      const value=tag.match(/(?:data-zoom-image|data-src|src)\s*=\s*["\x27]([^"\x27]+)["\x27]/i)?.[1];
      if(value)srcs.push(normalizeImage(value,base));
@@ -67,8 +68,9 @@ export function extractProductPage(html, pageUrl, {expectedName="", requireIdent
  const foundName=String(products[0]?.name||title).toLowerCase();
  const hits=nameTokens.filter(x=>foundName.includes(x)).length;
  const matches=!nameTokens.length || hits >= Math.min(2,nameTokens.length);
- const verified=Boolean(matches && (products.length || getMeta(html,"og:title")));
- if(requireIdentity && !verified)return {name:"",description:"",images:[],verified:false,source:"unverified"};
+ const generic=/^(?:카카오톡? 선물하기|선물하기|kakao(?:talk)?(?: gift)?|coupang|쿠팡)$/i.test(String(products[0]?.name||title).trim());
+ const verified=Boolean(matches && !generic && (products.length || getMeta(html,"og:title")));
+ if(!verified)return {name:"",description:"",images:[],verified:false,source:"unverified"};
  const primary=normalizeImage(getMeta(html,"og:image"),pageUrl);
  const productImages=products.flatMap(p=>[].concat(p.image||[])).map(x=>normalizeImage(x,pageUrl));
  const gallery=imageNodes(html,pageUrl);
