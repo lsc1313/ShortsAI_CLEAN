@@ -25,35 +25,41 @@ function auth(method, path) {
     };
 }
 
-export async function searchProduct(keyword){
+export async function searchProducts(keyword, limit = 10) {
+    const safeLimit = Math.min(10, Math.max(1, Math.trunc(Number(limit) || 10)));
+    const query = String(keyword || "").trim();
+    if (!query) return [];
 
-    const path =
-        `/v2/providers/affiliate_open_api/apis/openapi/products/search?keyword=${encodeURIComponent(keyword)}&limit=1`;
+    const requestPath =
+        `/v2/providers/affiliate_open_api/apis/openapi/products/search?keyword=${encodeURIComponent(query)}&limit=${safeLimit}`;
 
-    const res =
-        await axios.get(
-            `https://api-gateway.coupang.com${path}`,
-            {
-                headers:auth("GET",path)
-            }
-        );
+    const res = await axios.get(
+        `https://api-gateway.coupang.com${requestPath}`,
+        { headers: auth("GET", requestPath), timeout: 15000 }
+    );
 
-    const product =
-        res.data.data?.productData?.[0];
+    const rows = res.data?.data?.productData;
+    if (!Array.isArray(rows)) return [];
+    const used = new Set();
 
-    if(!product) return null;
+    return rows.map(product => ({
+        productId: String(product.productId || "").trim(),
+        title: String(product.productName || "").trim(),
+        price: Number(product.productPrice || 0),
+        image: String(product.productImage || "").trim(),
+        url: String(product.productUrl || "").trim()
+    })).filter(product => {
+        if (!product.title || !product.url || !product.image || !(product.price > 0)) return false;
+        const id = product.productId || product.url;
+        if (used.has(id)) return false;
+        used.add(id);
+        return true;
+    });
+}
 
-    return {
-        title:
-            product.productName,
-        price:
-            product.productPrice,
-        image:
-            product.productImage,
-        url:
-            product.productUrl
-    };
-
+// Preserve the previous single-result API for callers relying on it.
+export async function searchProduct(keyword) {
+    return (await searchProducts(keyword, 1))[0] || null;
 }
 
 export async function createPartnerLink(url){

@@ -37,6 +37,9 @@ jobs:
       - run: node --test tests/shoppingSchedulerRecovery.test.js
       - run: node --check modules/kakaoCurator/store.js
       - run: node --check modules/kakaoCurator/media.js
+      - run: node --check modules/coupang/index_api.js
+      - run: node --check modules/shopping/quickCoupang.js
+      - run: node --test tests/shoppingQuickFallback.test.js
       - run: node --check modules/shopping/productMedia.js
       - run: node --check modules/shopping/director.js
       - run: node --check modules/metadata.js
