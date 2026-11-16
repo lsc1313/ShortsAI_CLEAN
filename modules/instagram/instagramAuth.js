@@ -9,7 +9,7 @@ const REFRESH_WINDOW = 15 * DAY;
 const GRAPH = "https://graph.instagram.com";
 const AUTH = "https://www.instagram.com/oauth/authorize";
 const EXCHANGE = "https://api.instagram.com/oauth/access_token";
-const CALLBACK = "http://localhost:3000/api/instagram-auth/callback";
+const CALLBACK = String(process.env.INSTAGRAM_REDIRECT_URI || "http://localhost:3000/api/instagram-auth/callback").trim();
 
 // Keep credentials out of Git, channel JSON and HTTP responses.
 function readStore() {
@@ -58,11 +58,12 @@ export function getInstagramAuthStatuses() {
 }
 export function configStatus() {
   return {
-    configured: Boolean(process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET),
+    configured: Boolean(process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET && process.env.INSTAGRAM_REDIRECT_URI && /^https:\/\//.test(CALLBACK)),
     redirectUri: CALLBACK,
     missing: [
       ...(!process.env.INSTAGRAM_APP_ID ? ["INSTAGRAM_APP_ID"] : []),
-      ...(!process.env.INSTAGRAM_APP_SECRET ? ["INSTAGRAM_APP_SECRET"] : [])
+      ...(!process.env.INSTAGRAM_APP_SECRET ? ["INSTAGRAM_APP_SECRET"] : []),
+      ...(!process.env.INSTAGRAM_REDIRECT_URI || !/^https:\/\//.test(CALLBACK) ? ["INSTAGRAM_REDIRECT_URI (등록된 HTTPS 콜백 URL)"] : [])
     ]
   };
 }
@@ -70,7 +71,7 @@ const pending=new Map();
 export function createAuthorizationUrl(userId) {
   const c=listInstagramChannels().find(x=>x.userId===String(userId));
   if(!c) throw new Error("기존 인스타그램 채널을 찾을 수 없습니다.");
-  if(!configStatus().configured) throw new Error("기존 Instagram 앱의 INSTAGRAM_APP_ID / INSTAGRAM_APP_SECRET 설정이 필요합니다.");
+  if(!configStatus().configured) throw new Error("Instagram 앱의 INSTAGRAM_APP_ID, INSTAGRAM_APP_SECRET 및 등록된 HTTPS INSTAGRAM_REDIRECT_URI 설정이 필요합니다.");
   const state=crypto.randomBytes(24).toString("hex");
   pending.set(state,{userId:c.userId,username:c.username,createdAt:Date.now()});
   const url=new URL(AUTH);
