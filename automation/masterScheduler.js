@@ -3,6 +3,7 @@ import fs from "fs";
 import { chooseCuratorProduct, markCuratorPublished, listCuratorProducts } from "../modules/kakaoCurator/store.js";
 import { enrichCuratorProduct, prepareCuratorProduct } from "../modules/kakaoCurator/media.js";
 import path from "path";
+import { isScheduledNow } from "./schedulerTiming.js";
 
 import {
     selectShoppingRecommendationCandidates
@@ -126,12 +127,7 @@ function getJobKey(
 
 
 export function isDue(job, now = new Date()) {
-    const scheduled = new Date(now);
-    scheduled.setHours(job.hour, job.minute, 0, 0);
-    // Only execute at the intended slot, not every time the PC reboots
-    // after that slot. 90 seconds accommodates the 30s tick interval.
-    const diff = now.getTime() - scheduled.getTime();
-    return diff >= 0 && diff < 90 * 1000;
+    return isScheduledNow(job, now);
 }
 
 async function runKakaoCuratorJob() {
