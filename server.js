@@ -24,7 +24,8 @@ import {
 import { createShort } from "./modules/createShort.js";
 import * as CoupangProductStore from "./modules/coupang/productStore.js";
 import { resolveCoupangProduct } from "./modules/coupang/productResolver.js";
-import Hotdeal from "./coupang-hotdeal/index.js";
+import { listCuratorProducts, saveCuratorProduct, removeCuratorProduct, markCuratorPublished } from "./modules/kakaoCurator/store.js";
+import { enrichCuratorProduct, prepareCuratorProduct } from "./modules/kakaoCurator/media.js";
 import {
     searchProduct,
     createPartnerLink
@@ -1555,6 +1556,57 @@ app.delete(
 
 
 
+
+/*
+ * Curator affiliate links are manually issued by Kakao; the ShortsAI app
+ * accepts issued links, not cookie scraping or affiliate-link fabrication.
+ */
+app.get("/curator/products", (req, res) => {
+    try { res.json({ success: true, products: listCuratorProducts() }); }
+    catch (error) { res.status(500).json({ success:false, error:error.message }); }
+});
+app.post("/curator/products", (req, res) => {
+    try { res.json({ success:true, product:saveCuratorProduct(req.body || {}) }); }
+    catch (error) { res.status(400).json({ success:false, error:error.message }); }
+});
+app.delete("/curator/products/:id", (req, res) => {
+    try {
+        const ok = removeCuratorProduct(req.params.id);
+        res.status(ok ? 200 : 404).json({ success:ok });
+    } catch(error) { res.status(400).json({ success:false, error:error.message }); }
+});
+app.post("/curator/products/:id/enrich", async (req, res) => {
+    try {
+        const p = listCuratorProducts().find(x => x.id === req.params.id);
+        if(!p) return res.status(404).json({ success:false, error:"상품 없음" });
+        const product = await enrichCuratorProduct(p);
+        res.json({ success:true, product, mediaReady:Boolean(product.images?.length) });
+    } catch(error) { res.status(400).json({ success:false, error:error.message }); }
+});
+app.post("/curator/products/:id/create", async (req, res) => {
+    try {
+        if (BrainQueue.getStatus().running)
+            return res.status(409).json({ success:false, error:"다른 제작 작업이 진행 중입니다." });
+        const saved = listCuratorProducts().find(p => p.id === req.params.id && p.enabled !== false);
+        if (!saved) return res.status(404).json({ success:false, error:"활성 상품이 없습니다." });
+        const prepared = await prepareCuratorProduct(saved);
+        const result = await BrainQueue.start({
+            mode:"QUICK", topic:prepared.name, count:1,
+            channel:"Shopping", product:prepared
+        });
+        const status = BrainQueue.getStatus();
+        if(status.status !== "완료" || Number(status.current) < 1)
+            throw new Error("큐레이터 쇼츠 제작 또는 업로드를 완료하지 못했습니다.");
+        markCuratorPublished(saved);
+        res.json({ success:true, result });
+    } catch(error) { res.status(400).json({ success:false, error:error.message }); }
+});
+
+// Retired: never produce or refresh the old HOTDEAL video format.
+app.use("/hotdeal", (req,res) => res.status(410).json({
+    success:false,
+    error:"핫딜 쇼츠는 종료됐습니다. 쿠팡 파트너스와 카카오 큐레이터를 사용하세요."
+}));
 
 /*
 =========================================================
