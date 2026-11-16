@@ -17,11 +17,11 @@ function normalize(input) {
     const link = String(input.partnerUrl || input.url || "").trim();
     if (!isCuratorLink(link)) throw new Error("gift-link.kakao.com/c/... 큐레이터 원본 링크가 필요합니다.");
     const name = String(input.name || "").trim();
-    if (!name || name.length > 300) throw new Error("검증된 상품명을 입력하세요.");
+    if (name.length > 300) throw new Error("상품명이 너무 깁니다.");
     const images = (Array.isArray(input.images) ? input.images : [input.image])
         .filter(Boolean).map(x => String(x).trim()).filter(x =>
             /^https:\/\//i.test(x) || /^(media|data)\/[a-z0-9_./-]+$/i.test(x)
-        ).slice(0, 6);
+        ).slice(0, 12);
     return {
         id: String(input.id || crypto.randomUUID()),
         name,

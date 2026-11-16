@@ -1234,7 +1234,7 @@ async function deleteCoupangProduct(
         <article style="padding:12px;background:#101820;border-radius:10px">
           <strong>${escape(p.name)}</strong>
           <p style="font-size:12px;word-break:break-all">${escape(p.partnerUrl)}</p>
-          <p>${p.images?.length ? "상품 이미지 등록됨" : "상품 이미지 없음 — 자동 업로드 보류"}</p>
+          <p>${p.images?.length ? "상품 이미지 등록됨" : "사진 미확보 — 업로드 보류"}</p>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button type="button" data-curator-action="enrich" data-id="${escape(p.id)}">이미지 자동 확인</button>
             <button type="button" data-curator-action="create" data-id="${escape(p.id)}">지금 쇼츠 제작</button>
@@ -1250,8 +1250,8 @@ async function deleteCoupangProduct(
     const images = document.getElementById("curatorImages").value
       .split(/\n+/).map(x => x.trim()).filter(Boolean);
     try {
-      await request("/curator/products","POST",{name,partnerUrl,images});
-      status.textContent = "등록 완료. 상품 이미지는 확보 후 자동 제작에 사용됩니다.";
+      const registered=await request("/curator/products","POST",{name,partnerUrl,images});
+      status.textContent = registered.mediaReady ? "상품 이미지·정보 자동 수집 완료" : "링크는 등록됐지만 공개 상품정보가 제한되어 추가 이미지/상품명이 필요합니다.";
       form.reset(); await refresh();
     } catch (e) { status.textContent = e.message; }
   });

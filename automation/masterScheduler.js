@@ -278,10 +278,10 @@ async function runShoppingRecommendationJob() {
             selected.price,
 
         partnerUrl,
-
-        images: [
-            imageFile
-        ],
+        sourceUrl: selected.url,
+        publicImages: selected.image ? [selected.image] : [],
+        provider: "coupang",
+        images: [imageFile],
 
         enabled:
             true
