@@ -1576,6 +1576,42 @@ app.post("/curator/products", async (req, res) => {
         });
     } catch(error) { res.status(400).json({success:false,error:error.message}); }
 });
+// The Kakao gift page often exposes a single public preview only. Let the
+// owner add multiple actual product photos from mobile when gallery access is
+// blocked, without requiring image URLs or changing the issued affiliate URL.
+app.post("/curator/products/:id/images",
+    productImageUpload.array("images", 12),
+    (req,res) => {
+        try {
+            const saved=listCuratorProducts().find(p=>p.id===req.params.id);
+            if(!saved) {
+                for(const f of req.files||[]) fs.rmSync(f.path,{force:true});
+                return res.status(404).json({success:false,error:"상품을 찾을 수 없습니다."});
+            }
+            const accepted=[];
+            for(const file of req.files||[]){
+                const head=fs.readFileSync(file.path).subarray(0,16);
+                const isPng=head.length>=8 && head.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+                const isJpg=head[0]===255 && head[1]===216 && head[2]===255;
+                const isWebp=head.toString("ascii",0,4)==="RIFF" && head.toString("ascii",8,12)==="WEBP";
+                if(!isPng && !isJpg && !isWebp) {
+                    fs.rmSync(file.path,{force:true});
+                    continue;
+                }
+                accepted.push(path.relative(process.cwd(),file.path).split(path.sep).join("/"));
+            }
+            if(!accepted.length)
+                return res.status(400).json({success:false,error:"유효한 jpg/png/webp 이미지가 없습니다."});
+            const updated=saveCuratorProduct({
+                ...saved,
+                images:[...new Set([...(saved.images||[]),...accepted])].slice(0,12)
+            });
+            res.json({success:true,product:updated,imageCount:updated.images.length,
+                note:"이미지 목록은 등록됐습니다. 쇼츠 제작 전 서로 다른 실제 이미지 2장 이상을 검사합니다."});
+        } catch(error) {res.status(400).json({success:false,error:error.message});}
+    }
+);
+
 app.delete("/curator/products/:id", (req, res) => {
     try {
         const ok = removeCuratorProduct(req.params.id);
