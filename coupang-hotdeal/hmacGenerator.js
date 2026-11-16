@@ -2,7 +2,7 @@
 // (쿠팡파트너스 API 가이드 V2 문서에서 그대로 가져온 로직입니다)
 
 const crypto = require('crypto');
-const moment = require('moment');
+// Native UTC avoids requiring a separate nested package install for API HMAC.
 
 module.exports = {
   /**
@@ -16,7 +16,9 @@ module.exports = {
     const parts = url.split(/\?/);
     const [path, query = ''] = parts;
 
-    const datetime = moment.utc().format('YYMMDD[T]HHmmss[Z]');
+    const iso = new Date().toISOString();
+    const datetime = iso.slice(2, 10).replace(/-/g, '') +
+      'T' + iso.slice(11, 19).replace(/:/g, '') + 'Z';
     const message = datetime + method + path + query;
 
     const signature = crypto
