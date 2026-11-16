@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import axios from "axios";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const ALLOWED_PAGES = ["gift-link.kakao.com","gift.kakao.com","shopping.kakao.com","m.shopping.kakao.com","www.coupang.com","m.coupang.com","link.coupang.com"];
@@ -135,7 +136,12 @@ export async function stageProductImages(product, candidates, {maxImages=6}={}){
      if(data[0]===0x89)ext=".png";
      const filename=path.join(dir,"photo_"+String(images.length+1).padStart(2,"0")+ext);
      fs.writeFileSync(filename,data);
-     images.push(filename);
+     // Actual product remains entirely in frame even for square packshots.
+     // The background is a blur of that same product photo, never stock media.
+     const portrait=filename.replace(/\.(jpg|png|webp)$/i,"_portrait.png");
+     const vf="[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:2[bg];[0:v]scale=1000:1660:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p[out]";
+     const render=spawnSync("ffmpeg",["-y","-loglevel","error","-i",filename,"-filter_complex",vf,"-map","[out]","-frames:v","1",portrait],{timeout:30000});
+     images.push(render.status===0 && fs.existsSync(portrait)?portrait:filename);
    }catch{/* inaccessible images are skipped, not replaced with unrelated stock */ }
  }
  if(!images.length)throw new Error("실제 상품 이미지 확보 실패: 영상 제작 보류");
