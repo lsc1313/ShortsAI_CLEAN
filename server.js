@@ -30,6 +30,7 @@ import {
 
 import * as CoupangProductStore from "./modules/coupang/productStore.js";
 import { resolveCoupangProduct } from "./modules/coupang/productResolver.js";
+import { chooseQuickCoupangProduct } from "./modules/shopping/quickCoupang.js";
 import { listCuratorProducts, saveCuratorProduct, removeCuratorProduct, markCuratorPublished } from "./modules/kakaoCurator/store.js";
 import { enrichCuratorProduct, prepareCuratorProduct } from "./modules/kakaoCurator/media.js";
 import {
@@ -343,124 +344,20 @@ app.post(
             );
 
             /*
-             * 1. 쿠팡 파트너스 API 상품 검색
+             * 후보 최대 8개에서 쿠팡 제휴 링크·동일 상품의 실제
+             * 이미지 2장 이상을 검증한 다음에만 Brain을 실행한다.
+             * 대표 이미지 1장뿐인 첫 상품 때문에 바로 중단하지 않는다.
              */
-            const apiProduct =
-                await searchProduct(
-                    keyword
-                );
+            const {product, selectedIndex, inspected} =
+                await chooseQuickCoupangProduct(keyword);
 
-            if (!apiProduct) {
-
-                return res.status(404).json({
-                    success: false,
-                    error: "쿠팡 상품을 찾지 못했습니다."
-                });
-
-            }
-
-            /*
-             * 2. 파트너스 링크 생성
-             */
-            const partnerUrl =
-                await createPartnerLink(
-                    apiProduct.url
-                );
-
-            if (!partnerUrl) {
-
-                throw new Error(
-                    "쿠팡 파트너스 링크 생성 실패"
-                );
-
-            }
-
-            /*
-             * 3. 상품 이미지 로컬 저장
-             *
-             * 기존 Shopping IMAGE 엔진이
-             * product.images의 로컬 파일을 사용하므로
-             * API 이미지를 먼저 저장한다.
-             */
-            const imageId =
-                `quick_${Date.now()}`;
-
-            const imageDir =
-                path.join(
-                    PRODUCT_IMAGE_DIR,
-                    imageId
-                );
-
-            fs.mkdirSync(
-                imageDir,
-                {
-                    recursive: true
-                }
-            );
-
-            const imageFile =
-                path.join(
-                    imageDir,
-                    "product.jpg"
-                );
-
-            await downloadImage(
-                apiProduct.image,
-                imageFile
-            );
-
-            if (
-                !fs.existsSync(imageFile) ||
-                fs.statSync(imageFile).size === 0
-            ) {
-
-                throw new Error(
-                    "쿠팡 상품 이미지 저장 실패"
-                );
-
-            }
-
-            /*
-             * 기존 Shopping 생산라인이 사용하는
-             * Product 객체 형식
-             */
-            const product = {
-
-                id:
-                    imageId,
-
-                name:
-                    apiProduct.title ||
-                    keyword,
-
-                keyword,
-
-                description:
-                    "",
-
-                price:
-                    apiProduct.price,
-
-                partnerUrl,
-
-                images: [
-                    imageFile
-                ],
-
-                enabled:
-                    true
-
-            };
-
-            console.log(
-                "[SHOPPING QUICK PRODUCT]",
-                {
-                    name: product.name,
-                    price: product.price,
-                    partnerUrl: product.partnerUrl,
-                    image: product.images[0]
-                }
-            );
+            console.log("[SHOPPING QUICK PRODUCT]",{
+                name:product.name,
+                price:product.price,
+                candidate:selectedIndex,
+                inspected,
+                distinctPhotos:product.images.length
+            });
 
             /*
              * 4. 기존 Brain QUICK 생산라인
@@ -509,7 +406,13 @@ app.post(
                         product.name,
 
                     price:
-                        product.price
+                        product.price,
+
+                    distinctPhotos:
+                        product.images.length,
+
+                    candidate:
+                        selectedIndex
                 }
 
             });
@@ -522,7 +425,7 @@ app.post(
                 error
             );
 
-            res.status(500).json({
+            res.status(/SHOPPING_MEDIA_INSUFFICIENT/.test(error.message) ? 422 : 500).json({
                 success: false,
                 error:
                     error.message
