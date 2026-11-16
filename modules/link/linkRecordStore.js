@@ -270,6 +270,8 @@ export function addLinkRecord(
 
             partnerUrl,
 
+            provider: product.provider || existing.provider || "coupang",
+
             images:
                 images.length
                     ? images
@@ -309,6 +311,8 @@ export function addLinkRecord(
                 name,
 
             partnerUrl,
+
+            provider: product.provider || "coupang",
 
             images,
 
