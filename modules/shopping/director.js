@@ -6,7 +6,7 @@ export function normalizeShoppingScenes(director, product) {
   if(valid.length<4)throw new Error("SHOPPING: 4개 이상의 유익한 상품 설명 장면이 필요합니다.");
   const images=Array.isArray(product.images)?product.images.filter(Boolean):[];
   if(images.length<2 && !(images.length===1 && product.singlePhotoMode===true && product.productMediaVerified===true))
-    throw new Error("SHOPPING: 실제 상품 이미지가 필요합니다.");
+    throw new Error("SHOPPING: 서로 다른 상품 이미지 2장 이상 필요합니다. 단일 사진 정보형은 실제 사진 검증 후에만 허용됩니다.");
   const motion=["zoom_in","zoom_out","slow_zoom","zoom_in","zoom_out","slow_zoom","zoom_in"];
   const moves=["push_in","pull_out","pan_left","pan_right","push_in","pull_out","pan_left"];
   const selected=valid.slice(0,7);
