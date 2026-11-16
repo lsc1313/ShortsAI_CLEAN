@@ -22,6 +22,12 @@ import {
     getMasterSchedulerStatus
 } from "./automation/masterScheduler.js";
 import { createShort } from "./modules/createShort.js";
+import {
+    getInstagramAuthStatuses, configStatus as instagramConfigStatus,
+    createAuthorizationUrl, finalizeInstagramAuthorization,
+    refreshInstagramTokens
+} from "./modules/instagram/instagramAuth.js";
+
 import * as CoupangProductStore from "./modules/coupang/productStore.js";
 import { resolveCoupangProduct } from "./modules/coupang/productResolver.js";
 import { listCuratorProducts, saveCuratorProduct, removeCuratorProduct, markCuratorPublished } from "./modules/kakaoCurator/store.js";
@@ -1651,6 +1657,39 @@ app.use("/hotdeal", (req,res) => res.status(410).json({
     error:"핫딜 쇼츠는 종료됐습니다. 쿠팡 파트너스와 카카오 큐레이터를 사용하세요."
 }));
 
+// OAuth credentials stay local. Never expose secrets/tokens to browser or LAN.
+// Only local PC browser can start auth and receive the callback.
+function localOnly(req,res,next) {
+    const address = String(req.socket.remoteAddress || "");
+    if (!["127.0.0.1","::1","::ffff:127.0.0.1"].includes(address)) {
+        return res.status(403).json({success:false,error:"인증 관리는 PC의 localhost에서만 가능합니다."});
+    }
+    next();
+}
+app.get("/api/instagram-auth/status",localOnly,(req,res)=>{
+    res.set("Cache-Control","no-store");
+    res.json({success:true,config:instagramConfigStatus(),accounts:getInstagramAuthStatuses()});
+});
+app.post("/api/instagram-auth/start",localOnly,(req,res)=>{
+    try {
+        const url=createAuthorizationUrl(req.body?.userId);
+        res.json({success:true,url});
+    } catch(error) {
+        res.status(400).json({success:false,error:error.message});
+    }
+});
+app.get("/api/instagram-auth/callback",localOnly,async(req,res)=>{
+    res.set("Cache-Control","no-store");
+    try {
+        if(req.query.error) throw new Error("Instagram 승인이 거부되었거나 취소되었습니다.");
+        const account=await finalizeInstagramAuthorization(req.query);
+        res.redirect("/?instagram_auth=success&account="+encodeURIComponent(account.username));
+    } catch(error) {
+        console.warn("[INSTAGRAM AUTH] callback:",error.message);
+        res.redirect("/?instagram_auth=failed&reason="+encodeURIComponent(String(error.message).slice(0,180)));
+    }
+});
+
 app.get(
     "/api/scheduler/status",
     (req, res) => {
@@ -1686,6 +1725,8 @@ app.listen(
         );
 
         startMasterScheduler();
+        refreshInstagramTokens().catch(error=>console.error("[INSTAGRAM AUTH] Startup refresh:",error.message));
+        setInterval(()=>refreshInstagramTokens().catch(error=>console.error("[INSTAGRAM AUTH] Scheduled refresh:",error.message)),24*60*60*1000).unref();
 
     }
 );
