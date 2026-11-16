@@ -1492,6 +1492,9 @@ async function loadSchedulerStatus() {
 
         const statusLabels = {
 
+            skipped:
+                "상품 이미지/신규 링크 부족으로 건너뜀",
+
             waiting:
                 "대기",
 
