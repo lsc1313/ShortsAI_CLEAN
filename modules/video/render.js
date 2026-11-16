@@ -231,7 +231,9 @@ export function renderVideo(
 
 
     const channelName = String(channel || "").trim().toLowerCase();
-    const isHotdealVideo = channelName === "shopping";
+    // The legacy HOTDEAL cards are no longer produced. Every shopping Short
+    // needs burned-in subtitles, exactly like other channels.
+    const isHotdealVideo = false;
 
     // HOTDEAL은 카드 자체에 가격/비교정보가 있으므로
     // 하단 ASS 자막을 덮지 않는다. 일반 쇼츠 자막은 기존 그대로 유지.

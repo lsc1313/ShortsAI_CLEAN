@@ -146,7 +146,7 @@ ${aiData.description || ""}
     lines.push("");
 
     lines.push(
-        "👇 영상 속 상품은 프로필 링크에서 확인하세요."
+        "👇 영상 속 상품의 제휴 링크:\n" + product.partnerUrl
     );
 
 

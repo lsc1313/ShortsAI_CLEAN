@@ -20,5 +20,7 @@ export async function prepareCuratorProduct(product) {
   const enriched=await enrichCuratorProduct(product);
   if(!enriched.name||!enriched.images?.length)
     throw new Error("큐레이터 상세정보 또는 사진을 확보하지 못해 업로드를 보류합니다.");
+  if(!String(enriched.description||"").trim())
+    throw new Error("CURATOR_DETAILS_MISSING: 수집된 상세 설명이 없어서 일반적인 선물 이야기로 잘못 제작되는 것을 막았습니다.");
   return stageProductImages(enriched,enriched.images,{maxImages:6});
 }

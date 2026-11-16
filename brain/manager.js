@@ -13,10 +13,6 @@ import {
 } from "../modules/blog/scienceBlogFactory.js";
 
 import {
-    createLinkPage
-} from "../modules/link/index.js";
-
-import {
     getControlState,
     markPaused,
     waitIfPaused
@@ -1136,97 +1132,8 @@ if (
 
                   }
 
-/*
-                =============================================
-                LINK FACTORY
-
-                구조
-
-                Manager
-                  ├─ Short Factory
-                  ├─ Blog Factory
-                  └─ Link Factory
-
-                실행 조건
-
-                - 현재 작업에 실제 product가 존재
-                - partnerUrl 존재
-                - 상품이 비활성화 상태가 아님
-
-                역할
-
-                - 쇼핑 쇼츠에서 사용할 프로필 링크 페이지 갱신
-                - 기존 상품이면 productionCount 갱신
-                - 신규 상품이면 Link Record 추가
-                - public/shop/index.html 재생성
-
-                중요
-
-                - AI 호출 없음
-                - 외부 상품 분석 없음
-                - 원본 Product DB 수정 없음
-                - Link Factory 실패는
-                  Short 성공을 취소하지 않는다.
-                =============================================
-                */
-
-                if (
-                    order.product &&
-                    order.product.partnerUrl &&
-                    order.product.enabled !== false
-                ) {
-
-                    this.logger.log(
-                        `[Manager] Link Factory 시작 : ${order.product.name || order.topic}`
-                    );
-
-                    try {
-
-                        const linkResult =
-                            await createLinkPage(
-                                order.product
-                            );
-
-
-                        if (
-                            linkResult?.success === true
-                        ) {
-
-                            this.logger.log(
-                                `[Manager] Link Factory 완료 : ${order.product.name || order.topic}`
-                            );
-
-                            this.logger.log(
-                                `[Manager] Link Records : ${linkResult?.recordCount ?? "UNKNOWN"}`
-                            );
-
-                        }
-                        else {
-
-                            this.logger.log(
-                                `[Manager] Link Factory 결과 없음 : ${order.product.name || order.topic}`
-                            );
-
-                        }
-
-                    }
-                    catch (linkError) {
-
-                        /*
-                        Link Factory 실패는
-                        Short / Blog 성공을
-                        실패로 변경하지 않는다.
-                        */
-
-                        console.error(
-                            `[Manager] Link Factory 실패 : ${order.product.name || order.topic}`,
-                            linkError?.message || linkError
-                        );
-
-                    }
-
-                }
-
+/* Affiliate links are now attached directly to YouTube/Threads posts.
+   The former link-page factory is intentionally retired. */
 
                 completed++;
 

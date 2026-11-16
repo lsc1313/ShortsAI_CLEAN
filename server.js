@@ -223,6 +223,10 @@ app.use(
 );
 
 
+// Former product-list landing is retired; published affiliate links now point
+// directly to the original item. Cloudflare Pages must also be disabled there.
+app.use("/shop", (req,res) => res.status(410).send("상품 모아보기 페이지는 종료되었습니다."));
+
 app.use(
     express.static(
         path.join(

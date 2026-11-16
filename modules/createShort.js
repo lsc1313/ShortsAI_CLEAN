@@ -1,4 +1,4 @@
-import { updateShopPage } from "./hotdeal/shopUpdater.js";
+// Legacy HOTDEAL shopping landing deployment retired.
 
 
 function formatTTSVoice(text) {
@@ -1055,22 +1055,7 @@ else {
 /*
     플랫폼 업로드 처리 이후 작업파일을 정리한다.
 */
-/*
-    HOTDEAL 상품 링크 페이지 갱신
-
-    - HOTDEAL일 때만 실행
-    - 이전 HOTDEAL 상품은 제거
-    - 이번 HOTDEAL 상품으로 통째로 교체
-    - 전체상품 영역은 건드리지 않는다.
-*/
-if (
-    options?.hotdeal === true &&
-    hotdealCatalogProducts.length > 0
-) {
-    await updateShopPage(
-        hotdealCatalogProducts
-    );
-}
+// HOTDEAL link-page publishing retired; no external shop pages are created.
 
 if (channelName === "history") {
     cleanupCompletedHistoryPair(topic);

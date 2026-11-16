@@ -122,7 +122,7 @@ export async function stageProductImages(product, candidates, {maxImages=6}={}){
  const id=crypto.createHash("sha256").update(product.partnerUrl||product.name).digest("hex").slice(0,20);
  const dir=path.resolve("media/products/verified",id);
  fs.mkdirSync(dir,{recursive:true});
- const images=[], publicImages=[];
+ const images=[], publicImages=[], seenHashes=new Set();
  for(const source of dedupe(candidates).slice(0,16)){
    if(images.length>=maxImages)break;
    try{
@@ -144,6 +144,9 @@ export async function stageProductImages(product, candidates, {maxImages=6}={}){
        data=fs.readFileSync(local);
      }
      if(!isImageBuffer(data))continue;
+     const contentHash=crypto.createHash("sha256").update(data).digest("hex");
+     if(seenHashes.has(contentHash))continue;
+     seenHashes.add(contentHash);
      if(data.toString("ascii",0,4)==="RIFF")ext=".webp";
      if(data[0]===0x89)ext=".png";
      const filename=path.join(dir,"photo_"+String(images.length+1).padStart(2,"0")+ext);
@@ -156,16 +159,16 @@ export async function stageProductImages(product, candidates, {maxImages=6}={}){
      images.push(render.status===0 && fs.existsSync(portrait)?portrait:filename);
    }catch{/* inaccessible images are skipped, not replaced with unrelated stock */ }
  }
- if(!images.length)throw new Error("실제 상품 이미지 확보 실패: 영상 제작 보류");
+ if(images.length<2)throw new Error("SHOPPING_MEDIA_INSUFFICIENT: 동일 상품의 서로 다른 이미지가 2장 미만이어서 업로드를 보류합니다.");
  return {...product, images, publicImages:dedupe([...publicImages,...(product.publicImages||[])]),productMediaVerified:true};
 }
 
 export async function prepareShoppingProduct(product) {
   if(!product?.partnerUrl)throw new Error("SHOPPING: 원본 제휴 링크가 필요합니다.");
-  if(product.productMediaVerified===true && product.images?.length)return product;
+  if(product.productMediaVerified===true && product.images?.length>=2)return product;
   const link=product.provider==="kakao-curator" ? product.partnerUrl : (product.sourceUrl||product.detailUrl||product.partnerUrl);
   const info=await discoverProductPage(link,{expectedName:product.name||""});
-  const images=dedupe([...(product.images||[]),...(product.galleryImages||[]),...(info.verified?info.images:[])]).slice(0,16);
+  const images=dedupe([...(info.verified?info.images:[]),...(product.galleryImages||[]),...(product.images||[])]).slice(0,16);
   const merged={
     ...product,
     name:product.name||info.name,

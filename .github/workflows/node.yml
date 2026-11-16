@@ -35,4 +35,8 @@ jobs:
       - run: node --check modules/shopping/director.js
       - run: node --check modules/metadata.js
       - run: node --check public/app.js
-      - run: node --test tests/kakaoCurator.test.js tests/shoppingProductMedia.test.js
+      - run: node --test tests/kakaoCurator.test.js tests/shoppingProductMedia.test.js tests/shoppingQualityFix.test.js
+      - run: node --check modules/video/render.js
+      - run: node --check modules/video.js
+      - run: node --check modules/threads/director.js
+      - run: node --check brain/manager.js
