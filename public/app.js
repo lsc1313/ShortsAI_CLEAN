@@ -1215,6 +1215,46 @@ async function deleteCoupangProduct(
   const list = document.getElementById("curatorList");
   const status = document.getElementById("curatorStatus");
   if (!form || !list || !status) return;
+  const photoInput = document.getElementById("curatorPhotoFiles");
+  const photoCount = document.getElementById("curatorPhotoCount");
+  const photoPreview = document.getElementById("curatorPhotoPreview");
+  let previews = [];
+  const resetPreviews = () => {
+    for (const url of previews) URL.revokeObjectURL(url);
+    previews = [];
+    if (photoPreview) photoPreview.replaceChildren();
+  };
+  const renderPhotoPreview = () => {
+    resetPreviews();
+    const files = Array.from(photoInput?.files || []);
+    if (photoCount) photoCount.textContent = files.length
+      ? "선택한 실제 상품 사진: " + files.length + "장 (최대 12장, 사진당 15MB)"
+      : "사진을 선택하지 않아도 링크 자동 수집을 시도합니다. 쇼츠는 서로 다른 실제 사진 2장 이상 필요합니다.";
+    if (!photoPreview) return;
+    for (const file of files.slice(0, 12)) {
+      if (!file.type.startsWith("image/")) continue;
+      const url = URL.createObjectURL(file);
+      previews.push(url);
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = file.name;
+      img.style.cssText = "height:90px;width:90px;object-fit:contain;background:#fff;border-radius:8px;";
+      photoPreview.appendChild(img);
+    }
+  };
+  photoInput?.addEventListener("change", renderPhotoPreview);
+  const uploadPhotos = async (id, files) => {
+    const formData = new FormData();
+    for (const file of files) formData.append("images", file);
+    const response = await fetch("/curator/products/" + encodeURIComponent(id) + "/images", {
+      method: "POST",
+      body: formData
+    });
+    let result;
+    try { result = await response.json(); } catch { throw Error("이미지 업로드 서버 응답을 확인할 수 없습니다."); }
+    if (!response.ok || !result.success) throw Error(result.error || "이미지 업로드 실패");
+    return result;
+  };
   const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({
       "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[c]));
@@ -1253,11 +1293,44 @@ async function deleteCoupangProduct(
     const partnerUrl = document.getElementById("curatorLink").value.trim();
     const images = document.getElementById("curatorImages").value
       .split(/\n+/).map(x => x.trim()).filter(Boolean);
+    const files = Array.from(photoInput?.files || []);
+    if (files.length > 12) {
+      status.textContent = "상품 사진은 한 번에 최대 12장까지 선택할 수 있습니다.";
+      return;
+    }
+    if (files.some(file => !["image/jpeg","image/png","image/webp"].includes(file.type) || file.size > 15 * 1024 * 1024)) {
+      status.textContent = "사진은 JPG, PNG, WEBP만 가능하며 각 파일은 15MB 이하로 선택하세요.";
+      return;
+    }
+    const submit = form.querySelector('button[type="submit"]');
+    if (submit) submit.disabled = true;
+    let registered;
     try {
-      const registered=await request("/curator/products","POST",{name,partnerUrl,images});
-      status.textContent = registered.mediaReady ? "상품 이미지·정보 자동 수집 완료" : "링크는 등록됐지만 공개 상품정보가 제한되어 추가 이미지/상품명이 필요합니다.";
-      form.reset(); await refresh();
-    } catch (e) { status.textContent = e.message; }
+      status.textContent = "큐레이터 링크와 상품정보를 등록하는 중입니다.";
+      registered = await request("/curator/products","POST",{name,partnerUrl,images});
+      const productId = registered.product?.id;
+      if (!productId) throw Error("상품이 등록됐지만 상품 ID를 확인하지 못했습니다.");
+      if (files.length) {
+        status.textContent = "상품 링크 등록 완료 · 선택한 사진 " + files.length + "장을 업로드하는 중입니다.";
+        const uploaded = await uploadPhotos(productId, files);
+        status.textContent = "등록 완료 · 상품 사진 " + uploaded.imageCount + "장 등록됨. 실제 서로 다른 사진 2장 이상인지 제작 시 확인합니다.";
+      } else {
+        status.textContent = registered.mediaReady
+          ? "등록 완료 · 공개 페이지에서 상품 이미지/정보를 일부 확보했습니다. 제작 시 사진 수와 상세정보를 확인합니다."
+          : "링크 등록 완료 · 공개 페이지에서 사진을 확보하지 못했습니다. 필요하면 상품 아래에서 사진을 추가하세요.";
+      }
+      form.reset();
+      renderPhotoPreview();
+      await refresh();
+    } catch (e) {
+      status.textContent = registered
+        ? "링크는 등록됐지만 사진 업로드에 실패했습니다: " + e.message +
+          " · 중복 등록하지 말고 아래 상품 목록에서 사진을 추가하세요."
+        : e.message;
+      await refresh();
+    } finally {
+      if (submit) submit.disabled = false;
+    }
   });
   list.addEventListener("click", async e => {
     const btn = e.target.closest("[data-curator-action]");
@@ -1274,11 +1347,7 @@ async function deleteCoupangProduct(
         const fileInput = [...list.querySelectorAll("[data-curator-files]")]
           .find(el => el.dataset.curatorFiles === btn.dataset.id);
         if (!fileInput?.files?.length) throw Error("갤러리에서 상품 사진을 2장 이상 선택하세요.");
-        const formData = new FormData();
-        for (const file of fileInput.files) formData.append("images",file);
-        const response = await fetch("/curator/products/" + id + "/images",{method:"POST",body:formData});
-        const result = await response.json();
-        if (!response.ok || !result.success) throw Error(result.error || "사진 등록 실패");
+        const result = await uploadPhotos(btn.dataset.id, Array.from(fileInput.files));
         status.textContent = "상품 사진 " + result.imageCount + "장 등록됨. 제작 시 실제 사진 중복 검사를 진행합니다.";
       } else if (action === "enrich") {
         const result = await request("/curator/products/" + id + "/enrich","POST");
