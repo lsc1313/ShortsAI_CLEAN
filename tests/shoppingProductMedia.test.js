@@ -47,3 +47,24 @@ test("Shopping scenes always use actual product photos, even if AI tries stock s
  assert.equal(scenes[0].motion,"zoom_in");
  assert.equal(scenes[1].motion,"zoom_out");
 });
+
+test("Verified one-photo information mode maps the genuine photo to all scenes without creating fake gallery",()=>{
+ const product={
+   name:"폴드8 케이스",images:["real-coupang-photo.jpg"],
+   singlePhotoMode:true,productMediaVerified:true,distinctPhotoCount:1
+ };
+ const scenes=normalizeShoppingScenes({work_instructions:{scenes:[
+   {tts:"이 케이스를 살 때 먼저 확인할 점은?"},
+   {tts:"힌지 보호 구조를 확인하세요."},
+   {tts:"맥세이프 기능은 지원 모델을 확인하세요."},
+   {tts:"구매 전 호환성을 확인해보세요."}
+ ]}},product);
+ assert.equal(scenes.length,4);
+ assert.ok(scenes.every(s=>s.visualType==="product"&&s.product.singlePhotoMode===true));
+ assert.notEqual(scenes[0].cameraMove,scenes[1].cameraMove);
+});
+test("Unverified single photo cannot bypass the product gate",()=>{
+ assert.throws(()=>normalizeShoppingScenes({scenes:[
+   {tts:"한"}, {tts:"두"}, {tts:"세"}, {tts:"네"}
+ ]},{name:"상품",images:["photo.jpg"],singlePhotoMode:true}),/2장 이상/);
+});

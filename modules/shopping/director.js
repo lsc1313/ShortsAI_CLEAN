@@ -5,7 +5,8 @@ export function normalizeShoppingScenes(director, product) {
   const valid=Array.isArray(input)?input.filter(s=>s&&typeof (s.tts||s.script)==="string"&&String(s.tts||s.script).trim()):[];
   if(valid.length<4)throw new Error("SHOPPING: 4개 이상의 유익한 상품 설명 장면이 필요합니다.");
   const images=Array.isArray(product.images)?product.images.filter(Boolean):[];
-  if(images.length<2)throw new Error("SHOPPING: 서로 다른 상품 이미지가 2장 이상 필요합니다.");
+  if(images.length<2 && !(images.length===1 && product.singlePhotoMode===true && product.productMediaVerified===true))
+    throw new Error("SHOPPING: 서로 다른 상품 이미지 2장 이상 필요합니다. 단일 사진 정보형은 실제 사진 검증 후에만 허용됩니다.");
   const motion=["zoom_in","zoom_out","slow_zoom","zoom_in","zoom_out","slow_zoom","zoom_in"];
   const moves=["push_in","pull_out","pan_left","pan_right","push_in","pull_out","pan_left"];
   const selected=valid.slice(0,7);
@@ -31,7 +32,8 @@ export async function createShoppingDirector(product={}) {
   if(!product.name||!Array.isArray(product.images)||!product.images.length)throw new Error("SHOPPING: 필수 상품/이미지 누락");
   const verified=JSON.stringify({
     name:product.name,description:product.description||"",
-    price:product.price||null,provider:product.provider||"coupang",imageCount:product.images.length
+    price:product.price||null,provider:product.provider||"coupang",imageCount:product.images.length,
+    singlePhotoMode:product.singlePhotoMode===true
   });
   const prompt=[
     "당신은 상품 중심 쇼핑 숏폼 감독이다. 첫 프레임부터 끝까지 동일 상품 사진만 사용한다.",
@@ -46,6 +48,7 @@ export async function createShoppingDirector(product={}) {
     "6) 5~7장면, 장면당 한국어 음성 1~2문장, 총 25~40초, 장면마다 2~6초.",
     "7) 무조건 등록된 실제 product 이미지. 무료 이미지 검색, 인물·배경·가상 후기 장면 금지.",
     "8) 실제 사진에 줌인/줌아웃/좌우이동/클로즈업을 교차 적용.",
+    product.singlePhotoMode === true ? "주의: 실제 상품 사진이 단 1장이다. 사진을 반복해서 쓰는 정보형 비교/구매 체크리스트 숏폼으로 연출하고, 서로 다른 각도 사진이나 실제 테스트/후기가 있는 듯 주장하지 마라. 장면 간 자막 정보와 카메라 움직임을 차별화한다." : "여러 실제 상품 사진을 장면에 적절히 사용한다.",
     "9) JSON만 응답.","입력 사실:",verified,
     '출력 JSON: {"title":"제목","description":"","work_instructions":{"scenes":[{"type":"hook","tts":"한국어 대본","subtitle":"짧은 핵심 자막","duration":4,"direction":"hook"}]}}'
   ].join("\n");

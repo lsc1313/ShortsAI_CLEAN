@@ -46,7 +46,7 @@ test("QUICK uses verified detail gallery of the same product",async()=>{
   assert.deepEqual(received.images,[base[0].image]);
 });
 
-test("QUICK does not start production when no candidate passes 2-image gate",async()=>{
+test("QUICK keeps production blocked when no candidate offers even a real single photo",async()=>{
   let count=0;
   await assert.rejects(chooseQuickCoupangProduct("폴드8",{
     search:async()=>base,
@@ -54,8 +54,8 @@ test("QUICK does not start production when no candidate passes 2-image gate",asy
     resolve:async()=>null,
     prepare:async()=>{count++;throw Error("SHOPPING_MEDIA_INSUFFICIENT: insufficient photos");},
     logger:noop
-  }),/2장 이상인 후보가 없습니다/);
-  assert.equal(count,2);
+  }),/정보형 대체 제작도 불가능합니다/);
+  assert.equal(count,4); // two strict attempts plus two real-photo fallback attempts
 });
 
 test("QUICK rejects false-positive prepared object without 2 distinct validated photos",async()=>{
@@ -84,4 +84,54 @@ test("Coupang API retains single-result search for backward compatibility",()=>{
   assert.match(api,/export async function searchProducts/);
   assert.match(api,/export async function searchProduct\(keyword\)/);
   assert.match(api,/searchProducts\(keyword, 1\)/);
+});
+
+test("QUICK prefers multi-photo product before any honest single-photo fallback",async()=>{
+  const calls=[];
+  const result=await chooseQuickCoupangProduct("폴드8",{
+    search:async()=>base,
+    partnerLink:async()=> "https://link.coupang.com/test",
+    resolve:async()=>null,
+    prepare:async(p,opts={})=>{
+      calls.push({name:p.name,allowSinglePhoto:opts.allowSinglePhoto===true});
+      if (opts.allowSinglePhoto) return {...p,images:["one.jpg"],productMediaVerified:true,singlePhotoMode:true,distinctPhotoCount:1};
+      if(p.name.endsWith("A"))throw Error("SHOPPING_MEDIA_INSUFFICIENT");
+      return {...p,images:["one.jpg","two.jpg"],productMediaVerified:true,singlePhotoMode:false,distinctPhotoCount:2};
+    },
+    logger:noop
+  });
+  assert.equal(result.product.name,"폴드8 케이스 B");
+  assert.deepEqual(calls.map(c=>c.allowSinglePhoto),[false,false]);
+});
+
+test("QUICK after exhausting strict products uses correctly labelled one-photo mode",async()=>{
+  const calls=[];
+  const result=await chooseQuickCoupangProduct("폴드8",{
+    search:async()=>base,
+    partnerLink:async()=> "https://link.coupang.com/test",
+    resolve:async()=>null,
+    prepare:async(p,opts={})=>{
+      calls.push({name:p.name,allowSinglePhoto:opts.allowSinglePhoto===true});
+      if (!opts.allowSinglePhoto)throw Error("SHOPPING_MEDIA_INSUFFICIENT: 1 photo");
+      return {...p,images:["real-photo.jpg"],productMediaVerified:true,singlePhotoMode:true,distinctPhotoCount:1};
+    },
+    logger:noop
+  });
+  assert.equal(result.product.name,"폴드8 케이스 A");
+  assert.equal(result.product.singlePhotoMode,true);
+  assert.equal(result.product.distinctPhotoCount,1);
+  assert.deepEqual(calls.map(c=>c.allowSinglePhoto),[false,false,true]);
+});
+
+test("one-photo mode requires explicit verified single-photo origin",async()=>{
+  await assert.rejects(chooseQuickCoupangProduct("폴드8",{
+    search:async()=>base.slice(0,1),
+    partnerLink:async()=> "https://link.coupang.com/test",
+    resolve:async()=>null,
+    prepare:async(p,opts={})=>{
+      if(!opts.allowSinglePhoto)throw Error("SHOPPING_MEDIA_INSUFFICIENT");
+      return {...p,images:["photo.jpg"],productMediaVerified:true};
+    },
+    logger:noop
+  }),/정보형 대체 제작도 불가능합니다/);
 });
