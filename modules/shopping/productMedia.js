@@ -153,7 +153,7 @@ export async function prepareShoppingProduct(product) {
   if(product.productMediaVerified===true && product.images?.length)return product;
   const link=product.provider==="kakao-curator" ? product.partnerUrl : (product.sourceUrl||product.detailUrl||product.partnerUrl);
   const info=await discoverProductPage(link,{expectedName:product.name||""});
-  const images=dedupe([...(product.images||[]),...(info.verified?info.images:[])]).slice(0,16);
+  const images=dedupe([...(product.images||[]),...(product.galleryImages||[]),...(info.verified?info.images:[])]).slice(0,16);
   const merged={
     ...product,
     name:product.name||info.name,
