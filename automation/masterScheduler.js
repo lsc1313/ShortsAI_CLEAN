@@ -271,11 +271,14 @@ async function runShoppingRecommendationJob() {
         }
     }
 
-    throw new Error(
-        "쿠팡 쇼츠 미제작: 후보 " + candidates.length +
-        "개 모두 상품 이미지 확보 또는 링크 생성에 실패. " +
-        failures.join(" | ").slice(0,1000)
+    console.warn(
+        "[SHOPPING] 오늘 후보 이미지 부족: " + failures.join(" | ").slice(0,1000)
     );
+    return {
+        skipped: true,
+        reason: "insufficient-product-images",
+        diagnostics: failures
+    };
 }
 
 async function runChannelJob(job) {
