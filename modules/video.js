@@ -243,10 +243,10 @@ let lastImage = null;
             null;
 
 
-        const sceneType =
-            normalizeSceneType(
-                item
-            );
+        // Shopping CTA also gets its own product photo and Ken Burns effect.
+        const sceneType = channel === "shopping" && item?.type === "ending"
+            ? "global"
+            : normalizeSceneType(item);
 
 
         const totalTime =
