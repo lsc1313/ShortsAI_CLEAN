@@ -28,6 +28,7 @@ import { uploadInstagramReel } from "./instagram/instagramUploader.js";
 import { createThreadsDirector } from "./threads/director.js";
 import { uploadThreadsText } from "./threads/uploader.js";
 import { createShoppingDirector } from "./shopping/director.js";
+import { prepareShoppingProduct } from "./shopping/productMedia.js";
 import { createHotdealDirector, selectHotdealProducts } from "./hotdeal/director.js";
 import { createHotdealCards } from "./hotdeal/card.js";
 import { createHistoryDirector } from "./history/director.js";
@@ -93,7 +94,7 @@ if(channel){
 1 AI 분석
 */
 
-const product =
+let product =
     options?.product || null;
 
 step("DIRECTOR");
@@ -112,6 +113,10 @@ const channelName =
  * Resume previous partial bilingual History publishing before producing a
  * new topic. Reuse already-rendered media and never upload a recorded ID.
  */
+if (channelName === "shopping" && product && options?.hotdeal !== true) {
+    product = await prepareShoppingProduct(product);
+}
+
 if (channelName === "history") {
     const previous = findUnfinishedHistoryPair() || readHistoryPair(topic);
     if (previous) {
@@ -415,7 +420,18 @@ step("IMAGE");
 
 let images = [];
 
-if (
+if (channelName === "shopping" && product && options?.hotdeal !== true) {
+    if (!Array.isArray(product.images) || product.images.length < 1)
+        throw new Error("SHOPPING: 상품 이미지가 없어 업로드를 중단합니다.");
+    images = director.scenes.map((scene,index) => {
+        const file = product.images[index % product.images.length];
+        if (!fs.existsSync(file))
+            throw new Error("SHOPPING: 다운로드한 상품 이미지 파일이 없습니다: " + file);
+        return {scene:index+1,file,mediaType:"image",provider:"product-gallery",score:100};
+    });
+    success("SHOPPING 실제 상품 이미지 " + images.length + "장면");
+}
+else if (
     channelName === "shopping" &&
     options?.hotdeal === true
 ) {
@@ -983,6 +999,7 @@ await uploadThreadsText(
     threadsDirector.finalText,
     {
         imageUrl:
+            threadsProduct?.publicImages?.[0] ||
             threadsProduct?.productImageUrl ||
             threadsProduct?.image ||
             "",
