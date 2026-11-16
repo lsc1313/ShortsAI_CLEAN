@@ -113,6 +113,15 @@ export function createLinkHTML({
             : [];
 
 
+    const notices = [
+        ...(activeRecords.some(item => item.provider !== "kakao-curator")
+            ? ["※ 이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."]
+            : []),
+        ...(activeRecords.some(item => item.provider === "kakao-curator")
+            ? ["이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공 받습니다."]
+            : [])
+    ].map(escapeHtml).map(text => `<p>${text}</p>`).join("");
+
     const cards =
         activeRecords
             .map(createProductCard)
@@ -456,8 +465,7 @@ SMALL PHONE
 
 
     <div class="notice">
-        ※ 이 페이지는 쿠팡 파트너스 활동의 일환으로,
-        이에 따른 일정액의 수수료를 제공받습니다.
+        ${notices}
     </div>
 
 

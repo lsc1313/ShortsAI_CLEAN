@@ -4,7 +4,25 @@ export async function createShoppingDirector(product = {}) {
 
 console.log("[SHOPPING DIRECTOR] START");
 
+    const isCurator = product.provider === "kakao-curator";
+    const providerRules = isCurator ? `
+카카오 선물하기 큐레이터 쇼츠다.
+- 구매 목적은 선물 추천이며, 시청자가 선물 고르는 기준을 배우게 하라.
+- 패키지, 구성, 선물 대상과 선택 기준을 흥미롭게 전달하라.
+- 실제 사진은 product 장면으로 2개 이상 사용하라.
+- 건강기능식품을 다룰 때 효과, 질병 예방, 치료, 체험 후기를 지어내지 마라.
+- 이미지와 상품 정보에 없는 증정품, 할인, 효능, 수치는 절대 만들지 마라.
+- 중간에 새로운 선택 기준 또는 의외의 체크포인트를 추가하라.
+- 시작에서 제기한 궁금증은 결말 직전까지 해결하고, 마지막엔 확인할 정보와 프로필 CTA를 제시하라.
+` : `
+쿠팡 파트너스 쇼츠다. 제휴 링크는 데이터 그대로 유지한다.
+- 상품의 실제 쓰임새와 구매 전 체크할 기준으로 시청자에게 정보를 제공한다.
+- 사용하지 않은 제품을 직접 써봤다고 주장하지 않는다.
+- 실측되지 않은 가격 변동, 효과, 할인 정보는 만들지 않는다.
+`;
     const prompt = `
+${providerRules}
+
 너는 세계 최고 수준의 YouTube Shorts Shopping Director이다.
 
 너는 YouTube Shorts 쇼핑 콘텐츠를 기획하는 전문가이다.

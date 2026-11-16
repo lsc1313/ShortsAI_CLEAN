@@ -1209,498 +1209,78 @@ async function deleteCoupangProduct(
 }
 
 
-/* =========================================================
-   HOTDEAL UI START
-   ① 상품 추가
-   ② 상품 제거
-   ③ 완전삭제
-   ④ 상품목록 — 활성/비활성
-   ⑤ 상품정보 갱신
-   ⑥ 쇼츠제작
-========================================================= */
-(function initHotdealUI() {
-  const addBtn = document.getElementById("hotdealAddBtn");
-  const removeBtn = document.getElementById("hotdealRemoveBtn");
-  const deleteBtn = document.getElementById("hotdealDeleteBtn");
-  const listBtn = document.getElementById("hotdealListBtn");
-  const searchBtn = document.getElementById("hotdealSearchBtn");
-  const createBtn = document.getElementById("hotdealCreateBtn");
-
-  const status = document.getElementById("hotdealStatus");
-  const list = document.getElementById("hotdealProductList");
-  const select = document.getElementById("hotdealProductSelect");
-  const searchResult = document.getElementById("hotdealSearchResult");
-
-  if (
-    !addBtn ||
-    !removeBtn ||
-    !deleteBtn ||
-    !listBtn ||
-    !searchBtn ||
-    !createBtn ||
-    !list ||
-    !select
-  ) {
-    return;
-  }
-
-  function setStatus(message) {
-    if (status) {
-      status.textContent = message;
-    }
-  }
-
-  async function loadList() {
-    setStatus("상품목록 불러오는 중...");
-
+/* Kakao curator registry; issued affiliate links must remain unchanged. */
+(function initCuratorUI() {
+  const form = document.getElementById("curatorForm");
+  const list = document.getElementById("curatorList");
+  const status = document.getElementById("curatorStatus");
+  if (!form || !list || !status) return;
+  const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+  const request = async (url, method = "GET", body) => {
+    const r = await fetch(url, {
+      method, headers: { "Content-Type":"application/json" },
+      ...(body === undefined ? {} : {body:JSON.stringify(body)})
+    });
+    const data = await r.json();
+    if (!r.ok || data.success === false) throw Error(data.error || "요청 실패");
+    return data;
+  };
+  const refresh = async () => {
     try {
-      const response = await fetch("/hotdeal/products");
-      const data = await response.json();
-
-      if (!response.ok || data.success === false) {
-        throw new Error(data.error || "상품목록 조회 실패");
-      }
-
-      const products = Array.isArray(data.products)
-        ? data.products
-        : [];
-
-      select.innerHTML =
-        '<option value="">상품을 선택하세요</option>';
-
-      list.innerHTML = "";
-
-      if (products.length === 0) {
-        list.textContent = "등록된 상품이 없습니다.";
-        setStatus("상품목록 조회 완료");
-        return;
-      }
-
-      const activeCount =
-        products.filter(product => product.enabled === true).length;
-
-      const inactiveCount =
-        products.length - activeCount;
-
-      const summary = document.createElement("div");
-      summary.style.cssText =
-        "font-size:14px;margin-bottom:8px;color:#aaa;";
-      summary.textContent =
-        `총 ${products.length}개 · 활성 ${activeCount} / 비활성 ${inactiveCount}`;
-
-      list.appendChild(summary);
-
-      const table = document.createElement("div");
-
-      table.style.cssText =
-        "border:1px solid #333;border-radius:10px;overflow:hidden;";
-
-      const header = document.createElement("div");
-
-      header.style.cssText =
-        "display:grid;grid-template-columns:1fr 90px 90px;align-items:center;padding:7px 10px;background:#1d1d1d;font-size:13px;color:#aaa;";
-
-      header.innerHTML =
-        "<div>상품명</div><div style='text-align:center'>활성화</div><div style='text-align:center'>비활성화</div>";
-
-      table.appendChild(header);
-
-      for (const product of products) {
-        const row = document.createElement("div");
-
-        row.style.cssText =
-          "display:grid;grid-template-columns:1fr 90px 90px;align-items:center;min-height:42px;padding:3px 10px;border-top:1px solid #292929;";
-
-        const name = document.createElement("div");
-
-        name.textContent = product.name;
-        name.style.cssText =
-          "font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
-
-        const activeCell = document.createElement("div");
-
-        activeCell.style.cssText =
-          "display:flex;justify-content:center;";
-
-        const active = document.createElement("input");
-
-        active.type = "checkbox";
-        active.checked = product.enabled === true;
-        active.style.cssText =
-          "width:20px;height:20px;accent-color:#00d9f5;";
-
-        const inactiveCell = document.createElement("div");
-
-        inactiveCell.style.cssText =
-          "display:flex;justify-content:center;";
-
-        const inactive = document.createElement("input");
-
-        inactive.type = "checkbox";
-        inactive.checked = product.enabled !== true;
-        inactive.style.cssText =
-          "width:20px;height:20px;accent-color:#00d9f5;";
-
-        active.addEventListener("change", async () => {
-          if (!active.checked) {
-            active.checked = true;
-            return;
-          }
-
-          active.disabled = true;
-          inactive.disabled = true;
-
-          try {
-            const response = await fetch(
-              `/hotdeal/products/${encodeURIComponent(product.name)}/enabled`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  enabled: true
-                })
-              }
-            );
-
-            const result = await response.json();
-
-            if (!response.ok || result.success === false) {
-              throw new Error(
-                result.error || "활성화 변경 실패"
-              );
-            }
-
-            await loadList();
-
-          } catch (error) {
-            setStatus(error.message);
-            active.checked = product.enabled === true;
-            inactive.checked = product.enabled !== true;
-            active.disabled = false;
-            inactive.disabled = false;
-          }
-        });
-
-        inactive.addEventListener("change", async () => {
-          if (!inactive.checked) {
-            inactive.checked = true;
-            return;
-          }
-
-          active.disabled = true;
-          inactive.disabled = true;
-
-          try {
-            const response = await fetch(
-              `/hotdeal/products/${encodeURIComponent(product.name)}/enabled`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  enabled: false
-                })
-              }
-            );
-
-            const result = await response.json();
-
-            if (!response.ok || result.success === false) {
-              throw new Error(
-                result.error || "비활성화 변경 실패"
-              );
-            }
-
-            await loadList();
-
-          } catch (error) {
-            setStatus(error.message);
-            active.checked = product.enabled === true;
-            inactive.checked = product.enabled !== true;
-            active.disabled = false;
-            inactive.disabled = false;
-          }
-        });
-
-        activeCell.appendChild(active);
-        inactiveCell.appendChild(inactive);
-
-        row.appendChild(name);
-        row.appendChild(activeCell);
-        row.appendChild(inactiveCell);
-
-        table.appendChild(row);
-
-        const option = document.createElement("option");
-
-        option.value = product.name;
-        option.textContent =
-          `${product.name} (${product.enabled ? "활성" : "비활성"})`;
-
-        select.appendChild(option);
-      }
-
-      list.appendChild(table);
-
-      setStatus("상품목록 조회 완료");
-
-    } catch (error) {
-      setStatus(error.message);
-    }
-  }
-
-  /* ① 상품 추가 */
-  addBtn.addEventListener("click", async () => {
-    const nameInput =
-      document.getElementById("hotdealProductName");
-
-    const keywordInput =
-      document.getElementById("hotdealProductKeyword");
-
-    const name =
-      String(nameInput?.value || "").trim();
-
-    const keyword =
-      String(keywordInput?.value || name).trim();
-
-    if (!name) {
-      setStatus("상품명을 입력하세요.");
-      return;
-    }
-
-    if (!keyword) {
-      setStatus("검색어를 입력하세요.");
-      return;
-    }
-
-    addBtn.disabled = true;
-    setStatus("상품 추가 중...");
-
+      const {products} = await request("/curator/products");
+      list.innerHTML = products.length ? products.map(p => `
+        <article style="padding:12px;background:#101820;border-radius:10px">
+          <strong>${escape(p.name)}</strong>
+          <p style="font-size:12px;word-break:break-all">${escape(p.partnerUrl)}</p>
+          <p>${p.images?.length ? "상품 이미지 등록됨" : "상품 이미지 없음 — 자동 업로드 보류"}</p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" data-curator-action="enrich" data-id="${escape(p.id)}">이미지 자동 확인</button>
+            <button type="button" data-curator-action="create" data-id="${escape(p.id)}">지금 쇼츠 제작</button>
+            <button type="button" data-curator-action="remove" data-id="${escape(p.id)}">삭제</button>
+          </div>
+        </article>`).join("") : "<p>등록된 상품이 없습니다.</p>";
+    } catch (e) { status.textContent = e.message; }
+  };
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    const name = document.getElementById("curatorName").value.trim();
+    const partnerUrl = document.getElementById("curatorLink").value.trim();
+    const images = document.getElementById("curatorImages").value
+      .split(/\n+/).map(x => x.trim()).filter(Boolean);
     try {
-      const response = await fetch(
-        "/hotdeal/products",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            name,
-            keyword
-          })
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || data.success === false) {
-        throw new Error(
-          data.error || "상품 추가 실패"
-        );
-      }
-
-      if (nameInput) nameInput.value = "";
-      if (keywordInput) keywordInput.value = "";
-
-      await loadList();
-      setStatus("상품 추가 완료");
-
-    } catch (error) {
-      setStatus(error.message);
-    } finally {
-      addBtn.disabled = false;
-    }
+      await request("/curator/products","POST",{name,partnerUrl,images});
+      status.textContent = "등록 완료. 상품 이미지는 확보 후 자동 제작에 사용됩니다.";
+      form.reset(); await refresh();
+    } catch (e) { status.textContent = e.message; }
   });
-
-  /* ② 상품 제거 — 선택 상품 비활성화 */
-  removeBtn.addEventListener("click", async () => {
-    const name = select.value;
-
-    if (!name) {
-      setStatus("제거할 상품을 선택하세요.");
-      return;
-    }
-
-    if (!window.confirm(
-      `"${name}" 상품을 제거할까요?\n\n상품은 비활성 상태로 유지됩니다.`
-    )) {
-      return;
-    }
-
-    removeBtn.disabled = true;
-    setStatus("상품 제거 중...");
-
+  list.addEventListener("click", async e => {
+    const btn = e.target.closest("[data-curator-action]");
+    if (!btn) return;
+    const id = encodeURIComponent(btn.dataset.id);
+    const action = btn.dataset.curatorAction;
+    btn.disabled = true;
     try {
-      const response = await fetch(
-        `/hotdeal/products/${encodeURIComponent(name)}`,
-        {
-          method: "DELETE"
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || data.success === false) {
-        throw new Error(
-          data.error || "상품 제거 실패"
-        );
+      if (action === "remove") {
+        if (!confirm("이 큐레이터 상품을 삭제할까요?")) return;
+        await request("/curator/products/" + id,"DELETE");
+        status.textContent = "삭제 완료";
+      } else if (action === "enrich") {
+        const result = await request("/curator/products/" + id + "/enrich","POST");
+        status.textContent = result.mediaReady ? "상품 이미지 확인 완료" : "공개 이미지가 확인되지 않았습니다. 이미지 주소를 직접 등록하세요.";
+      } else if (action === "create") {
+        status.textContent = "쇼츠 제작 중입니다.";
+        await request("/curator/products/" + id + "/create","POST");
+        status.textContent = "쇼츠 제작 및 업로드 완료";
       }
-
-      await loadList();
-      setStatus("상품 제거 완료");
-
-    } catch (error) {
-      setStatus(error.message);
-    } finally {
-      removeBtn.disabled = false;
-    }
+      await refresh();
+    } catch (error) { status.textContent = error.message; }
+    finally { btn.disabled = false; }
   });
-
-  /* ③ 완전삭제 — 선택 상품 삭제 */
-  deleteBtn.addEventListener("click", async () => {
-    const name = select.value;
-
-    if (!name) {
-      setStatus("완전삭제할 상품을 선택하세요.");
-      return;
-    }
-
-    if (!window.confirm(
-      `"${name}" 상품을 완전삭제할까요?\n\n상품 설정이 완전히 삭제됩니다.`
-    )) {
-      return;
-    }
-
-    deleteBtn.disabled = true;
-    setStatus("완전삭제 중...");
-
-    try {
-      const response = await fetch(
-        `/hotdeal/products/${encodeURIComponent(name)}/purge`,
-        {
-          method: "DELETE"
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || data.success === false) {
-        throw new Error(
-          data.error || "완전삭제 실패"
-        );
-      }
-
-      await loadList();
-      setStatus("완전삭제 완료");
-
-    } catch (error) {
-      setStatus(error.message);
-    } finally {
-      deleteBtn.disabled = false;
-    }
-  });
-
-  /* ④ 상품목록 */
-  listBtn.addEventListener("click", loadList);
-
-  /* ⑤ 활성 상품군 상품정보 갱신 */
-  searchBtn.addEventListener("click", async () => {
-    searchBtn.disabled = true;
-
-    if (searchResult) {
-      searchResult.textContent = "갱신 중...";
-    }
-
-    setStatus("활성 상품군 상품정보 갱신 중...");
-
-    try {
-      const response = await fetch(
-        "/hotdeal/refresh",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({})
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || data.success === false) {
-        throw new Error(
-          data.error || "상품정보 갱신 실패"
-        );
-      }
-
-      const count =
-        Number(data.count || 0);
-
-      const total =
-        Number(data.total || count);
-
-      if (searchResult) {
-        searchResult.textContent =
-          `${count}/${total} 갱신완료`;
-      }
-
-      setStatus("상품정보 갱신 완료");
-
-    } catch (error) {
-      if (searchResult) {
-        searchResult.textContent =
-          error.message;
-      }
-
-      setStatus(error.message);
-
-    } finally {
-      searchBtn.disabled = false;
-    }
-  });
-
-  /* ⑥ 쇼츠제작 */
-  createBtn.addEventListener("click", async () => {
-    createBtn.disabled = true;
-    setStatus("쇼츠 제작 준비 중...");
-
-    try {
-      const response = await fetch(
-        "/hotdeal/create",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({})
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || data.success === false) {
-        throw new Error(
-          data.error || "쇼츠 제작 요청 실패"
-        );
-      }
-
-      setStatus("쇼츠 제작 요청 완료");
-
-    } catch (error) {
-      setStatus(error.message);
-
-    } finally {
-      createBtn.disabled = false;
-    }
-  });
-
-  loadList();
+  refresh();
 })();
 
-/* HOTDEAL UI END */
 
 
 
@@ -1889,9 +1469,6 @@ async function loadSchedulerStatus() {
 
         const labels = {
 
-            "hotdeal-morning":
-                "🔥 아침 핫딜",
-
             "ai":
                 "🤖 AI",
 
@@ -1899,7 +1476,7 @@ async function loadSchedulerStatus() {
                 "🔬 Science",
 
             "shopping-recommendation":
-                "🛍️ 추천템",
+                "🛍️ 쿠팡 파트너스",
 
             "history":
                 "🏛️ History",
@@ -1907,13 +1484,16 @@ async function loadSchedulerStatus() {
             "animal":
                 "🐾 Animal",
 
-            "hotdeal-evening":
-                "🔥 저녁 핫딜"
+            "kakao-curator":
+                "🎁 카카오 큐레이터"
 
         };
 
 
         const statusLabels = {
+
+            skipped:
+                "상품 이미지/신규 링크 부족으로 건너뜀",
 
             waiting:
                 "대기",

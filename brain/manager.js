@@ -979,7 +979,8 @@ export class Manager {
                 if (
                     order.product &&
                     order.product.partnerUrl &&
-                    order.product.enabled !== false
+                    order.product.enabled !== false &&
+                    order.product.provider !== "kakao-curator"
                 ) {
 
                     this.logger.log(
