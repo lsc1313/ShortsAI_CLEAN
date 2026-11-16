@@ -1774,6 +1774,19 @@ const main =
         );
 
 
+    // Only gallery entries within the already ID-matched main product.
+    // Never collect images from page-wide recommendations.
+    const galleryFields = [
+        main?.productImageUrl,main?.images,main?.productImages,
+        main?.galleryImages,main?.imageList,main?.productImageList
+    ];
+    const galleryImages = [...new Set(galleryFields.flatMap(value => {
+        const values=Array.isArray(value)?value:[value];
+        return values.map(item => typeof item === "string" ? item :
+            item?.url || item?.imageUrl || item?.productImageUrl || item?.originImage || ""
+        ).filter(x => /^https?:\/\//.test(String(x)));
+    }))].slice(0,12);
+
     const price =
         String(
             main?.finalPrice?.value ||
@@ -1995,6 +2008,7 @@ const actualReviewCount =
         rocketDelivery,
 
         productImageUrl,
+        galleryImages,
 
         brandName,
 
