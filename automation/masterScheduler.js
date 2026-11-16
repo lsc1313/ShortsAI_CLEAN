@@ -1,6 +1,7 @@
 ﻿import * as Brain from "../brain/brain.js";
 import fs from "fs";
-import { chooseCuratorProduct, markCuratorPublished } from "../modules/kakaoCurator/store.js";
+import { chooseCuratorProduct, markCuratorPublished, listCuratorProducts } from "../modules/kakaoCurator/store.js";
+import { enrichCuratorProduct, prepareCuratorProduct } from "../modules/kakaoCurator/media.js";
 import path from "path";
 
 import {
@@ -148,6 +149,11 @@ function isDue(
 
 
 async function runKakaoCuratorJob() {
+    // A supplied affiliate link can be enriched from publicly available
+    // page metadata; authenticated pages may still require manual image entry.
+    for (const item of listCuratorProducts().filter(p => p.enabled !== false && !p.images?.length)) {
+        await enrichCuratorProduct(item);
+    }
     const product = chooseCuratorProduct();
     if (!product) {
         // No attribution-safe product with usable media; never publish an
@@ -155,12 +161,13 @@ async function runKakaoCuratorJob() {
         console.log("[KAKAO CURATOR] 유효한 미게시 상품이 없어 오늘 업로드를 건너뜁니다.");
         return { skipped: true, reason: "no-eligible-product" };
     }
+    const prepared = await prepareCuratorProduct(product);
     const result = await Brain.start({
         mode: "QUICK",
-        topic: product.name,
+        topic: prepared.name,
         count: 1,
         channel: "Shopping",
-        product
+        product: prepared
     });
     // Brain.start can return an error status without throwing; do not mark
     // a product published unless at least one video finished successfully.
