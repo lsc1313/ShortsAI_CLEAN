@@ -53,7 +53,7 @@ function imageNodes(html,base){
  for(const tag of (String(html||"").match(/<img\b[^>]*>/gi)||[])){
    if(!/(?:product|gallery|goods|detail|thumb|main-image|swiper)/i.test(tag))continue;
    for(const attr of ["data-zoom-image","data-src","src"]){
-     const value=tag.match(new RegExp("\\b"+attr+"\\s*=\\s*[\\"']([^\\"']+)[\\"']","i"))?.[1];
+     const value=tag.match(/(?:data-zoom-image|data-src|src)\s*=\s*["\x27]([^"\x27]+)["\x27]/i)?.[1];
      if(value)srcs.push(normalizeImage(value,base));
    }
  }
