@@ -66,5 +66,5 @@ test("Verified one-photo information mode maps the genuine photo to all scenes w
 test("Unverified single photo cannot bypass the product gate",()=>{
  assert.throws(()=>normalizeShoppingScenes({scenes:[
    {tts:"한"}, {tts:"두"}, {tts:"세"}, {tts:"네"}
- ]},{name:"상품",images:["photo.jpg"],singlePhotoMode:true}),/실제 상품 이미지/);
+ ]},{name:"상품",images:["photo.jpg"],singlePhotoMode:true}),/2장 이상/);
 });
