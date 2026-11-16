@@ -42,6 +42,8 @@ jobs:
       - run: node --check modules/metadata.js
       - run: node --check public/app.js
       - run: node --test tests/kakaoCurator.test.js tests/shoppingProductMedia.test.js tests/shoppingQualityFix.test.js tests/curatorUpload.test.js tests/curatorRegistrationPhotos.test.js
+      - run: node --check modules/instagram/instagramAuth.js
+      - run: node --test tests/instagramAuth.test.js
       - run: node --check modules/video/render.js
       - run: node --check modules/video.js
       - run: node --check modules/threads/director.js

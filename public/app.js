@@ -1210,6 +1210,72 @@ async function deleteCoupangProduct(
 
 
 /* Kakao curator registry; issued affiliate links must remain unchanged. */
+(function initInstagramReconnect() {
+  const accounts = document.getElementById("instagramAuthAccounts");
+  const configuration = document.getElementById("instagramAuthConfig");
+  const message = document.getElementById("instagramAuthMessage");
+  if (!accounts || !configuration || !message) return;
+  const escape = value => String(value ?? "").replace(/[&<>"']/g, c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+  const labels = {
+    connected:"연결됨",
+    expired:"만료 · 재연결 필요",
+    "reauthorization-needed":"재연결 필요"
+  };
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("instagram_auth") === "success") {
+    message.textContent = "Instagram 승인 완료 · " + (params.get("account") || "");
+  } else if (params.get("instagram_auth") === "failed") {
+    message.textContent = "Instagram 재연결 실패: " + (params.get("reason") || "알 수 없는 오류");
+  }
+  if (params.has("instagram_auth")) {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+  async function load() {
+    try {
+      const response = await fetch("/api/instagram-auth/status",{cache:"no-store"});
+      const data = await response.json();
+      if (!response.ok || !data.success) throw Error(data.error || "인증 상태 조회 실패");
+      configuration.textContent = data.config.configured
+        ? "기존 Instagram 앱 설정 확인됨. 계정별 재연결을 진행할 수 있습니다."
+        : "재연결 준비 필요: PC .env에 " + data.config.missing.join(", ") +
+          " 설정 후 서버 재실행. Instagram 앱의 승인된 콜백 주소: " + data.config.redirectUri;
+      accounts.innerHTML = data.accounts.length ? data.accounts.map(c => `
+        <div style="padding:12px;background:#101820;border-radius:10px">
+          <strong>${escape(c.username)}</strong> (${escape(c.channel)})
+          <p style="margin:8px 0;font-size:13px">인증 상태: ${escape(labels[c.status]||c.status)} ${c.expiresAt ? " · 만료 예정: "+escape(c.expiresAt.slice(0,10)) : ""}</p>
+          <button type="button" data-instagram-reconnect="${escape(c.userId)}"
+            ${data.config.configured ? "" : "disabled"}
+            style="padding:10px 14px;border-radius:8px;cursor:pointer">인스타그램 재연결</button>
+        </div>`).join("") : "등록된 Instagram 채널이 없습니다.";
+    } catch(error) {
+      configuration.textContent = "인스타그램 인증 관리: " + error.message +
+        " · PC에서 http://localhost:3000 으로 열어주세요.";
+    }
+  }
+  accounts.addEventListener("click",async(event)=>{
+    const button = event.target.closest("[data-instagram-reconnect]");
+    if(!button) return;
+    button.disabled=true;
+    try {
+      message.textContent="인스타그램 승인 링크를 준비하는 중입니다.";
+      const response=await fetch("/api/instagram-auth/start",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({userId:button.dataset.instagramReconnect})
+      });
+      const result=await response.json();
+      if(!response.ok || !result.success) throw Error(result.error||"승인 링크 생성 실패");
+      if(!result.url.startsWith("https://www.instagram.com/oauth/authorize?")) throw Error("인증 주소가 올바르지 않습니다.");
+      window.location.assign(result.url);
+    }catch(error){
+      message.textContent="재연결을 시작하지 못했습니다: "+error.message;
+      button.disabled=false;
+    }
+  });
+  load();
+})();
+
 (function initCuratorUI() {
   const form = document.getElementById("curatorForm");
   const list = document.getElementById("curatorList");
