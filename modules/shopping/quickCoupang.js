@@ -2,11 +2,6 @@ import { searchProducts, createPartnerLink } from "../coupang/index_api.js";
 import { resolveCoupangProduct } from "../coupang/productResolver.js";
 import { prepareShoppingProduct } from "./productMedia.js";
 
-function isSkippableProductError(error) {
-  const message = String(error?.message || error);
-  return /SHOPPING_MEDIA_INSUFFICIENT|SHOPPING:|COUPANG|이미지|상품 사진|파트너스|HTTP|timeout|ECONN|ENOTFOUND|ETIMEDOUT|redirectWebUrl|productId/i.test(message);
-}
-
 /**
  * UI QUICK must verify a candidate BEFORE starting Brain. A product whose
  * genuine, distinct photos cannot be obtained is never sent for publication.
@@ -86,9 +81,8 @@ export async function chooseQuickCoupangProduct(keyword, {
       const reason = String(error?.message || error);
       attempts.push({ productId, name: productName, reason:reason.slice(0,180) });
       logger.warn(`[SHOPPING QUICK] 후보 제외 ${index+1}:`,reason.slice(0,200));
-      // An unavailable item must not prevent the remaining valid candidates.
-      // Invalid auth / permission errors shouldn't cause a series of API calls.
-      if (!isSkippableProductError(error)) throw error;
+      // A candidate failure cannot poison the whole manual search. Limit to
+      // the finite candidate set; no unbounded retries or identity mismatch.
     }
   }
 
