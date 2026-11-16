@@ -233,10 +233,17 @@
   <form id="curatorForm" style="display:flex;flex-direction:column;gap:10px;">
     <input id="curatorName" placeholder="상품명 (선택, 링크에서 자동 추출)" style="padding:12px;border-radius:8px;">
     <input id="curatorLink" type="url" required placeholder="https://gift-link.kakao.com/c/..." style="padding:12px;border-radius:8px;">
-    <textarea id="curatorImages" rows="2" placeholder="실제 상품 이미지 https 주소 (한 줄에 하나씩, 선택)" style="padding:12px;border-radius:8px;"></textarea>
+    <label for="curatorPhotoFiles" style="font-weight:700;">실제 상품 사진 첨부 (선택 · 여러 장 가능)</label>
+    <input id="curatorPhotoFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple style="padding:12px;border-radius:8px;background:#fff;color:#171c27;width:100%;max-width:100%;">
+    <div id="curatorPhotoCount" aria-live="polite" style="color:#d7e4ee;font-size:13px;">사진을 선택하지 않아도 링크 자동 수집을 시도합니다. 쇼츠는 서로 다른 실제 사진 2장 이상 필요합니다.</div>
+    <div id="curatorPhotoPreview" aria-label="선택한 상품 사진 미리보기" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    <details style="color:#d7e4ee;">
+      <summary style="cursor:pointer;padding:6px 0;">고급 옵션 · 상품 이미지 URL 직접 입력</summary>
+      <textarea id="curatorImages" rows="2" placeholder="실제 상품 이미지 https 주소 (한 줄에 하나씩, 선택)" style="width:100%;padding:12px;border-radius:8px;"></textarea>
+    </details>
     <button type="submit" style="padding:12px;border-radius:8px;">큐레이터 상품 등록</button>
   </form>
-  <p id="curatorStatus" aria-live="polite">상품 이미지를 확보해야 영상이 제작됩니다. 이미지가 없으면 공개 페이지에서 가져오기를 시도합니다.</p>
+  <p id="curatorStatus" aria-live="polite">링크만 등록하면 공개 상품 페이지에서 사진과 상세정보를 자동 수집합니다. 휴대폰 사진을 함께 선택하면 등록 시 업로드합니다.</p>
   <div id="curatorList" style="display:flex;flex-direction:column;gap:10px;"></div>
 </section>
 
