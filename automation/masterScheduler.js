@@ -3,6 +3,7 @@ import fs from "fs";
 import { chooseCuratorProduct, markCuratorPublished, listCuratorProducts } from "../modules/kakaoCurator/store.js";
 import { enrichCuratorProduct, prepareCuratorProduct } from "../modules/kakaoCurator/media.js";
 import path from "path";
+import { isScheduledNow } from "./schedulerTiming.js";
 
 import {
     selectShoppingRecommendationCandidates
@@ -20,8 +21,9 @@ import { prepareShoppingProduct } from "../modules/shopping/productMedia.js";
 
 import {
     getCompletedJobs,
-    rememberCompletedJob,
-    removeCompletedJob,
+    getSchedulerAttempts,
+    claimSchedulerJob,
+    finishSchedulerJob,
     cleanupCompletedJobs
 } from "./schedulerHistory.js";
 
@@ -83,8 +85,8 @@ const DAILY_JOBS = [
     }
 ];
 
-const completedJobs =
-    getCompletedJobs();
+const completedJobs = getCompletedJobs();
+const jobAttempts = new Map(Object.entries(getSchedulerAttempts()));
 
 let schedulerBusy = false;
 
@@ -124,31 +126,9 @@ function getJobKey(
 }
 
 
-function isDue(
-    job,
-    now = new Date()
-) {
-
-    const scheduled =
-        new Date(now);
-
-    scheduled.setHours(
-        job.hour,
-        job.minute,
-        0,
-        0
-    );
-
-    /*
-    예약시간이 이미 지났더라도
-    오늘 아직 실행하지 않은 작업이면 실행한다.
-    */
-    return (
-        now.getTime() >=
-        scheduled.getTime()
-    );
+export function isDue(job, now = new Date()) {
+    return isScheduledNow(job, now);
 }
-
 
 async function runKakaoCuratorJob() {
     // A supplied affiliate link can be enriched from publicly available
@@ -350,13 +330,14 @@ async function tick() {
             continue;
         }
 
-        /*
-        실행 시작 전에 먼저 등록한다.
-
-        30초 주기 tick이 같은 작업을
-        다시 실행하는 것을 방지한다.
-        */
-completedJobs.add(key);
+        // Durable claim BEFORE starting generation; even a crash/restart
+        // cannot re-run this job on the same day.
+        if (!claimSchedulerJob(key)) {
+            completedJobs.add(key);
+            continue;
+        }
+        completedJobs.add(key);
+        jobAttempts.set(key, {status:"running",target:job.count,completed:0});
 
 schedulerBusy = true;
 currentJobId = job.id;
@@ -380,27 +361,29 @@ const brainStatus = Brain.getStatus();
                     " 업로드 확인 실패 (" + (brainStatus.current || 0) + "/" + job.count + ")");
             }
 
-jobResults.set(
-    key,
-    {
-        completed:
-            executionResult?.skipped ? 0 : Number(brainStatus?.current || 0),
-
-        skipped: executionResult?.skipped === true,
-        reason: executionResult?.reason || null,
-
-        target:
-            Number(job.count || 0)
-    }
-);
-
-rememberCompletedJob(key);
+const outcome = {
+    status: executionResult?.skipped ? "skipped" : "completed",
+    completed: executionResult?.skipped ? 0 : Number(brainStatus.current || 0),
+    target: Number(job.count || 1),
+    reason: executionResult?.reason || ""
+};
+jobResults.set(key, {...outcome, skipped: outcome.status === "skipped"});
+jobAttempts.set(key, outcome);
+finishSchedulerJob(key, outcome);
 
         }
         catch (error) {
 
-completedJobs.delete(key);
-removeCompletedJob(key);
+// Retain a durable failed outcome; repeated retries may duplicate uploads.
+const failure = {
+    status:"failed",
+    completed:0,
+    target:Number(job.count || 1),
+    reason:String(error?.message || error)
+};
+jobResults.set(key, failure);
+jobAttempts.set(key, failure);
+finishSchedulerJob(key, failure);
 
 lastError = {
     jobId: job.id,
@@ -511,10 +494,14 @@ else if (
                     "pending-recovery";
             }
 
-const result =
-    jobResults.get(key) || null;
+const result = jobResults.get(key) || jobAttempts.get(key) || null;
 
-if (result?.skipped === true) status = "skipped";
+if (result?.status === "skipped") status = "skipped";
+else if (result?.status === "failed") status = "failed";
+else if (result?.status === "running" && currentJobId !== job.id) status = "interrupted";
+else if (result?.status === "completed") status = "completed";
+else if (!result && !completedJobs.has(key) && now.getTime() >= scheduled.getTime() + 90000)
+    status = "missed";
 
             return {
                 id:
@@ -532,7 +519,9 @@ if (result?.skipped === true) status = "skipped";
 status,
 
 completedCount:
-    result?.completed ?? null,
+    result?.completed ?? (completedJobs.has(key) ? job.count : null),
+
+reason: result?.reason || null,
 
 targetCount:
     result?.target ?? job.count
