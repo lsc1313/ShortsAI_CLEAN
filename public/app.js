@@ -1519,7 +1519,16 @@ async function loadSchedulerStatus() {
                 "완료",
 
             "pending-recovery":
-                "복구 대기"
+                "예약 시간 지남",
+
+            missed:
+                "PC 미실행 · 예약 놓침",
+
+            failed:
+                "제작 실패 · 자동 재실행 없음",
+
+            interrupted:
+                "중단됨 · 자동 재실행 없음"
 
         };
 
