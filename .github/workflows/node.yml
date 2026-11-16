@@ -1,6 +1,9 @@
 name: ShortsAI CI
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -24,3 +27,9 @@ jobs:
       - run: node --check modules/hotdeal/director.js
       - run: node --check modules/hotdeal/card.js
       - run: node --test tests/hotdealStory.test.js
+      - run: node --check automation/masterScheduler.js
+      - run: node --check modules/kakaoCurator/store.js
+      - run: node --check modules/kakaoCurator/media.js
+      - run: node --check modules/metadata.js
+      - run: node --check public/app.js
+      - run: node --test tests/kakaoCurator.test.js
