@@ -331,24 +331,24 @@ export async function createLinkPage(
         const oldHTML = fs.readFileSync(OUTPUT_FILE, "utf8");
         if (oldHTML.includes(allStart) && oldHTML.includes(allEnd)) {
             const oldSection = oldHTML.split(allStart)[1].split(allEnd)[0];
-            const newGrid = generatedHTML.match(/<section\\b[^>]*class="product-grid"[^>]*>([\\s\\S]*?)<\\/section>/i);
-            const oldGrid = oldSection.match(/<section\\b[^>]*class="product-grid"[^>]*>([\\s\\S]*?)<\\/section>/i);
-            const cardRegex = /<a\\b[^>]*class="product-card"[^>]*>[\\s\\S]*?<\\/a>/gi;
+            const newGrid = generatedHTML.match(/<section\b[^>]*class="product-grid"[^>]*>([\s\S]*?)<\/section>/i);
+            const oldGrid = oldSection.match(/<section\b[^>]*class="product-grid"[^>]*>([\s\S]*?)<\/section>/i);
+            const cardRegex = /<a\b[^>]*class="product-card"[^>]*>[\s\S]*?<\/a>/gi;
             const cards = [
                 ...(newGrid?.[1]?.match(cardRegex) || []),
                 ...(oldGrid?.[1]?.match(cardRegex) || [])
             ];
             const seen = new Set();
             const unique = cards.filter(card => {
-                const url = card.match(/\\bhref="([^"]+)"/i)?.[1];
+                const url = card.match(/\bhref="([^"]+)"/i)?.[1];
                 if (!url || seen.has(url)) return false;
                 seen.add(url);
                 return true;
             });
-            const mergedGrid = '<section class="product-grid" aria-label="영상 속 상품">\\n' +
-                unique.join("\\n") + '\\n</section>';
-            html = oldHTML.split(allStart)[0] + allStart + '\\n' +
-                mergedGrid + '\\n' + allEnd + oldHTML.split(allEnd)[1];
+            const mergedGrid = '<section class="product-grid" aria-label="영상 속 상품">\n' +
+                unique.join("\n") + '\n</section>';
+            html = oldHTML.split(allStart)[0] + allStart + '\n' +
+                mergedGrid + '\n' + allEnd + oldHTML.split(allEnd)[1];
         }
     }
 
