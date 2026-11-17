@@ -123,16 +123,18 @@ export async function stageProductImages(product, candidates, {maxImages=6,allow
  const dir=path.resolve("media/products/verified",id);
  fs.mkdirSync(dir,{recursive:true});
  const images=[], publicImages=[], seenHashes=new Set();
+ const issues={};
+ const note=code=>{issues[code]=(issues[code]||0)+1;};
  for(const source of dedupe(candidates).slice(0,16)){
    if(images.length>=maxImages)break;
    try{
      let data,ext=".jpg";
      if(/^https:\/\//i.test(source)){
        const u=normalizeImage(source);
-       if(!u)continue;
+       if(!u){note("invalid-image-url");continue;}
        const response=await axios.get(u,{responseType:"arraybuffer",timeout:14000,maxContentLength:15*1024*1024,maxRedirects:0,headers:{"User-Agent":"Mozilla/5.0","Accept":"image/*"}});
        data=Buffer.from(response.data);
-       if(!String(response.headers["content-type"]||"").startsWith("image/"))continue;
+       if(!String(response.headers["content-type"]||"").startsWith("image/")){note("not-image-content-type");continue;}
        publicImages.push(u);
      }else{
        let local=String(source||"");
@@ -140,12 +142,12 @@ export async function stageProductImages(product, candidates, {maxImages=6,allow
        else if(local.startsWith("media/"))local=path.resolve(local);
        else if(path.isAbsolute(local))local=path.resolve(local);
        else continue;
-       if(!fs.existsSync(local))continue;
+       if(!fs.existsSync(local)){note("local-file-missing");continue;}
        data=fs.readFileSync(local);
      }
-     if(!isImageBuffer(data))continue;
+     if(!isImageBuffer(data)){note("invalid-or-small-image-bytes");continue;}
      const contentHash=crypto.createHash("sha256").update(data).digest("hex");
-     if(seenHashes.has(contentHash))continue;
+     if(seenHashes.has(contentHash)){note("duplicate-image-bytes");continue;}
      seenHashes.add(contentHash);
      if(data.toString("ascii",0,4)==="RIFF")ext=".webp";
      if(data[0]===0x89)ext=".png";
@@ -157,9 +159,22 @@ export async function stageProductImages(product, candidates, {maxImages=6,allow
      const vf="[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:2[bg];[0:v]scale=1000:1660:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p[out]";
      const render=spawnSync("ffmpeg",["-y","-loglevel","error","-i",filename,"-filter_complex",vf,"-map","[out]","-frames:v","1",portrait],{timeout:30000});
      images.push(render.status===0 && fs.existsSync(portrait)?portrait:filename);
-   }catch{/* inaccessible images are skipped, not replaced with unrelated stock */ }
+   }catch(error){
+     const status=error?.response?.status;
+     note(status ? `http-${status}` : error?.code === "ECONNABORTED" ? "image-timeout" : "image-download-failed");
+   }
  }
- if(images.length<(allowSinglePhoto?1:2))throw new Error("SHOPPING_MEDIA_INSUFFICIENT: 동일 상품의 실제 이미지가 제작 기준보다 부족합니다.");
+ console.log("[SHOPPING IMAGE DIAGNOSTICS]",{
+   productId:String(product.id||"").slice(0,40),
+   candidateCount:dedupe(candidates).length,
+   successfulDistinctImages:images.length,
+   rejectedByReason:issues,
+   source:product.mediaSource||"unspecified"
+ });
+ if(images.length<(allowSinglePhoto?1:2))throw new Error(
+   "SHOPPING_MEDIA_INSUFFICIENT: 동일 상품의 실제 이미지가 제작 기준보다 부족합니다. " +
+   "후보="+dedupe(candidates).length+" 유효="+images.length+" 사유="+JSON.stringify(issues)
+ );
  // This flag describes one actual product image, never two fabricated photos.
  const singlePhotoMode=images.length===1;
  return {...product, images, distinctPhotoCount:images.length, singlePhotoMode, publicImages:dedupe([...publicImages,...(product.publicImages||[])]),productMediaVerified:true};

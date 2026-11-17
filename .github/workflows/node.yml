@@ -40,6 +40,8 @@ jobs:
       - run: node --check modules/coupang/index_api.js
       - run: node --check modules/shopping/quickCoupang.js
       - run: node --test tests/shoppingQuickFallback.test.js
+      - run: node --check modules/coupang/productResolver.js
+      - run: node --test tests/coupangImageDiagnostics.test.js
       - run: node --check modules/shopping/productMedia.js
       - run: node --check modules/shopping/director.js
       - run: node --check modules/metadata.js
