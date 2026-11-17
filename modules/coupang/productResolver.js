@@ -89,10 +89,10 @@ export function extractRedirectWebUrl(html) {
     // strings. Keep the extraction scoped to the official redirectWebUrl key.
     const source = String(html || "");
     const patterns = [
-        /redirectWebUrl\\s*=\\s*'([^']+)'/i,
-        /redirectWebUrl\\s*=\\s*"([^"]+)"/i,
-        /["']redirectWebUrl["']\\s*:\\s*"((?:\\\\.|[^"\\\\])+)"/i,
-        /["']redirectWebUrl["']\\s*:\\s*'([^']+)'/i
+        /redirectWebUrl\s*=\s*'([^']+)'/i,
+        /redirectWebUrl\s*=\s*"([^"]+)"/i,
+        /["']redirectWebUrl["']\s*:\s*"((?:\\.|[^"\\])+)"/i,
+        /["']redirectWebUrl["']\s*:\s*'([^']+)'/i
     ];
     for (const pattern of patterns) {
         const match = source.match(pattern);
