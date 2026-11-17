@@ -84,26 +84,31 @@ PARTNER REDIRECT URL
 =========================================================
 */
 
-function extractRedirectWebUrl(html){
-
-    const source =
-        String(html || "");
-
-    const match =
-        source.match(
-            /redirectWebUrl='([^']+)'/
-        );
-
-    if(!match){
-        return "";
+export function extractRedirectWebUrl(html) {
+    // Coupang landing pages have used both JS assignments and JSON-embedded
+    // strings. Keep the extraction scoped to the official redirectWebUrl key.
+    const source = String(html || "");
+    const patterns = [
+        /redirectWebUrl\\s*=\\s*'([^']+)'/i,
+        /redirectWebUrl\\s*=\\s*"([^"]+)"/i,
+        /["']redirectWebUrl["']\\s*:\\s*"((?:\\\\.|[^"\\\\])+)"/i,
+        /["']redirectWebUrl["']\\s*:\\s*'([^']+)'/i
+    ];
+    for (const pattern of patterns) {
+        const match = source.match(pattern);
+        if (!match) continue;
+        const decoded = decodeJsString(match[1]).replace(/&amp;/g, "&");
+        try {
+            const candidate = new URL(decoded);
+            // Refuse arbitrary redirects outside Coupang when parsing a page.
+            if (candidate.protocol === "https:" && (
+                candidate.hostname === "coupang.com" ||
+                candidate.hostname.endsWith(".coupang.com")
+            )) return candidate.href;
+        } catch {}
     }
-
-    return decodeJsString(
-        match[1]
-    );
-
+    return "";
 }
-
 
 /*
 =========================================================
@@ -1624,11 +1629,9 @@ export async function resolveCoupangProduct(
 
 
     if(!redirectWebUrl){
-
         throw new Error(
-            "COUPANG redirectWebUrl 추출 실패"
+            "COUPANG_DETAIL_REDIRECT_MISSING: 파트너 링크 HTML에서 쿠팡 상품 리디렉션 주소를 찾지 못했습니다. (페이지 구조 변경 또는 접근 제한 가능)"
         );
-
     }
 
 
@@ -1786,6 +1789,21 @@ const main =
             item?.url || item?.imageUrl || item?.productImageUrl || item?.originImage || ""
         ).filter(x => /^https?:\/\//.test(String(x)));
     }))].slice(0,12);
+    console.log("[COUPANG DETAIL MEDIA]",{
+        productId:resolvedProductId,
+        resolverSource:mainResult.sourceType,
+        exactMatch:Boolean(mainResult.exact),
+        hasPrimaryImage:Boolean(productImageUrl),
+        galleryCandidateCount:galleryImages.length,
+        galleryFieldPresence:{
+            images:Array.isArray(main?.images),
+            productImages:Array.isArray(main?.productImages),
+            galleryImages:Array.isArray(main?.galleryImages),
+            imageList:Array.isArray(main?.imageList),
+            productImageList:Array.isArray(main?.productImageList)
+        }
+    });
+
 
     const price =
         String(
