@@ -46,8 +46,14 @@ export async function chooseQuickCoupangProduct(keyword, {
           keyword: term
         });
         if (result?.resolved === true) detail = result;
+        else logger.warn("[COUPANG GALLERY] 상품 상세 검증 미통과:",{
+          productId,exactMatch:Boolean(result?.exactMatch),
+          source:result?.resolverSource||"none",galleryCount:result?.galleryImages?.length||0
+        });
       } catch(error) {
-        logger.warn("[SHOPPING QUICK] 상세 갤러리 조회 불가:",String(error.message || error).slice(0,140));
+        logger.warn("[COUPANG GALLERY] 상세 리졸버 실패:",{
+          productId,error:String(error.message || error).slice(0,220)
+        });
       }
 
       const candidate = {
@@ -70,6 +76,10 @@ export async function chooseQuickCoupangProduct(keyword, {
       // Strict pass first: exhaust possible distinct multi-photo products.
       // Keep a candidate for a second, clearly marked one-photo pass.
       singlePhotoCandidates.push({candidate,selectedIndex:index+1});
+      logger.log("[COUPANG IMAGE SOURCE]",{
+        productId,officialHeroCount:1,verifiedGalleryCount:candidate.galleryImages.length,
+        detailResolved:Boolean(detail)
+      });
       const product = await prepare(candidate);
       if (product?.productMediaVerified !== true || !Array.isArray(product?.images) || product.images.length < 2) {
         throw new Error("SHOPPING_MEDIA_INSUFFICIENT: 같은 상품의 서로 다른 실제 사진이 2장 미만");
