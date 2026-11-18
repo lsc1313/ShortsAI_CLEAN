@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {collectCoupangGallery,productPageMatches,validateGalleryResult} from "../modules/coupang/galleryCollector.js";
+import {collectCoupangGallery,productPageMatches,validateGalleryResult,officialProductPageUrl} from "../modules/coupang/galleryCollector.js";
 import {chooseQuickCoupangProduct} from "../modules/shopping/quickCoupang.js";
 
 const productId="9710180536";
@@ -84,4 +84,23 @@ test("rejects attacker-controlled redirect even if image looks valid",()=>{
    images:["https://thumbnail.coupangcdn.com/third.jpg"]
  },{productId,pageUrl});
  assert.equal(r.verified,false);
+});
+
+test("affiliate redirect resolves to official exact SKU page, keeping itemId",()=>{
+ assert.equal(officialProductPageUrl(productId,"https://www.coupang.com/vp/products/"+productId),pageUrl.split("?")[0]);
+ assert.equal(officialProductPageUrl(productId,"https://www.coupang.com/re/AFFSDP?itemId=29052191811"),
+   pageUrl);
+ assert.equal(officialProductPageUrl(productId,"https://link.coupang.com/re/AFFSDP"),
+   "https://www.coupang.com/vp/products/"+productId);
+ assert.equal(officialProductPageUrl("bad-id","https://link.coupang.com/re/AFFSDP"),"");
+});
+
+test("gallery collector emits visible diagnostics for invalid original product link",async()=>{
+ const logs=[];
+ const result=await collectCoupangGallery({productId,pageUrl:"https://link.coupang.com/re/AFFSDP"},{
+   visit:async()=>{throw Error("should not visit invalid link");},
+   logger:{log:(...x)=>logs.push(x),warn:(...x)=>logs.push(x)}
+ });
+ assert.equal(result.verified,false);
+ assert.ok(logs.some(x=>x[0]==="[COUPANG BROWSER GALLERY]"&&x[1].reason==="invalid-official-product-url"));
 });
