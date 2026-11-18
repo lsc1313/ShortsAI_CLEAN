@@ -21,6 +21,27 @@ export function productPageMatches(url, productId) {
       );
   }catch{return false;}
 }
+/**
+ * Affiliate URLs may point to a marketing redirect rather than the real page.
+ * Build the official Coupang product page solely from a numeric ID supplied by
+ * the affiliate API, preserving the same itemId when present in that URL.
+ */
+export function officialProductPageUrl(productId,rawUrl) {
+  const id=String(productId||"").trim();
+  if(!/^\\d+$/.test(id))return "";
+  if(productPageMatches(rawUrl,id))return rawUrl;
+  let itemId="";
+  try {
+    const parsed=new URL(String(rawUrl||""));
+    if(parsed.protocol==="https:" && isCoupangHost(parsed.hostname)) {
+      const candidate=parsed.searchParams.get("itemId")||"";
+      if(/^\\d+$/.test(candidate))itemId=candidate;
+    }
+  }catch{}
+  const canonical=new URL("https://www.coupang.com/vp/products/"+id);
+  if(itemId)canonical.searchParams.set("itemId",itemId);
+  return canonical.href;
+}
 function normalizedImage(value,pageUrl) {
   try {
     const url=new URL(String(value||"").trim(),pageUrl);
