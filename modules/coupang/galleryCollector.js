@@ -84,7 +84,7 @@ async function renderedProductGallery(pageUrl,{timeout=12000}={}) {
             ])add(img.getAttribute(attr));
             for(const key of ["currentSrc","src"])add(img[key]);
             const srcset=img.getAttribute("srcset");
-            if(srcset)for(const part of srcset.split(","))add(part.trim().split(/\\s+/)[0]);
+            if(srcset)for(const part of srcset.split(","))add(part.trim().split(/\s+/)[0]);
           }
           for(const node of element.querySelectorAll("[data-image],[data-src],[data-origin],[data-zoom-image]")){
             for(const attr of ["data-image","data-src","data-origin","data-zoom-image"])add(node.getAttribute(attr));
