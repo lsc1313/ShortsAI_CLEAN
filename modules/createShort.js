@@ -115,7 +115,21 @@ const channelName =
  * new topic. Reuse already-rendered media and never upload a recorded ID.
  */
 if (channelName === "shopping" && product && options?.hotdeal !== true) {
-    product = await prepareShoppingProduct(product);
+    // UI QUICK already downloaded and verified this single, genuine product
+    // photo. Do not silently reapply the default two-photo requirement here.
+    // Unverified products and scheduled shopping retain the strict gate.
+    const verifiedQuickSinglePhoto =
+        product.productMediaVerified === true &&
+        product.singlePhotoMode === true &&
+        product.distinctPhotoCount === 1 &&
+        Array.isArray(product.images) &&
+        product.images.length === 1;
+    product = await prepareShoppingProduct(product, {
+        allowSinglePhoto: verifiedQuickSinglePhoto
+    });
+    if (verifiedQuickSinglePhoto) {
+        console.log("[SHOPPING] verified single-photo QUICK mode preserved in Brain");
+    }
 }
 
 if (channelName === "history") {
