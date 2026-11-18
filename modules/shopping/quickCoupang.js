@@ -1,6 +1,6 @@
 import { searchProducts, createPartnerLink } from "../coupang/index_api.js";
 import { resolveCoupangProduct } from "../coupang/productResolver.js";
-import { collectCoupangGallery } from "../coupang/galleryCollector.js";
+import { collectCoupangGallery, officialProductPageUrl } from "../coupang/galleryCollector.js";
 import { prepareShoppingProduct } from "./productMedia.js";
 
 /**
@@ -64,7 +64,7 @@ export async function chooseQuickCoupangProduct(keyword, {
       let galleryPhotos=detail?.galleryImages||[];
       if(galleryPhotos.length<4){
         const collected=await gallery({
-          productId, pageUrl:selected.url
+          productId, pageUrl:officialProductPageUrl(productId,selected.url)
         },{logger});
         if(collected?.verified){
           galleryPhotos=[...new Set([...galleryPhotos,...collected.images])].slice(0,12);
