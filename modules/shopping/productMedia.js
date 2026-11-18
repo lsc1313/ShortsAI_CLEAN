@@ -113,6 +113,48 @@ export async function discoverProductPage(link,{expectedName="",fetchImpl=fetch}
  }catch{return {name:"",description:"",images:[],verified:false,source:"unavailable"};}
  finally{clearTimeout(timer);}
 }
+/**
+ * Fetch actual product image bytes via bounded HTTPS redirects. Coupang CDN
+ * URLs frequently return HTTP 302; axios maxRedirects:0 previously rejected
+ * every official hero image. Validate every hop, including the final URL.
+ *
+ * The caller only receives verified image bytes; never HTML or arbitrary files.
+ */
+export async function downloadProductImage(source,{request=axios.get,maxHops=4}={}){
+ let current=normalizeImage(source);
+ if(!current)throw Object.assign(new Error("invalid-image-url"),{code:"IMAGE_URL_INVALID"});
+ const visited=new Set();
+ for(let hop=0;hop<=maxHops;hop++){
+   if(visited.has(current))throw Object.assign(new Error("image redirect loop"),{code:"IMAGE_REDIRECT_LOOP"});
+   visited.add(current);
+   const res=await request(current,{
+     responseType:"arraybuffer",timeout:14000,maxContentLength:15*1024*1024,
+     maxRedirects:0,validateStatus:()=>true,
+     headers:{"User-Agent":"Mozilla/5.0","Accept":"image/*"}
+   });
+   const status=Number(res?.status);
+   if([301,302,303,307,308].includes(status)){
+     const location=res?.headers?.location;
+     if(!location)throw Object.assign(new Error("image redirect missing location"),{code:"IMAGE_REDIRECT_MISSING"});
+     let target;
+     try{target=new URL(location,current).href;}catch{
+       throw Object.assign(new Error("invalid image redirect location"),{code:"IMAGE_REDIRECT_INVALID"});
+     }
+     const safe=normalizeImage(target);
+     if(!safe)throw Object.assign(new Error("unsafe image redirect destination"),{code:"IMAGE_REDIRECT_UNSAFE"});
+     current=safe;
+     continue;
+   }
+   if(status<200||status>=300)throw Object.assign(new Error("image CDN HTTP "+status),{status,code:"IMAGE_HTTP_FAILURE"});
+   const contentType=String(res?.headers?.["content-type"]||"").toLowerCase();
+   if(!contentType.startsWith("image/"))throw Object.assign(new Error("image CDN non-image content"),{code:"IMAGE_NOT_IMAGE_CONTENT_TYPE"});
+   const data=Buffer.from(res.data||[]);
+   if(!isImageBuffer(data))throw Object.assign(new Error("image CDN invalid bytes"),{code:"IMAGE_INVALID_BYTES"});
+   return {data,finalUrl:current,redirectHops:hop};
+ }
+ throw Object.assign(new Error("too many image redirects"),{code:"IMAGE_REDIRECT_LIMIT"});
+}
+
 const isImageBuffer=b=> b.length>1000 && (
  (b[0]===0xff&&b[1]===0xd8)||
  (b[0]===0x89&&b[1]===0x50&&b[2]===0x4e)||
@@ -132,10 +174,10 @@ export async function stageProductImages(product, candidates, {maxImages=6,allow
      if(/^https:\/\//i.test(source)){
        const u=normalizeImage(source);
        if(!u){note("invalid-image-url");continue;}
-       const response=await axios.get(u,{responseType:"arraybuffer",timeout:14000,maxContentLength:15*1024*1024,maxRedirects:0,headers:{"User-Agent":"Mozilla/5.0","Accept":"image/*"}});
-       data=Buffer.from(response.data);
-       if(!String(response.headers["content-type"]||"").startsWith("image/")){note("not-image-content-type");continue;}
+       const downloaded=await downloadProductImage(u);
+       data=downloaded.data;
        publicImages.push(u);
+       if(downloaded.redirectHops>0)note("redirect-followed");
      }else{
        let local=String(source||"");
        if(local.startsWith("/media/"))local=path.join(process.cwd(),local.slice(1));
@@ -160,8 +202,9 @@ export async function stageProductImages(product, candidates, {maxImages=6,allow
      const render=spawnSync("ffmpeg",["-y","-loglevel","error","-i",filename,"-filter_complex",vf,"-map","[out]","-frames:v","1",portrait],{timeout:30000});
      images.push(render.status===0 && fs.existsSync(portrait)?portrait:filename);
    }catch(error){
-     const status=error?.response?.status;
-     note(status ? `http-${status}` : error?.code === "ECONNABORTED" ? "image-timeout" : "image-download-failed");
+     const status=error?.status||error?.response?.status;
+     note(status ? `http-${status}` : error?.code==="ECONNABORTED" ? "image-timeout"
+       : String(error?.code||"image-download-failed").toLowerCase());
    }
  }
  console.log("[SHOPPING IMAGE DIAGNOSTICS]",{
