@@ -1539,7 +1539,17 @@ async function fetchMlpPage(
     redirectWebUrl,
     partnerUrl
 ){
-console.log("[MLP URL]", redirectWebUrl);
+// Never log tracking tokens, affiliate identifiers or marketing query strings.
+try {
+    const diagnostic=new URL(redirectWebUrl);
+    console.log("[COUPANG MLP REQUEST]",{
+      path:diagnostic.pathname,
+      productId:diagnostic.searchParams.get("productId")||"",
+      itemId:diagnostic.searchParams.get("itemId")||""
+    });
+} catch {
+    console.log("[COUPANG MLP REQUEST]",{path:"invalid-url"});
+}
 
     const response =
         await fetch(

@@ -104,3 +104,25 @@ test("gallery collector emits visible diagnostics for invalid original product l
  assert.equal(result.verified,false);
  assert.ok(logs.some(x=>x[0]==="[COUPANG BROWSER GALLERY]"&&x[1].reason==="invalid-official-product-url"));
 });
+
+test("matching page URL with empty gallery is not a verified gallery",async()=>{
+ const records=[];
+ const result=await collectCoupangGallery({productId,pageUrl},{
+   visit:async()=>({finalUrl:pageUrl,images:[],matchedSelectors:0,domImageCount:0,structuredProducts:0}),
+   logger:{log:(...args)=>records.push(args),warn:(...args)=>records.push(args)}
+ });
+ assert.equal(result.verified,false);
+ assert.equal(result.reason,"gallery-empty");
+ assert.deepEqual(result.images,[]);
+ assert.equal(records[0][1].matchedSelectors,0);
+ assert.equal(records[0][1].domImageCount,0);
+});
+
+test("browser access challenge does not count as successfully verified product gallery",async()=>{
+ const result=await collectCoupangGallery({productId,pageUrl},{
+   visit:async()=>({finalUrl:pageUrl,images:[],accessChallenge:true,domImageCount:5}),
+   logger
+ });
+ assert.equal(result.verified,false);
+ assert.equal(result.reason,"page-access-challenge");
+});
