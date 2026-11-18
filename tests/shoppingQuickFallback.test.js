@@ -19,12 +19,12 @@ test("QUICK retries next Coupang product when first only has one image",async()=
     prepare:async(item)=>{
       tries.push(item);
       if(tries.length===1)throw Error("SHOPPING_MEDIA_INSUFFICIENT: only one actual photo");
-      return {...item,productMediaVerified:true,images:["verified-1.jpg","verified-2.jpg"]};
+      return {...item,productMediaVerified:true,images:["verified-1.jpg","verified-2.jpg","verified-3.jpg","verified-4.jpg"]};
     },
     logger:noop
   });
   assert.equal(result.product.name,"폴드8 케이스 B");
-  assert.equal(result.product.images.length,2);
+  assert.equal(result.product.images.length,4);
   assert.equal(result.selectedIndex,2);
   assert.equal(tries.length,2);
   assert.equal(links.length,2);
@@ -40,7 +40,7 @@ test("QUICK uses verified detail gallery of the same product",async()=>{
     partnerLink:async()=> "https://link.coupang.com/one",
     gallery:async()=>({images:[],verified:false}),
     resolve:async()=>({resolved:true,productTitle:"폴드8 케이스 A",detailUrl:base[0].url,price:21000,galleryImages:["https://images.example/a2.jpg"]}),
-    prepare:async p=>{received=p;return {...p,images:["1.jpg","2.jpg"],productMediaVerified:true};},
+    prepare:async p=>{received=p;return {...p,images:["1.jpg","2.jpg","3.jpg","4.jpg"],productMediaVerified:true};},
     logger:noop
   });
   assert.equal(result.product.price,21000);
@@ -48,7 +48,7 @@ test("QUICK uses verified detail gallery of the same product",async()=>{
   assert.deepEqual(received.images,[base[0].image]);
 });
 
-test("QUICK keeps production blocked when no candidate offers even a real single photo",async()=>{
+test("QUICK keeps production blocked when no candidate offers four real photos",async()=>{
   let count=0;
   await assert.rejects(chooseQuickCoupangProduct("폴드8",{
     search:async()=>base,
@@ -57,8 +57,8 @@ test("QUICK keeps production blocked when no candidate offers even a real single
     resolve:async()=>null,
     prepare:async()=>{count++;throw Error("SHOPPING_MEDIA_INSUFFICIENT: insufficient photos");},
     logger:noop
-  }),/정보형 대체 제작도 불가능합니다/);
-  assert.equal(count,4); // two strict attempts plus two real-photo fallback attempts
+  }),/4장 이상 확보한 후보가 없습니다/);
+  assert.equal(count,2); // no second-stage one-photo fallback
 });
 
 test("QUICK rejects false-positive prepared object without 2 distinct validated photos",async()=>{
@@ -90,7 +90,7 @@ test("Coupang API retains single-result search for backward compatibility",()=>{
   assert.match(api,/searchProducts\(keyword, 1\)/);
 });
 
-test("QUICK prefers multi-photo product before any honest single-photo fallback",async()=>{
+test("QUICK prefers the first four-photo product and does not allow single-photo bypass",async()=>{
   const calls=[];
   const result=await chooseQuickCoupangProduct("폴드8",{
     search:async()=>base,
@@ -101,7 +101,7 @@ test("QUICK prefers multi-photo product before any honest single-photo fallback"
       calls.push({name:p.name,allowSinglePhoto:opts.allowSinglePhoto===true});
       if (opts.allowSinglePhoto) return {...p,images:["one.jpg"],productMediaVerified:true,singlePhotoMode:true,distinctPhotoCount:1};
       if(p.name.endsWith("A"))throw Error("SHOPPING_MEDIA_INSUFFICIENT");
-      return {...p,images:["one.jpg","two.jpg"],productMediaVerified:true,singlePhotoMode:false,distinctPhotoCount:2};
+      return {...p,images:["one.jpg","two.jpg","three.jpg","four.jpg"],productMediaVerified:true,singlePhotoMode:false,distinctPhotoCount:4};
     },
     logger:noop
   });
@@ -109,36 +109,16 @@ test("QUICK prefers multi-photo product before any honest single-photo fallback"
   assert.deepEqual(calls.map(c=>c.allowSinglePhoto),[false,false]);
 });
 
-test("QUICK after exhausting strict products uses correctly labelled one-photo mode",async()=>{
-  const calls=[];
-  const result=await chooseQuickCoupangProduct("폴드8",{
+test("QUICK refuses a one-photo product instead of launching video generation",async()=>{
+  let count=0;
+  await assert.rejects(chooseQuickCoupangProduct("폴드8",{
     search:async()=>base,
     partnerLink:async()=> "https://link.coupang.com/test",
-    gallery:async()=>({images:[],verified:false}),
+    gallery:async()=>({verified:false,images:[]}),
     resolve:async()=>null,
-    prepare:async(p,opts={})=>{
-      calls.push({name:p.name,allowSinglePhoto:opts.allowSinglePhoto===true});
-      if (!opts.allowSinglePhoto)throw Error("SHOPPING_MEDIA_INSUFFICIENT: 1 photo");
-      return {...p,images:["real-photo.jpg"],productMediaVerified:true,singlePhotoMode:true,distinctPhotoCount:1};
-    },
+    prepare:async p=>{count++;return {...p,images:["one.jpg"],productMediaVerified:true,singlePhotoMode:true,distinctPhotoCount:1};},
     logger:noop
-  });
-  assert.equal(result.product.name,"폴드8 케이스 A");
-  assert.equal(result.product.singlePhotoMode,true);
-  assert.equal(result.product.distinctPhotoCount,1);
-  assert.deepEqual(calls.map(c=>c.allowSinglePhoto),[false,false,true]);
+  }),/4장 이상 확보한 후보가 없습니다/);
+  assert.equal(count,2);
 });
 
-test("one-photo mode requires explicit verified single-photo origin",async()=>{
-  await assert.rejects(chooseQuickCoupangProduct("폴드8",{
-    search:async()=>base.slice(0,1),
-    partnerLink:async()=> "https://link.coupang.com/test",
-    gallery:async()=>({images:[],verified:false}),
-    resolve:async()=>null,
-    prepare:async(p,opts={})=>{
-      if(!opts.allowSinglePhoto)throw Error("SHOPPING_MEDIA_INSUFFICIENT");
-      return {...p,images:["photo.jpg"],productMediaVerified:true};
-    },
-    logger:noop
-  }),/정보형 대체 제작도 불가능합니다/);
-});
