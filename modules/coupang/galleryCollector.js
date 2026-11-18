@@ -101,6 +101,10 @@ async function renderedProductGallery(pageUrl,{timeout=12000}={}) {
 
 export async function collectCoupangGallery({productId,pageUrl},{visit=renderedProductGallery,logger=console}={}){
   if(!productPageMatches(pageUrl,productId)) {
+    logger.warn("[COUPANG BROWSER GALLERY]",{
+      productId:String(productId),verified:false,candidateCount:0,
+      reason:"invalid-official-product-url"
+    });
     return {images:[],verified:false,reason:"invalid-official-product-url"};
   }
   try {
