@@ -57,39 +57,43 @@ async function renderedProductGallery(pageUrl,{timeout=12000}={}) {
     await page.goto(pageUrl,{waitUntil:"domcontentloaded",timeout});
     await new Promise(resolve=>setTimeout(resolve,900));
     const finalUrl=page.url();
-    const images=await page.evaluate(()=>{
+    const gallery=await page.evaluate(()=>{
       const containers=[
-        ".prod-image",
-        '[class*="prod-image__"]',
+        ".prod-image", '[class*="prod-image__"]',
+        "#repImageContainer", "#prod-image",
         '[data-testid="product-image-gallery"]',
         '[class*="product-image-gallery"]',
-        '[class*="ProductImageGallery"]'
+        '[class*="ProductImageGallery"]',
+        '[class*="productImageGallery"]',
+        '[class*="product-gallery"]',
+        '[class*="thumbnail-list"]',
+        '[class*="thumbnailList"]'
       ];
-      const urls=[];
-      const add=(x)=>{if(x && typeof x==="string")urls.push(x)};
+      const urls=[], hitSelectors=[];
+      const add=x=>{if(x&&typeof x==="string")urls.push(x)};
+      const banned='[class*="recommend"],[class*="related"],[class*="sponsor"],[class*="advert"]';
       for(const selector of containers){
-        for(const element of document.querySelectorAll(selector)){
-          if(element.closest('[class*="recommend"],[class*="related"],[class*="sponsor"],[class*="advert"]'))continue;
+        const nodes=[...document.querySelectorAll(selector)].filter(el=>!el.closest(banned));
+        if(nodes.length)hitSelectors.push(selector);
+        for(const element of nodes){
           const imgs=element.matches("img")?[element]:[...element.querySelectorAll("img")];
           for(const img of imgs){
-            for(const attr of ["data-origin","data-zoom-image","data-src","data-image","src"]){
-              add(img.getAttribute(attr));
-            }
+            for(const attr of [
+              "data-origin","data-origin-src","data-zoom-image","data-img-src",
+              "data-image","data-image-url","data-src","data-lazy-src","src"
+            ])add(img.getAttribute(attr));
+            for(const key of ["currentSrc","src"])add(img[key]);
             const srcset=img.getAttribute("srcset");
-            if(srcset){
-              for(const part of srcset.split(","))add(part.trim().split(/\s+/)[0]);
-            }
+            if(srcset)for(const part of srcset.split(","))add(part.trim().split(/\\s+/)[0]);
           }
-          for(const node of element.querySelectorAll("[data-image],[data-src],[data-zoom-image]")){
-            add(node.getAttribute("data-image"));
-            add(node.getAttribute("data-src"));
-            add(node.getAttribute("data-zoom-image"));
+          for(const node of element.querySelectorAll("[data-image],[data-src],[data-origin],[data-zoom-image]")){
+            for(const attr of ["data-image","data-src","data-origin","data-zoom-image"])add(node.getAttribute(attr));
           }
         }
       }
-      return [...new Set(urls)];
+      return {images:[...new Set(urls)],matchedSelectors:hitSelectors.length};
     });
-    return {finalUrl,images};
+    return {finalUrl,images:gallery.images,matchedSelectors:gallery.matchedSelectors};
   }finally{
     if(browser)await browser.close().catch(()=>{});
   }
@@ -104,7 +108,7 @@ export async function collectCoupangGallery({productId,pageUrl},{visit=renderedP
     const checked=validateGalleryResult(result,{productId,pageUrl});
     logger.log("[COUPANG BROWSER GALLERY]",{
       productId:String(productId),verified:checked.verified,
-      candidateCount:checked.images.length,reason:checked.reason
+      candidateCount:checked.images.length,matchedSelectors:Number(result.matchedSelectors||0),reason:checked.reason
     });
     return checked;
   }catch(error) {
