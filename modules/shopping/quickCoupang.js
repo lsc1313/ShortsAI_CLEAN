@@ -1,5 +1,6 @@
 import { searchProducts, createPartnerLink } from "../coupang/index_api.js";
 import { resolveCoupangProduct } from "../coupang/productResolver.js";
+import { collectCoupangGallery } from "../coupang/galleryCollector.js";
 import { prepareShoppingProduct } from "./productMedia.js";
 
 /**
@@ -11,6 +12,7 @@ export async function chooseQuickCoupangProduct(keyword, {
   search = searchProducts,
   partnerLink = createPartnerLink,
   resolve = resolveCoupangProduct,
+  gallery = collectCoupangGallery,
   prepare = prepareShoppingProduct,
   logger = console,
   maxCandidates = 8
@@ -56,6 +58,19 @@ export async function chooseQuickCoupangProduct(keyword, {
         });
       }
 
+      // The MLP parser can return a marketing shell instead of product data.
+      // Fetch the actual selected product page's own thumbnail gallery, never
+      // a general image search or pictures from nearby recommended products.
+      let galleryPhotos=detail?.galleryImages||[];
+      if(galleryPhotos.length<4){
+        const collected=await gallery({
+          productId, pageUrl:selected.url
+        },{logger});
+        if(collected?.verified){
+          galleryPhotos=[...new Set([...galleryPhotos,...collected.images])].slice(0,12);
+        }
+      }
+
       const candidate = {
         id: productId || `quick_${index+1}`,
         name: detail?.productTitle || productName,
@@ -68,7 +83,7 @@ export async function chooseQuickCoupangProduct(keyword, {
         sourceUrl: detail?.detailUrl || selected.url,
         provider: "coupang",
         images: [selected.image],
-        galleryImages: detail?.galleryImages || [],
+        galleryImages: galleryPhotos,
         publicImages: [selected.image],
         enabled: true
       };
