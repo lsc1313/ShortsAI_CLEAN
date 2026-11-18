@@ -28,14 +28,14 @@ export function productPageMatches(url, productId) {
  */
 export function officialProductPageUrl(productId,rawUrl) {
   const id=String(productId||"").trim();
-  if(!/^\\d+$/.test(id))return "";
+  if(!/^\d+$/.test(id))return "";
   if(productPageMatches(rawUrl,id))return rawUrl;
   let itemId="";
   try {
     const parsed=new URL(String(rawUrl||""));
     if(parsed.protocol==="https:" && isCoupangHost(parsed.hostname)) {
       const candidate=parsed.searchParams.get("itemId")||"";
-      if(/^\\d+$/.test(candidate))itemId=candidate;
+      if(/^\d+$/.test(candidate))itemId=candidate;
     }
   }catch{}
   const canonical=new URL("https://www.coupang.com/vp/products/"+id);
