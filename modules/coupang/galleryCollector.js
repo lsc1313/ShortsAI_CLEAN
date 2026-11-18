@@ -55,13 +55,17 @@ function normalizedImage(value,pageUrl) {
 }
 export function validateGalleryResult(result,{productId,pageUrl}){
   const url=String(result?.finalUrl||"");
-  // A generic marketing shell must not be treated as a product detail page.
   if(!productPageMatches(pageUrl,productId) || !productPageMatches(url,productId)) {
     return {images:[],verified:false,reason:"product-page-identity-mismatch"};
   }
   const images=[...new Set((Array.isArray(result?.images)?result.images:[])
     .map(src=>normalizedImage(src,url)).filter(Boolean))].slice(0,12);
-  return {images,verified:true,reason:images.length?"product-gallery":"gallery-empty"};
+  // Page URL identity alone does not prove that any real product media was found.
+  if(images.length===0){
+    const blocked=Boolean(result?.accessChallenge);
+    return {images:[],verified:false,reason:blocked?"page-access-challenge":"gallery-empty"};
+  }
+  return {images,verified:true,reason:"product-gallery"};
 }
 
 async function renderedProductGallery(pageUrl,{timeout=12000}={}) {
@@ -78,43 +82,96 @@ async function renderedProductGallery(pageUrl,{timeout=12000}={}) {
     await page.goto(pageUrl,{waitUntil:"domcontentloaded",timeout});
     await new Promise(resolve=>setTimeout(resolve,900));
     const finalUrl=page.url();
-    const gallery=await page.evaluate(()=>{
-      const containers=[
-        ".prod-image", '[class*="prod-image__"]',
-        "#repImageContainer", "#prod-image",
-        '[data-testid="product-image-gallery"]',
-        '[class*="product-image-gallery"]',
-        '[class*="ProductImageGallery"]',
-        '[class*="productImageGallery"]',
-        '[class*="product-gallery"]',
-        '[class*="thumbnail-list"]',
-        '[class*="thumbnailList"]'
-      ];
-      const urls=[], hitSelectors=[];
-      const add=x=>{if(x&&typeof x==="string")urls.push(x)};
-      const banned='[class*="recommend"],[class*="related"],[class*="sponsor"],[class*="advert"]';
-      for(const selector of containers){
-        const nodes=[...document.querySelectorAll(selector)].filter(el=>!el.closest(banned));
-        if(nodes.length)hitSelectors.push(selector);
-        for(const element of nodes){
-          const imgs=element.matches("img")?[element]:[...element.querySelectorAll("img")];
-          for(const img of imgs){
-            for(const attr of [
-              "data-origin","data-origin-src","data-zoom-image","data-img-src",
-              "data-image","data-image-url","data-src","data-lazy-src","src"
-            ])add(img.getAttribute(attr));
-            for(const key of ["currentSrc","src"])add(img[key]);
-            const srcset=img.getAttribute("srcset");
-            if(srcset)for(const part of srcset.split(","))add(part.trim().split(/\s+/)[0]);
-          }
-          for(const node of element.querySelectorAll("[data-image],[data-src],[data-origin],[data-zoom-image]")){
-            for(const attr of ["data-image","data-src","data-origin","data-zoom-image"])add(node.getAttribute(attr));
+    // Product pages may hydrate the thumbnails well after DOMContentLoaded.
+    // Retry boundedly; never bypass access restrictions or follow unrelated pages.
+    let gallery={images:[],matchedSelectors:0,domImageCount:0,structuredProducts:0};
+    for(let attempt=0;attempt<4;attempt++){
+      gallery=await page.evaluate((expectedId)=>{
+        const containers=[
+          ".prod-image",'[class*="prod-image__"]',
+          "#repImageContainer","#prod-image",
+          '[data-testid="product-image-gallery"]',
+          '[class*="product-image-gallery"]',
+          '[class*="ProductImageGallery"]',
+          '[class*="productImageGallery"]',
+          '[class*="product-gallery"]',
+          '[class*="thumbnail-list"]',
+          '[class*="thumbnailList"]'
+        ];
+        const urls=[],hitSelectors=[];
+        const add=value=>{if(typeof value==="string"&&value.trim())urls.push(value.trim())};
+        const banned='[class*="recommend"],[class*="related"],[class*="sponsor"],[class*="advert"]';
+        for(const selector of containers){
+          const nodes=[...document.querySelectorAll(selector)].filter(el=>!el.closest(banned));
+          if(nodes.length)hitSelectors.push(selector);
+          for(const el of nodes){
+            const imgs=el.matches("img")?[el]:[...el.querySelectorAll("img")];
+            for(const img of imgs){
+              for(const attr of [
+                "data-origin","data-origin-src","data-zoom-image","data-img-src",
+                "data-image","data-image-url","data-src","data-lazy-src","src"
+              ]) add(img.getAttribute(attr));
+              add(img.currentSrc);
+              const srcset=img.getAttribute("srcset");
+              if(srcset)for(const item of srcset.split(","))add(item.trim().split(/\\s+/)[0]);
+            }
+            for(const item of el.querySelectorAll("[data-image],[data-src],[data-origin],[data-zoom-image]")){
+              for(const attr of ["data-image","data-src","data-origin","data-zoom-image"])add(item.getAttribute(attr));
+            }
           }
         }
-      }
-      return {images:[...new Set(urls)],matchedSelectors:hitSelectors.length};
-    });
-    return {finalUrl,images:gallery.images,matchedSelectors:gallery.matchedSelectors};
+        // Structured product image arrays offer a stable alternative to CSS
+        // classes, but only when their explicit product identifier matches.
+        let structuredProducts=0;
+        const productNodes=[];
+        function collect(node,depth=0){
+          if(!node||typeof node!=="object"||depth>5)return;
+          if(Array.isArray(node)){for(const v of node)collect(v,depth+1);return;}
+          const types=[].concat(node["@type"]||[]).map(x=>String(x).toLowerCase());
+          if(types.includes("product"))productNodes.push(node);
+          if(node["@graph"])collect(node["@graph"],depth+1);
+          if(node.mainEntity)collect(node.mainEntity,depth+1);
+        }
+        for(const script of document.querySelectorAll('script[type="application/ld+json"]')){
+          try{collect(JSON.parse(script.textContent||""));}catch{}
+        }
+        for(const node of productNodes){
+          structuredProducts++;
+          const identifiers=[node.productID,node.productId,node.sku,node.mpn,
+            node["@id"],node.url].map(x=>String(x||""));
+          const matched=identifiers.some(x=>
+            x===expectedId ||
+            x.includes("/products/"+expectedId) ||
+            x.includes("productId="+expectedId)
+          );
+          if(!matched)continue;
+          const photos=[].concat(node.image||[]);
+          for(const photo of photos){
+            if(typeof photo==="string")add(photo);
+            else if(photo && typeof photo==="object")add(photo.url||photo.contentUrl);
+          }
+        }
+        const body=(document.body?.innerText||"").slice(0,2000).toLowerCase();
+        const accessChallenge=/captcha|보안문자|비정상적인 접근|접근이 제한|access denied|robot check|verify you are human/.test(body);
+        return {
+          images:[...new Set(urls)],
+          matchedSelectors:hitSelectors.length,
+          domImageCount:document.images.length,
+          structuredProducts,
+          accessChallenge
+        };
+      },new URL(pageUrl).pathname.split("/").filter(Boolean).at(-1));
+      if(gallery.images.length>=4||gallery.accessChallenge)break;
+      if(attempt<3)await new Promise(resolve=>setTimeout(resolve,1000));
+    }
+    return {
+      finalUrl,
+      images:gallery.images,
+      matchedSelectors:gallery.matchedSelectors,
+      domImageCount:gallery.domImageCount,
+      structuredProducts:gallery.structuredProducts,
+      accessChallenge:gallery.accessChallenge
+    };
   }finally{
     if(browser)await browser.close().catch(()=>{});
   }
@@ -133,7 +190,9 @@ export async function collectCoupangGallery({productId,pageUrl},{visit=renderedP
     const checked=validateGalleryResult(result,{productId,pageUrl});
     logger.log("[COUPANG BROWSER GALLERY]",{
       productId:String(productId),verified:checked.verified,
-      candidateCount:checked.images.length,matchedSelectors:Number(result.matchedSelectors||0),reason:checked.reason
+      candidateCount:checked.images.length,matchedSelectors:Number(result.matchedSelectors||0),
+      domImageCount:Number(result.domImageCount||0),structuredProducts:Number(result.structuredProducts||0),
+      accessChallenge:Boolean(result.accessChallenge),reason:checked.reason
     });
     return checked;
   }catch(error) {
