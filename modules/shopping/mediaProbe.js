@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import {collectCoupangGallery,officialProductPageUrl} from "../coupang/galleryCollector.js";
 import {downloadProductImage} from "./productMedia.js";
 
-const isId = value => /^\\d+$/.test(String(value||""));
+const isId = value => /^\d+$/.test(String(value||""));
 const mimeExtension = bytes => bytes[0]===0x89?".png":bytes.toString("ascii",0,4)==="RIFF"?".webp":".jpg";
 const hash = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const looksLikeImage = bytes => bytes.length>1000 && (
