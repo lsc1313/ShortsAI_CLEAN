@@ -43,6 +43,9 @@ jobs:
       - run: node --check modules/coupang/productResolver.js
       - run: node --check modules/coupang/galleryCollector.js
       - run: node --test tests/coupangGalleryCollector.test.js
+      - run: node --check modules/shopping/mediaProbe.js
+      - run: node --check scripts/shopping-media-probe.js
+      - run: node --test tests/shoppingMediaProbe.test.js
       - run: node --test tests/coupangImageDiagnostics.test.js
       - run: node --test tests/coupangImageRedirect.test.js
       - run: node --check modules/shopping/productMedia.js
